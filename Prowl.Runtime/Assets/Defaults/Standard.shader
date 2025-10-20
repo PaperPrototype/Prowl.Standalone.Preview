@@ -342,22 +342,10 @@ Pass "StandardShadow"
 			{
 				// Check if we're rendering for a point light (_PointLightRange > 0)
 				if (_PointLightRange > 0.0) {
-					// Calculate direction from fragment to light
-					vec3 lightDir = normalize(_PointLightPosition - worldPos);
-
-					// Calculate slope-scale bias based on surface angle
-					float cosTheta = clamp(dot(worldNormal, lightDir), 0.0, 1.0);
-					float slopeBias = sqrt(1.0 - cosTheta * cosTheta) / cosTheta; // tan(acos(cosTheta))
-
 					// Calculate distance from light and normalize by range
 					float dist = length(worldPos - _PointLightPosition);
 					float normalizedDepth = dist / _PointLightRange;
 
-					// Apply adaptive bias (stronger bias for sharper angles)
-					float bias = _PointLightShadowBias * 0.01 * (1.0 + slopeBias);
-					normalizedDepth += bias;
-
-					// Write normalized depth to gl_FragDepth
 					gl_FragDepth = clamp(normalizedDepth, 0.0, 1.0);
 				}
 				else
