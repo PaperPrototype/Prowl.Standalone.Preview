@@ -185,6 +185,12 @@ float SampleDirectionalShadow(SunLightStruct sun, vec3 worldPos, vec3 worldNorma
     atlasCoords.y = sun.atlasY + (projCoords.y * sun.atlasWidth);
 
     float atlasSize = shadowAtlasSize.x;
+
+    // Calculate shadow map boundaries in normalized atlas coordinates to prevent bleeding
+    vec2 texelSize = vec2(1.0) / shadowAtlasSize;
+    vec2 shadowMin = vec2(sun.atlasX, sun.atlasY) / atlasSize + texelSize * 0.5;
+    vec2 shadowMax = vec2(sun.atlasX + sun.atlasWidth, sun.atlasY + sun.atlasWidth) / atlasSize - texelSize * 0.5;
+
     atlasCoords /= atlasSize;
 
     // Get current depth with bias
@@ -199,7 +205,6 @@ float SampleDirectionalShadow(SunLightStruct sun, vec3 worldPos, vec3 worldNorma
         shadow = currentDepth > closestDepth ? 1.0 : 0.0;
     } else {
         // Soft shadows - Poisson Disk PCF
-        vec2 texelSize = vec2(1.0) / shadowAtlasSize;
         float filterRadius = 1.5; // Controls shadow softness
 
         // Random rotation to reduce banding artifacts
@@ -211,7 +216,9 @@ float SampleDirectionalShadow(SunLightStruct sun, vec3 worldPos, vec3 worldNorma
         // Sample using Poisson disk pattern
         for(int i = 0; i < 16; i++) {
             vec2 offset = rotationMatrix * poissonDisk[i] * texelSize * filterRadius;
-            float pcfDepth = texture(shadowAtlas, atlasCoords + offset).r;
+            // Clamp sample coordinates to shadow map boundaries to prevent bleeding
+            vec2 sampleCoords = clamp(atlasCoords + offset, shadowMin, shadowMax);
+            float pcfDepth = texture(shadowAtlas, sampleCoords).r;
             shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
         }
         shadow /= 16.0;
@@ -254,6 +261,12 @@ float SampleSpotLightShadow(SpotLightStruct light, vec3 worldPos, vec3 worldNorm
     atlasCoords.y = light.atlasY + (projCoords.y * light.atlasWidth);
 
     float atlasSize = shadowAtlasSize.x;
+
+    // Calculate shadow map boundaries in normalized atlas coordinates to prevent bleeding
+    vec2 texelSize = vec2(1.0) / shadowAtlasSize;
+    vec2 shadowMin = vec2(light.atlasX, light.atlasY) / atlasSize + texelSize * 0.5;
+    vec2 shadowMax = vec2(light.atlasX + light.atlasWidth, light.atlasY + light.atlasWidth) / atlasSize - texelSize * 0.5;
+
     atlasCoords /= atlasSize;
 
     // Get current depth with bias
@@ -268,7 +281,6 @@ float SampleSpotLightShadow(SpotLightStruct light, vec3 worldPos, vec3 worldNorm
         shadow = currentDepth > closestDepth ? 1.0 : 0.0;
     } else {
         // Soft shadows - Poisson Disk PCF
-        vec2 texelSize = vec2(1.0) / shadowAtlasSize;
         float filterRadius = 1.5; // Controls shadow softness
 
         // Random rotation to reduce banding artifacts
@@ -280,7 +292,9 @@ float SampleSpotLightShadow(SpotLightStruct light, vec3 worldPos, vec3 worldNorm
         // Sample using Poisson disk pattern
         for(int i = 0; i < 16; i++) {
             vec2 offset = rotationMatrix * poissonDisk[i] * texelSize * filterRadius;
-            float pcfDepth = texture(shadowAtlas, atlasCoords + offset).r;
+            // Clamp sample coordinates to shadow map boundaries to prevent bleeding
+            vec2 sampleCoords = clamp(atlasCoords + offset, shadowMin, shadowMax);
+            float pcfDepth = texture(shadowAtlas, sampleCoords).r;
             shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
         }
         shadow /= 16.0;
@@ -363,6 +377,18 @@ float SamplePointLightShadow(PointLightStruct light, vec3 worldPos, sampler2D sh
     atlasCoords.y = light.atlasY + (row * light.atlasWidth) + (uv.y * light.atlasWidth);
 
     float atlasSize = shadowAtlasSize.x;
+
+    // Calculate face boundaries in normalized atlas coordinates to prevent bleeding
+    vec2 faceMin = vec2(light.atlasX + (col * light.atlasWidth),
+                        light.atlasY + (row * light.atlasWidth)) / atlasSize;
+    vec2 faceMax = vec2(light.atlasX + (col * light.atlasWidth) + light.atlasWidth,
+                        light.atlasY + (row * light.atlasWidth) + light.atlasWidth) / atlasSize;
+
+    // Add a small inset (0.5 texels) to prevent sampling exactly on boundaries
+    vec2 texelSize = vec2(1.0) / shadowAtlasSize;
+    faceMin += texelSize * 0.5;
+    faceMax -= texelSize * 0.5;
+
     atlasCoords /= atlasSize;
 
     // Calculate current depth (distance from light normalized by range)
@@ -379,7 +405,6 @@ float SamplePointLightShadow(PointLightStruct light, vec3 worldPos, sampler2D sh
         shadow = currentDepth > closestDepth ? 1.0 : 0.0;
     } else {
         // Soft shadows - Poisson Disk PCF
-        vec2 texelSize = vec2(1.0) / shadowAtlasSize;
         float filterRadius = 2.0; // Slightly larger for point lights due to cubemap
 
         // Random rotation to reduce banding artifacts
@@ -391,7 +416,9 @@ float SamplePointLightShadow(PointLightStruct light, vec3 worldPos, sampler2D sh
         // Sample using Poisson disk pattern
         for(int i = 0; i < 16; i++) {
             vec2 offset = rotationMatrix * poissonDisk[i] * texelSize * filterRadius;
-            float pcfDepth = texture(shadowAtlas, atlasCoords + offset).r;
+            // Clamp sample coordinates to face boundaries to prevent bleeding
+            vec2 sampleCoords = clamp(atlasCoords + offset, faceMin, faceMax);
+            float pcfDepth = texture(shadowAtlas, sampleCoords).r;
             shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
         }
         shadow /= 16.0;
