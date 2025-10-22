@@ -247,7 +247,7 @@ public class DefaultRenderPipeline : RenderPipeline
         public Double4x4 ViewInverse = (CAMERA_RELATIVE ? camera.OriginViewMatrix : camera.ViewMatrix).Invert();
         public Double4x4 Projection = camera.ProjectionMatrix;
         public Double4x4 PreviousViewProj = camera.PreviousViewProjectionMatrix;
-        public Frustrum WorldFrustum = Frustrum.FromMatrix(camera.ProjectionMatrix * camera.ViewMatrix);
+        public Frustum WorldFrustum = Frustum.FromMatrix(camera.ProjectionMatrix * camera.ViewMatrix);
         public DepthTextureMode DepthTextureMode = camera.DepthTextureMode; // Flags, Can be None, Normals, MotionVectors
     }
 
@@ -276,7 +276,7 @@ public class DefaultRenderPipeline : RenderPipeline
         // =======================================================
         // 3. Cull Renderables based on Snapshot data
         IReadOnlyList<IRenderable> renderables = camera.GameObject.Scene.Renderables;
-        HashSet<int> culledRenderableIndices = [];// CullRenderables(renderables, css.worldFrustum);
+        HashSet<int> culledRenderableIndices = CullRenderables(renderables, css.WorldFrustum, css.CullingMask);
 
         // =======================================================
         // 4. Pre Render
@@ -400,18 +400,18 @@ public class DefaultRenderPipeline : RenderPipeline
         Graphics.Device.Viewport(0, 0, (uint)Window.InternalWindow.FramebufferSize.X, (uint)Window.InternalWindow.FramebufferSize.Y);
     }
 
-    private static HashSet<int> CullRenderables(IReadOnlyList<IRenderable> renderables, Frustrum? worldFrustum, LayerMask cullingMask)
+    private static HashSet<int> CullRenderables(IReadOnlyList<IRenderable> renderables, Frustum? worldFrustum, LayerMask cullingMask)
     {
         HashSet<int> culledRenderableIndices = [];
         for (int renderIndex = 0; renderIndex < renderables.Count; renderIndex++)
         {
             IRenderable renderable = renderables[renderIndex];
 
-            //if (worldFrustum != null && CullRenderable(renderable, worldFrustum))
-            //{
-            //    culledRenderableIndices.Add(renderIndex);
-            //    continue;
-            //}
+            if (worldFrustum != null && CullRenderable(renderable, worldFrustum.Value))
+            {
+                culledRenderableIndices.Add(renderIndex);
+                continue;
+            }
 
             if (cullingMask.HasLayer(renderable.GetLayer()) == false)
             {
@@ -617,9 +617,9 @@ public class DefaultRenderPipeline : RenderPipeline
                         if (CAMERA_RELATIVE)
                             view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
 
-                        Frustrum frustum = Frustrum.FromMatrix(proj * view);
+                        Frustum frustum = Frustum.FromMatrix(proj * view);
 
-                        HashSet<int> culledRenderableIndices = [];// CullRenderables(renderables, frustum);
+                        HashSet<int> culledRenderableIndices = CullRenderables(renderables, frustum, LayerMask.Everything);
                         AssignCameraMatrices(view, proj);
                         DrawRenderables(renderables, "LightMode", "ShadowCaster", new ViewerData(light.GetLightPosition(), forward, right, up), culledRenderableIndices, false);
                     }
@@ -651,9 +651,9 @@ public class DefaultRenderPipeline : RenderPipeline
                     if (CAMERA_RELATIVE)
                         view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
 
-                    Frustrum frustum = Frustrum.FromMatrix(proj * view);
+                    Frustum frustum = Frustum.FromMatrix(proj * view);
 
-                    HashSet<int> culledRenderableIndices = [];// CullRenderables(renderables, frustum);
+                    HashSet<int> culledRenderableIndices = CullRenderables(renderables, frustum, LayerMask.Everything);
                     AssignCameraMatrices(view, proj);
                     DrawRenderables(renderables, "LightMode", "ShadowCaster", new ViewerData(light.GetLightPosition(), forward, right, up), culledRenderableIndices, false);
                 }
@@ -1056,7 +1056,7 @@ public class DefaultRenderPipeline : RenderPipeline
         }
     }
 
-    private static bool CullRenderable(IRenderable renderable, Frustrum cameraFrustum)
+    private static bool CullRenderable(IRenderable renderable, Frustum cameraFrustum)
     {
         renderable.GetCullingData(out bool isRenderable, out AABB bounds);
 
