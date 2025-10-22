@@ -1167,8 +1167,12 @@ public class DefaultRenderPipeline : RenderPipeline
             GraphicsProgram variant = variantNullable;
 
             // Bind GlobalUniforms buffer (contains camera matrices, time, lighting data, etc.)
-            // This has is done per-batch so each shader variant gets the correct global uniforms
-            // TODO: Arent uniform buffers global? Should only need to bind once per frame?
+            // This is done per-batch because each shader variant is a separate GPU program object,
+            // and uniform buffer bindings are per-program in OpenGL.
+            //
+            // TODO: Could be optimized with glBindBufferBase() for global binding points (OpenGL >=4.2)
+            // Researched: We're limited to OpenGL <=4.1 for macOS support, which doesn't support
+            // persistent uniform buffer bindings across programs. Current approach is correct for <=4.1.
             GraphicsBuffer? globalBuffer = GlobalUniforms.GetBuffer();
             if (globalBuffer != null)
             {
@@ -1210,18 +1214,14 @@ public class DefaultRenderPipeline : RenderPipeline
                 if (CAMERA_RELATIVE)
                     model.Translation -= new Double4(viewer.Position, 0.0);
 
-                // Convert to Float4x4 and compute inverse once (user optimization: was computed 3x before)
-                Float4x4 fModel = (Float4x4)model;
-                Float4x4 fInvModel = (Float4x4)model.Invert();
-
-                // Directly bind per-object transform uniforms directly
-                Graphics.Device.SetUniformMatrix(variant, "prowl_ObjectToWorld", false, fModel);
-                Graphics.Device.SetUniformMatrix(variant, "prowl_WorldToObject", false, fInvModel);
-
                 // Apply instance-specific uniforms (tint colors, bone matrices, etc.)
                 // Texture slot counter continues from where material textures left off
                 int instanceTexSlot = texSlot;
                 PropertyState.ApplyInstanceUniforms(properties, variant, ref instanceTexSlot);
+
+                // Directly bind per-object transform uniforms after all other uniforms to gaurantee they are set correctly
+                Graphics.Device.SetUniformMatrix(variant, "prowl_ObjectToWorld", false, (Float4x4)model);
+                Graphics.Device.SetUniformMatrix(variant, "prowl_WorldToObject", false, (Float4x4)model.Invert());
 
                 // Execute draw call (mesh VAO already uploaded, just bind and draw)
                 unsafe
