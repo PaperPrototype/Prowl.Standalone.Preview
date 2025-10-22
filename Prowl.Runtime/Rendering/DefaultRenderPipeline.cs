@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using Prowl.Runtime.GraphicsBackend;
 using Prowl.Runtime.GraphicsBackend.Primitives;
 using Prowl.Runtime.Rendering.Shaders;
 using Prowl.Runtime.Resources;
@@ -1052,19 +1053,39 @@ public class DefaultRenderPipeline : RenderPipeline
         }
     }
 
+    private struct RenderBatch
+    {
+        public Material Material;
+        public Mesh Mesh;
+        public int PassIndex;
+        public ulong MaterialHash;
+        public List<int> RenderableIndices;
+    }
+
     private static void DrawRenderables(IReadOnlyList<IRenderable> renderables, string tag, string tagValue, ViewerData viewer, HashSet<int> culledRenderableIndices, bool updatePreviousMatrices)
     {
         bool hasRenderOrder = !string.IsNullOrWhiteSpace(tag);
+
+        // Build batches grouped by material and mesh
+        List<RenderBatch> batches = new();
+        Dictionary<(ulong, int, Mesh), int> batchLookup = new(); // (materialHash, passIndex, mesh) -> batch index
+
         for (int renderIndex = 0; renderIndex < renderables.Count; renderIndex++)
         {
             if (culledRenderableIndices?.Contains(renderIndex) ?? false)
                 continue;
 
             IRenderable renderable = renderables[renderIndex];
-
             Material material = renderable.GetMaterial();
             if (material.Shader.IsNotValid()) continue;
 
+            // Get mesh data to use for batching
+            renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Double4x4 _);
+            if (mesh == null || mesh.VertexCount <= 0) continue;
+
+            ulong materialHash = material.GetStateHash();
+
+            // Find matching pass for this tag
             int passIndex = -1;
             foreach (ShaderPass pass in material.Shader.Passes)
             {
@@ -1074,9 +1095,86 @@ public class DefaultRenderPipeline : RenderPipeline
                 if (hasRenderOrder && !pass.HasTag(tag, tagValue))
                     continue;
 
-                renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model);
+                // Found a matching pass, add to batch (grouped by material AND mesh)
+                var batchKey = (materialHash, passIndex, mesh);
+                if (batchLookup.TryGetValue(batchKey, out int batchIndex))
+                {
+                    // Add to existing batch
+                    batches[batchIndex].RenderableIndices.Add(renderIndex);
+                }
+                else
+                {
+                    // Create new batch
+                    RenderBatch newBatch = new()
+                    {
+                        Material = material,
+                        Mesh = mesh,
+                        PassIndex = passIndex,
+                        MaterialHash = materialHash,
+                        RenderableIndices = new() { renderIndex }
+                    };
+                    batchLookup[batchKey] = batches.Count;
+                    batches.Add(newBatch);
+                }
 
-                // Store previous model matrix mainly for motion vectors, however, the user can use it for other things
+                // Only process first matching pass
+                break;
+            }
+        }
+
+        // Draw batches
+        foreach (RenderBatch batch in batches)
+        {
+            Material material = batch.Material;
+            Mesh mesh = batch.Mesh;
+            int passIndex = batch.PassIndex;
+
+            // Set mesh keywords for this batch (all objects in batch share the same mesh)
+            material.SetKeyword("HAS_NORMALS", mesh.HasNormals);
+            material.SetKeyword("HAS_TANGENTS", mesh.HasTangents);
+            material.SetKeyword("HAS_UV", mesh.HasUV);
+            material.SetKeyword("HAS_UV2", mesh.HasUV2);
+            material.SetKeyword("HAS_COLORS", mesh.HasColors || mesh.HasColors32);
+            material.SetKeyword("HAS_BONEINDICES", mesh.HasBoneIndices);
+            material.SetKeyword("HAS_BONEWEIGHTS", mesh.HasBoneWeights);
+            material.SetKeyword("SKINNED", mesh.HasBoneIndices && mesh.HasBoneWeights);
+
+            ShaderPass pass = material.Shader.GetPass(passIndex);
+
+            if (!pass.TryGetVariantProgram(material._localKeywords, out GraphicsProgram? variantNullable) || variantNullable == null)
+                continue;
+
+            GraphicsProgram variant = variantNullable;
+
+            // Bind global uniform buffer for this batch's shader variant
+            GraphicsBuffer? globalBuffer = GlobalUniforms.GetBuffer();
+            if (globalBuffer != null)
+            {
+                Graphics.Device.BindUniformBuffer(variant, "GlobalUniforms", globalBuffer, 0);
+            }
+
+            // Apply global properties for this shader variant (includes lighting, fog, etc.)
+            GraphicsProgram.UniformCache cache = variant.uniformCache;
+            int texSlot = 0;
+            PropertyState.ApplyGlobals(variant, cache, ref texSlot);
+
+            // Bind material uniforms once per batch
+            PropertyState.ApplyMaterialUniforms(material._properties, variant, ref texSlot);
+
+            // Set render state once per batch
+            Graphics.Device.SetState(pass.State);
+
+            // Upload mesh once per batch (all objects in batch share the same mesh)
+            mesh.Upload();
+
+            // Draw each object in the batch
+            foreach (int renderIndex in batch.RenderableIndices)
+            {
+                IRenderable renderable = renderables[renderIndex];
+
+                renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh _, out Double4x4 model);
+
+                // Store previous model matrix
                 int instanceId = properties.GetInt("_ObjectID");
                 if (updatePreviousMatrices && instanceId != 0)
                     TrackModelMatrix(instanceId, model);
@@ -1084,16 +1182,36 @@ public class DefaultRenderPipeline : RenderPipeline
                 if (CAMERA_RELATIVE)
                     model.Translation -= new Double4(viewer.Position, 0.0);
 
-                // Set per-object uniforms (these change every draw call)
-                PropertyState.SetGlobalMatrix("prowl_ObjectToWorld", model);
-                PropertyState.SetGlobalMatrix("prowl_WorldToObject", model.Invert());
-                PropertyState.SetGlobalInt("_ObjectID", instanceId);
+                Float4x4 fModel = (Float4x4)model;
+                Float4x4 fInvModel = (Float4x4)model.Invert();
 
+                // Set and apply per-object global uniforms (transform matrices)
+                PropertyState.SetGlobalMatrix("prowl_ObjectToWorld", (Double4x4)fModel);
+                PropertyState.SetGlobalMatrix("prowl_WorldToObject", (Double4x4)fInvModel);
+                PropertyState.SetGlobalInt("_ObjectID", instanceId);
                 PropertyState.SetGlobalColor("_MainColor", Color.White);
 
-                material._properties.ApplyOverride(properties);
+                // Manually apply the per-object global uniforms (faster than calling ApplyGlobals again)
+                Graphics.Device.SetUniformMatrix(variant, "prowl_ObjectToWorld", false, fModel);
+                Graphics.Device.SetUniformMatrix(variant, "prowl_WorldToObject", false, fInvModel);
+                Graphics.Device.SetUniformI(variant, "_ObjectID", instanceId);
 
-                Graphics.DrawMeshNow(mesh, material, passIndex);
+                // Update cache
+                cache.matrices["prowl_ObjectToWorld"] = fModel;
+                cache.matrices["prowl_WorldToObject"] = fInvModel;
+                cache.ints["_ObjectID"] = instanceId;
+
+                // Bind instance uniforms (per-object)
+                int instanceTexSlot = texSlot; // Continue from where material textures left off
+                PropertyState.ApplyInstanceUniforms(properties, variant, ref instanceTexSlot);
+
+                // Draw
+                unsafe
+                {
+                    Graphics.Device.BindVertexArray(mesh.VertexArrayObject);
+                    Graphics.Device.DrawIndexed(mesh.MeshTopology, (uint)mesh.IndexCount, mesh.IndexFormat == IndexFormat.UInt32, null);
+                    Graphics.Device.BindVertexArray(null);
+                }
             }
         }
     }

@@ -46,6 +46,96 @@ public partial class PropertyState
 
     public bool IsEmpty => _colors.Count == 0 && _vectors4.Count == 0 && _vectors3.Count == 0 && _vectors2.Count == 0 && _floats.Count == 0 && _ints.Count == 0 && _matrices.Count == 0 && _textures.Count == 0;
 
+    /// <summary>
+    /// Computes a hash representing the current state of all properties.
+    /// Used for material batching to group objects with identical material properties.
+    /// </summary>
+    public ulong ComputeHash()
+    {
+        ulong hash = 14695981039346656037UL; // FNV offset basis
+
+        // Hash all property dictionaries
+        foreach (var kvp in _floats.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL; // FNV prime
+            hash ^= (ulong)kvp.Value.GetHashCode();
+            hash *= 1099511628211UL;
+        }
+
+        foreach (var kvp in _ints.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL;
+            hash ^= (ulong)kvp.Value.GetHashCode();
+            hash *= 1099511628211UL;
+        }
+
+        foreach (var kvp in _vectors2.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL;
+            hash ^= (ulong)kvp.Value.GetHashCode();
+            hash *= 1099511628211UL;
+        }
+
+        foreach (var kvp in _vectors3.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL;
+            hash ^= (ulong)kvp.Value.GetHashCode();
+            hash *= 1099511628211UL;
+        }
+
+        foreach (var kvp in _vectors4.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL;
+            hash ^= (ulong)kvp.Value.GetHashCode();
+            hash *= 1099511628211UL;
+        }
+
+        foreach (var kvp in _colors.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL;
+            hash ^= (ulong)kvp.Value.GetHashCode();
+            hash *= 1099511628211UL;
+        }
+
+        foreach (var kvp in _matrices.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL;
+            hash ^= (ulong)kvp.Value.GetHashCode();
+            hash *= 1099511628211UL;
+        }
+
+        foreach (var kvp in _textures.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL;
+            if (kvp.Value != null)
+            {
+                hash ^= (ulong)kvp.Value.GetHashCode();
+                hash *= 1099511628211UL;
+            }
+        }
+
+        foreach (var kvp in _buffers.OrderBy(x => x.Key))
+        {
+            hash ^= (ulong)kvp.Key.GetHashCode();
+            hash *= 1099511628211UL;
+            if (kvp.Value != null)
+            {
+                hash ^= (ulong)kvp.Value.GetHashCode();
+                hash *= 1099511628211UL;
+            }
+        }
+
+        return hash;
+    }
+
     // Setters
     public void SetColor(string name, Color value) => _colors[name] = value;
     public void SetVector(string name, Double2 value) => _vectors2[name] = (Float2)value;
@@ -116,7 +206,204 @@ public partial class PropertyState
             _bufferBindings[item.Key] = item.Value;
     }
 
-    // Modified Apply method to also apply global properties
+    /// <summary>
+    /// Applies material uniforms to the shader. Should be called once per material batch.
+    /// Does not bind global uniforms - call this after globals are already bound.
+    /// </summary>
+    public static unsafe void ApplyMaterialUniforms(PropertyState materialProperties, GraphicsProgram shader, ref int texSlot)
+    {
+        GraphicsProgram.UniformCache cache = shader.uniformCache;
+
+        // Apply material properties
+        foreach (KeyValuePair<string, float> item in materialProperties._floats)
+        {
+            if (!cache.floats.TryGetValue(item.Key, out float cachedValue) || cachedValue != item.Value)
+            {
+                Graphics.Device.SetUniformF(shader, item.Key, item.Value);
+                cache.floats[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, int> item in materialProperties._ints)
+        {
+            if (!cache.ints.TryGetValue(item.Key, out int cachedValue) || cachedValue != item.Value)
+            {
+                Graphics.Device.SetUniformI(shader, item.Key, item.Value);
+                cache.ints[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Float2> item in materialProperties._vectors2)
+        {
+            if (!cache.vectors2.TryGetValue(item.Key, out Float2 cachedValue) || !cachedValue.Equals(item.Value))
+            {
+                Graphics.Device.SetUniformV2(shader, item.Key, item.Value);
+                cache.vectors2[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Float3> item in materialProperties._vectors3)
+        {
+            if (!cache.vectors3.TryGetValue(item.Key, out Float3 cachedValue) || !cachedValue.Equals(item.Value))
+            {
+                Graphics.Device.SetUniformV3(shader, item.Key, item.Value);
+                cache.vectors3[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Float4> item in materialProperties._vectors4)
+        {
+            if (!cache.vectors4.TryGetValue(item.Key, out Float4 cachedValue) || !cachedValue.Equals(item.Value))
+            {
+                Graphics.Device.SetUniformV4(shader, item.Key, item.Value);
+                cache.vectors4[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Color> item in materialProperties._colors)
+        {
+            Float4 colorVec = new((float)item.Value.R, (float)item.Value.G, (float)item.Value.B, (float)item.Value.A);
+            if (!cache.vectors4.TryGetValue(item.Key, out Float4 cachedValue) || !cachedValue.Equals(colorVec))
+            {
+                Graphics.Device.SetUniformV4(shader, item.Key, colorVec);
+                cache.vectors4[item.Key] = colorVec;
+            }
+        }
+
+        foreach (KeyValuePair<string, Float4x4> item in materialProperties._matrices)
+        {
+            if (!cache.matrices.TryGetValue(item.Key, out Float4x4 cachedValue) || !cachedValue.Equals(item.Value))
+            {
+                Graphics.Device.SetUniformMatrix(shader, item.Key, false, item.Value);
+                cache.matrices[item.Key] = item.Value;
+            }
+        }
+
+        // Matrix arrays - always set (comparison would be expensive)
+        foreach (KeyValuePair<string, Float4x4[]> item in materialProperties._matrixArr)
+            Graphics.Device.SetUniformMatrix(shader, item.Key, (uint)item.Value.Length, false, in item.Value[0].c0.X);
+
+        // Bind uniform buffers - check if buffer changed
+        foreach (KeyValuePair<string, GraphicsBuffer> item in materialProperties._buffers)
+        {
+            if (!cache.buffers.TryGetValue(item.Key, out GraphicsBuffer? cachedBuffer) || cachedBuffer != item.Value)
+            {
+                Graphics.Device.BindUniformBuffer(shader, item.Key, item.Value);
+                cache.buffers[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Texture2D> item in materialProperties._textures)
+        {
+            Texture2D tex = item.Value;
+            if (tex.IsValid())
+            {
+                // Always set textures - slot assignment must be consistent
+                Graphics.Device.SetUniformTexture(shader, item.Key, texSlot, tex.Handle);
+                texSlot++;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Applies instance uniforms to the shader. Should be called once per draw call.
+    /// Does not bind global or material uniforms - call this after material uniforms are already bound.
+    /// </summary>
+    public static unsafe void ApplyInstanceUniforms(PropertyState instanceProperties, GraphicsProgram shader, ref int texSlot)
+    {
+        GraphicsProgram.UniformCache cache = shader.uniformCache;
+
+        // Apply instance properties (can override material properties)
+        foreach (KeyValuePair<string, float> item in instanceProperties._floats)
+        {
+            if (!cache.floats.TryGetValue(item.Key, out float cachedValue) || cachedValue != item.Value)
+            {
+                Graphics.Device.SetUniformF(shader, item.Key, item.Value);
+                cache.floats[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, int> item in instanceProperties._ints)
+        {
+            if (!cache.ints.TryGetValue(item.Key, out int cachedValue) || cachedValue != item.Value)
+            {
+                Graphics.Device.SetUniformI(shader, item.Key, item.Value);
+                cache.ints[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Float2> item in instanceProperties._vectors2)
+        {
+            if (!cache.vectors2.TryGetValue(item.Key, out Float2 cachedValue) || !cachedValue.Equals(item.Value))
+            {
+                Graphics.Device.SetUniformV2(shader, item.Key, item.Value);
+                cache.vectors2[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Float3> item in instanceProperties._vectors3)
+        {
+            if (!cache.vectors3.TryGetValue(item.Key, out Float3 cachedValue) || !cachedValue.Equals(item.Value))
+            {
+                Graphics.Device.SetUniformV3(shader, item.Key, item.Value);
+                cache.vectors3[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Float4> item in instanceProperties._vectors4)
+        {
+            if (!cache.vectors4.TryGetValue(item.Key, out Float4 cachedValue) || !cachedValue.Equals(item.Value))
+            {
+                Graphics.Device.SetUniformV4(shader, item.Key, item.Value);
+                cache.vectors4[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Color> item in instanceProperties._colors)
+        {
+            Float4 colorVec = new((float)item.Value.R, (float)item.Value.G, (float)item.Value.B, (float)item.Value.A);
+            if (!cache.vectors4.TryGetValue(item.Key, out Float4 cachedValue) || !cachedValue.Equals(colorVec))
+            {
+                Graphics.Device.SetUniformV4(shader, item.Key, colorVec);
+                cache.vectors4[item.Key] = colorVec;
+            }
+        }
+
+        foreach (KeyValuePair<string, Float4x4> item in instanceProperties._matrices)
+        {
+            if (!cache.matrices.TryGetValue(item.Key, out Float4x4 cachedValue) || !cachedValue.Equals(item.Value))
+            {
+                Graphics.Device.SetUniformMatrix(shader, item.Key, false, item.Value);
+                cache.matrices[item.Key] = item.Value;
+            }
+        }
+
+        // Matrix arrays - always set (comparison would be expensive)
+        foreach (KeyValuePair<string, Float4x4[]> item in instanceProperties._matrixArr)
+            Graphics.Device.SetUniformMatrix(shader, item.Key, (uint)item.Value.Length, false, in item.Value[0].c0.X);
+
+        // Bind uniform buffers - check if buffer changed
+        foreach (KeyValuePair<string, GraphicsBuffer> item in instanceProperties._buffers)
+        {
+            if (!cache.buffers.TryGetValue(item.Key, out GraphicsBuffer? cachedBuffer) || cachedBuffer != item.Value)
+            {
+                Graphics.Device.BindUniformBuffer(shader, item.Key, item.Value);
+                cache.buffers[item.Key] = item.Value;
+            }
+        }
+
+        foreach (KeyValuePair<string, Texture2D> item in instanceProperties._textures)
+        {
+            Texture2D tex = item.Value;
+            if (tex.IsValid())
+            {
+                // Always set textures - slot assignment must be consistent
+                Graphics.Device.SetUniformTexture(shader, item.Key, texSlot, tex.Handle);
+                texSlot++;
+            }
+        }
+    }
+
     public static unsafe void Apply(PropertyState mpb, GraphicsProgram shader)
     {
         GraphicsProgram.UniformCache cache = shader.uniformCache;
@@ -223,7 +510,7 @@ public partial class PropertyState
         }
     }
 
-    private static void ApplyGlobals(GraphicsProgram shader, GraphicsProgram.UniformCache cache, ref int texSlot)
+    internal static void ApplyGlobals(GraphicsProgram shader, GraphicsProgram.UniformCache cache, ref int texSlot)
     {
         foreach (KeyValuePair<string, float> item in s_globalFloats)
         {

@@ -46,6 +46,12 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
     [SerializeIgnore]
     internal Dictionary<string, bool> _localKeywords;
 
+    [SerializeIgnore]
+    private ulong _stateHash;
+
+    [SerializeIgnore]
+    private bool _isDirty = true;
+
 
     internal Material() : base("New Material")
     {
@@ -67,14 +73,14 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
 
     public void SetKeyword(string keyword, bool value) => _localKeywords[keyword] = value;
 
-    public void SetColor(string name, Color value) => _properties.SetColor(name, value);
-    public void SetVector(string name, Double2 value) => _properties.SetVector(name, value);
-    public void SetVector(string name, Double3 value) => _properties.SetVector(name, value);
-    public void SetVector(string name, Double4 value) => _properties.SetVector(name, value);
-    public void SetFloat(string name, float value) => _properties.SetFloat(name, value);
-    public void SetInt(string name, int value) => _properties.SetInt(name, value);
-    public void SetMatrix(string name, Double4x4 value) => _properties.SetMatrix(name, value);
-    public void SetTexture(string name, Texture2D value) => _properties.SetTexture(name, value);
+    public void SetColor(string name, Color value) { _properties.SetColor(name, value); MarkDirty(); }
+    public void SetVector(string name, Double2 value) { _properties.SetVector(name, value); MarkDirty(); }
+    public void SetVector(string name, Double3 value) { _properties.SetVector(name, value); MarkDirty(); }
+    public void SetVector(string name, Double4 value) { _properties.SetVector(name, value); MarkDirty(); }
+    public void SetFloat(string name, float value) { _properties.SetFloat(name, value); MarkDirty(); }
+    public void SetInt(string name, int value) { _properties.SetInt(name, value); MarkDirty(); }
+    public void SetMatrix(string name, Double4x4 value) { _properties.SetMatrix(name, value); MarkDirty(); }
+    public void SetTexture(string name, Texture2D value) { _properties.SetTexture(name, value); MarkDirty(); }
 
     #region Global Properties
 
@@ -134,8 +140,28 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
         _shader = shader;
         foreach (ShaderProperty prop in shader.Properties)
             UpdatePropertyState(prop);
+
+        _isDirty = true;
     }
 
+    /// <summary>
+    /// Gets a hash representing the current material state (uniforms only, not keywords).
+    /// The hash is cached and only recalculated when the material is marked dirty.
+    /// </summary>
+    public ulong GetStateHash()
+    {
+        if (_isDirty)
+        {
+            _stateHash = _properties.ComputeHash();
+            _isDirty = false;
+        }
+        return _stateHash;
+    }
+
+    private void MarkDirty()
+    {
+        _isDirty = true;
+    }
 
     public void OnBeforeSerialize() { }
 
