@@ -187,7 +187,7 @@ public sealed class MyGame : Game
 
         // Movement (WASD + Gamepad)
         moveAction = cameraMap.AddAction("Move", InputActionType.Value);
-        moveAction.ExpectedValueType = typeof(Float2);
+        moveAction.ExpectedValueType = typeof(Double2);
         moveAction.AddBinding(new Vector2CompositeBinding(
             InputBinding.CreateKeyBinding(KeyCode.W),
             InputBinding.CreateKeyBinding(KeyCode.S),
@@ -206,7 +206,7 @@ public sealed class MyGame : Game
 
         // Look (Mouse + Gamepad)
         lookAction = cameraMap.AddAction("Look", InputActionType.Value);
-        lookAction.ExpectedValueType = typeof(Float2);
+        lookAction.ExpectedValueType = typeof(Double2);
         var mouse = new DualAxisCompositeBinding(
             InputBinding.CreateMouseAxisBinding(0),
             InputBinding.CreateMouseAxisBinding(1));
@@ -271,7 +271,7 @@ public sealed class MyGame : Game
         }
 
         // Camera controls
-        Float2 movement = moveAction.ReadValue<Float2>();
+        Double2 movement = moveAction.ReadValue<Double2>();
         float speedMultiplier = sprintAction.IsPressed() ? 2.5f : 1.0f;
         float moveSpeed = 5f * speedMultiplier * (float)Time.DeltaTime;
 
@@ -283,7 +283,7 @@ public sealed class MyGame : Game
         if (flyDownAction.IsPressed()) upDown -= 1;
         cameraGO.Transform.Position += Double3.UnitY * upDown * moveSpeed;
 
-        Float2 lookInput = lookAction.ReadValue<Float2>();
+        Double2 lookInput = lookAction.ReadValue<Double2>();
         if (lookEnableAction.IsPressed() || Math.Abs(lookInput.X) > 0.01f || Math.Abs(lookInput.Y) > 0.01f)
         {
             cameraGO.Transform.LocalEulerAngles += new Double3(lookInput.Y, lookInput.X, 0);
