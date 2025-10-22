@@ -1053,25 +1053,41 @@ public class DefaultRenderPipeline : RenderPipeline
         }
     }
 
+    /// <summary>
+    /// Represents a render batch: a group of objects sharing the same material, mesh, and shader pass.
+    /// Batching reduces GPU state changes by binding material uniforms once for all objects in the batch.
+    /// </summary>
     private struct RenderBatch
     {
-        public Material Material;
-        public Mesh Mesh;
-        public int PassIndex;
-        public ulong MaterialHash;
-        public List<int> RenderableIndices;
+        public Material Material;      // Shared material for all objects in this batch
+        public Mesh Mesh;              // Shared mesh for all objects in this batch
+        public int PassIndex;          // Shader pass index
+        public ulong MaterialHash;     // Hash of material uniforms (for sorting/grouping)
+        public List<int> RenderableIndices;  // Indices of objects in this batch
     }
 
-    private static void DrawRenderables(IReadOnlyList<IRenderable> renderables, string tag, string tagValue, ViewerData viewer, HashSet<int> culledRenderableIndices, bool updatePreviousMatrices)
+    /// <summary>
+    /// Renders all given objects with optimized batching. Objects are grouped by (material, mesh, pass)
+    /// to minimize GPU state changes. This achieves:
+    /// - Material uniforms bound once per batch (instead of per object)
+    /// - Mesh data uploaded once per batch
+    /// - Shader variant selected once per batch
+    /// - Per-object uniforms still bound individually
+    ///
+    /// Performance: 100 objects with same material = 1 material bind (vs 100 without batching)
+    /// </summary>
+    private static void DrawRenderables(IReadOnlyList<IRenderable> renderables, string shaderTag, string tagValue, ViewerData viewer, HashSet<int> culledRenderableIndices, bool updatePreviousMatrices)
     {
-        bool hasRenderOrder = !string.IsNullOrWhiteSpace(tag);
+        bool hasRenderOrder = !string.IsNullOrWhiteSpace(shaderTag);
 
-        // Build batches grouped by material and mesh
+        // ========== PHASE 1: Build Batches ==========
+        // Group renderables by (material hash, shader pass, mesh) for efficient rendering
         List<RenderBatch> batches = new();
-        Dictionary<(ulong, int, Mesh), int> batchLookup = new(); // (materialHash, passIndex, mesh) -> batch index
+        Dictionary<(ulong, int, Mesh), int> batchLookup = new();
 
         for (int renderIndex = 0; renderIndex < renderables.Count; renderIndex++)
         {
+            // Skip culled objects
             if (culledRenderableIndices?.Contains(renderIndex) ?? false)
                 continue;
 
@@ -1079,32 +1095,34 @@ public class DefaultRenderPipeline : RenderPipeline
             Material material = renderable.GetMaterial();
             if (material.Shader.IsNotValid()) continue;
 
-            // Get mesh data to use for batching
+            // Extract mesh for batching (we query rendering data once here for grouping)
             renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Double4x4 _);
             if (mesh == null || mesh.VertexCount <= 0) continue;
 
+            // Get material hash for batching - materials with identical uniforms will batch together
             ulong materialHash = material.GetStateHash();
 
-            // Find matching pass for this tag
+            // Find ALL shader passes matching the requested tag (e.g., "Opaque", "Transparent", "ShadowCaster")
+            // Multi-pass rendering: materials can have multiple passes with the same tag (e.g., terrain with many texture layers)
             int passIndex = -1;
             foreach (ShaderPass pass in material.Shader.Passes)
             {
                 passIndex++;
 
-                // Skip this pass if it doesn't have the expected tag
-                if (hasRenderOrder && !pass.HasTag(tag, tagValue))
+                if (hasRenderOrder && !pass.HasTag(shaderTag, tagValue))
                     continue;
 
-                // Found a matching pass, add to batch (grouped by material AND mesh)
+                // Found matching pass - add to appropriate batch
+                // Batch key: (material hash, pass index, mesh) ensures each pass gets its own batch
                 var batchKey = (materialHash, passIndex, mesh);
                 if (batchLookup.TryGetValue(batchKey, out int batchIndex))
                 {
-                    // Add to existing batch
+                    // Batch already exists - add this object to it
                     batches[batchIndex].RenderableIndices.Add(renderIndex);
                 }
                 else
                 {
-                    // Create new batch
+                    // Create new batch for this unique material+pass+mesh combination
                     RenderBatch newBatch = new()
                     {
                         Material = material,
@@ -1117,19 +1135,21 @@ public class DefaultRenderPipeline : RenderPipeline
                     batches.Add(newBatch);
                 }
 
-                // Only process first matching pass
-                break;
+                // Continue to next pass - materials can have multiple passes with the same tag
+                // They will execute in order they appear in the shader file (Pass 0 → Pass 1 → Pass 2, etc.)
             }
         }
 
-        // Draw batches
+        // ========== PHASE 2: Draw Batches ==========
+        // For each batch, bind state once then draw all objects in that batch
         foreach (RenderBatch batch in batches)
         {
             Material material = batch.Material;
             Mesh mesh = batch.Mesh;
             int passIndex = batch.PassIndex;
 
-            // Set mesh keywords for this batch (all objects in batch share the same mesh)
+            // Configure shader keywords based on mesh attributes (normals, UVs, skinning, etc.)
+            // Since all objects in the batch share the same mesh, this is done once per batch
             material.SetKeyword("HAS_NORMALS", mesh.HasNormals);
             material.SetKeyword("HAS_TANGENTS", mesh.HasTangents);
             material.SetKeyword("HAS_UV", mesh.HasUV);
@@ -1139,73 +1159,71 @@ public class DefaultRenderPipeline : RenderPipeline
             material.SetKeyword("HAS_BONEWEIGHTS", mesh.HasBoneWeights);
             material.SetKeyword("SKINNED", mesh.HasBoneIndices && mesh.HasBoneWeights);
 
+            // Get shader pass and compiled variant for current keyword state
             ShaderPass pass = material.Shader.GetPass(passIndex);
-
             if (!pass.TryGetVariantProgram(material._localKeywords, out GraphicsProgram? variantNullable) || variantNullable == null)
                 continue;
 
             GraphicsProgram variant = variantNullable;
 
-            // Bind global uniform buffer for this batch's shader variant
+            // Bind GlobalUniforms buffer (contains camera matrices, time, lighting data, etc.)
+            // This has is done per-batch so each shader variant gets the correct global uniforms
+            // TODO: Arent uniform buffers global? Should only need to bind once per frame?
             GraphicsBuffer? globalBuffer = GlobalUniforms.GetBuffer();
             if (globalBuffer != null)
             {
                 Graphics.Device.BindUniformBuffer(variant, "GlobalUniforms", globalBuffer, 0);
             }
 
-            // Apply global properties for this shader variant (includes lighting, fog, etc.)
+            // Apply global properties (lighting, fog, shadow maps, etc.)
+            // Must be done per-batch because different shader variants may need different globals
             GraphicsProgram.UniformCache cache = variant.uniformCache;
             int texSlot = 0;
             PropertyState.ApplyGlobals(variant, cache, ref texSlot);
 
-            // Bind material uniforms once per batch
+            // *** BATCHING OPTIMIZATION: Bind material uniforms ONCE for entire batch ***
+            // All objects in this batch share the same material state
             PropertyState.ApplyMaterialUniforms(material._properties, variant, ref texSlot);
 
-            // Set render state once per batch
+            // Set render state (depth test, blend mode, cull mode, etc.) once per batch
             Graphics.Device.SetState(pass.State);
 
-            // Upload mesh once per batch (all objects in batch share the same mesh)
+            // Upload mesh data to GPU once per batch (shared by all objects)
             mesh.Upload();
 
-            // Draw each object in the batch
+            // ========== PHASE 3: Draw Objects in Batch ==========
+            // Material/mesh state is already bound - only per-object uniforms change
             foreach (int renderIndex in batch.RenderableIndices)
             {
                 IRenderable renderable = renderables[renderIndex];
 
+                // Get per-object data (transform, instance properties)
+                // Note: mesh is discarded (we already have it from the batch)
                 renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh _, out Double4x4 model);
 
-                // Store previous model matrix
+                // Track model matrix for motion vectors (used in temporal effects like TAA)
                 int instanceId = properties.GetInt("_ObjectID");
                 if (updatePreviousMatrices && instanceId != 0)
                     TrackModelMatrix(instanceId, model);
 
+                // Camera-relative rendering: subtract camera position to improve depth precision
                 if (CAMERA_RELATIVE)
                     model.Translation -= new Double4(viewer.Position, 0.0);
 
+                // Convert to Float4x4 and compute inverse once (user optimization: was computed 3x before)
                 Float4x4 fModel = (Float4x4)model;
                 Float4x4 fInvModel = (Float4x4)model.Invert();
 
-                // Set and apply per-object global uniforms (transform matrices)
-                PropertyState.SetGlobalMatrix("prowl_ObjectToWorld", (Double4x4)fModel);
-                PropertyState.SetGlobalMatrix("prowl_WorldToObject", (Double4x4)fInvModel);
-                PropertyState.SetGlobalInt("_ObjectID", instanceId);
-                PropertyState.SetGlobalColor("_MainColor", Color.White);
-
-                // Manually apply the per-object global uniforms (faster than calling ApplyGlobals again)
+                // Directly bind per-object transform uniforms directly
                 Graphics.Device.SetUniformMatrix(variant, "prowl_ObjectToWorld", false, fModel);
                 Graphics.Device.SetUniformMatrix(variant, "prowl_WorldToObject", false, fInvModel);
-                Graphics.Device.SetUniformI(variant, "_ObjectID", instanceId);
 
-                // Update cache
-                cache.matrices["prowl_ObjectToWorld"] = fModel;
-                cache.matrices["prowl_WorldToObject"] = fInvModel;
-                cache.ints["_ObjectID"] = instanceId;
-
-                // Bind instance uniforms (per-object)
-                int instanceTexSlot = texSlot; // Continue from where material textures left off
+                // Apply instance-specific uniforms (tint colors, bone matrices, etc.)
+                // Texture slot counter continues from where material textures left off
+                int instanceTexSlot = texSlot;
                 PropertyState.ApplyInstanceUniforms(properties, variant, ref instanceTexSlot);
 
-                // Draw
+                // Execute draw call (mesh VAO already uploaded, just bind and draw)
                 unsafe
                 {
                     Graphics.Device.BindVertexArray(mesh.VertexArrayObject);

@@ -47,14 +47,16 @@ public partial class PropertyState
     public bool IsEmpty => _colors.Count == 0 && _vectors4.Count == 0 && _vectors3.Count == 0 && _vectors2.Count == 0 && _floats.Count == 0 && _ints.Count == 0 && _matrices.Count == 0 && _textures.Count == 0;
 
     /// <summary>
-    /// Computes a hash representing the current state of all properties.
-    /// Used for material batching to group objects with identical material properties.
+    /// Computes a FNV-1a 64-bit hash representing the current state of all properties.
+    /// Used for material batching to group objects with identical material properties together,
+    /// minimizing GPU state changes. Properties are ordered by key to ensure consistent hashing.
     /// </summary>
+    /// <returns>A 64-bit FNV-1a hash of all property key-value pairs</returns>
     public ulong ComputeHash()
     {
-        ulong hash = 14695981039346656037UL; // FNV offset basis
+        ulong hash = 14695981039346656037UL; // FNV-1a offset basis
 
-        // Hash all property dictionaries
+        // Hash all property dictionaries (order is important for consistency)
         foreach (var kvp in _floats.OrderBy(x => x.Key))
         {
             hash ^= (ulong)kvp.Key.GetHashCode();
@@ -207,14 +209,21 @@ public partial class PropertyState
     }
 
     /// <summary>
-    /// Applies material uniforms to the shader. Should be called once per material batch.
-    /// Does not bind global uniforms - call this after globals are already bound.
+    /// Applies material-level uniforms to the shader (called ONCE per material batch).
+    /// Material uniforms are properties shared by all objects using the same material
+    /// (e.g., albedo color, roughness, normal maps). This method uses the uniform cache
+    /// to avoid redundant GPU calls when values haven't changed.
+    ///
+    /// Batching flow: Global uniforms → Material uniforms → Per-object (instance) uniforms
     /// </summary>
+    /// <param name="materialProperties">The material's property state</param>
+    /// <param name="shader">The compiled shader program to bind uniforms to</param>
+    /// <param name="texSlot">Texture slot counter, incremented as textures are bound</param>
     public static unsafe void ApplyMaterialUniforms(PropertyState materialProperties, GraphicsProgram shader, ref int texSlot)
     {
         GraphicsProgram.UniformCache cache = shader.uniformCache;
 
-        // Apply material properties
+        // Bind all material properties (floats, vectors, textures, etc.)
         foreach (KeyValuePair<string, float> item in materialProperties._floats)
         {
             if (!cache.floats.TryGetValue(item.Key, out float cachedValue) || cachedValue != item.Value)
@@ -306,14 +315,21 @@ public partial class PropertyState
     }
 
     /// <summary>
-    /// Applies instance uniforms to the shader. Should be called once per draw call.
-    /// Does not bind global or material uniforms - call this after material uniforms are already bound.
+    /// Applies per-object (instance) uniforms to the shader (called ONCE per draw call).
+    /// Instance uniforms are properties unique to each object (e.g., tint color, instance ID,
+    /// bone matrices for skinning). These can override material properties if they share the same name.
+    /// Uses the uniform cache to skip redundant GPU calls.
+    ///
+    /// Batching flow: Global uniforms → Material uniforms → Per-object (instance) uniforms
     /// </summary>
+    /// <param name="instanceProperties">The instance's property state (per-object overrides)</param>
+    /// <param name="shader">The compiled shader program to bind uniforms to</param>
+    /// <param name="texSlot">Texture slot counter, continues from where material textures left off</param>
     public static unsafe void ApplyInstanceUniforms(PropertyState instanceProperties, GraphicsProgram shader, ref int texSlot)
     {
         GraphicsProgram.UniformCache cache = shader.uniformCache;
 
-        // Apply instance properties (can override material properties)
+        // Bind all instance properties (can override material properties of the same name)
         foreach (KeyValuePair<string, float> item in instanceProperties._floats)
         {
             if (!cache.floats.TryGetValue(item.Key, out float cachedValue) || cachedValue != item.Value)

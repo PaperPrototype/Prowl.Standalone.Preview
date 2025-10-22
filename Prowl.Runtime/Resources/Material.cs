@@ -46,9 +46,12 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
     [SerializeIgnore]
     internal Dictionary<string, bool> _localKeywords;
 
+    // Material batching optimization: materials with identical state (uniforms) are batched together
+    // to minimize GPU state changes. The hash represents the current uniform values.
     [SerializeIgnore]
     private ulong _stateHash;
 
+    // Dirty flag tracks when material properties have changed, triggering hash recalculation
     [SerializeIgnore]
     private bool _isDirty = true;
 
@@ -145,9 +148,11 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
     }
 
     /// <summary>
-    /// Gets a hash representing the current material state (uniforms only, not keywords).
-    /// The hash is cached and only recalculated when the material is marked dirty.
+    /// Gets a hash representing the current material state (uniform values only, not keywords or shader).
+    /// The hash is used by the renderer to batch objects with identical material properties together,
+    /// minimizing GPU uniform binding overhead. The hash is cached and only recalculated when dirty.
     /// </summary>
+    /// <returns>A 64-bit hash of all material uniform values</returns>
     public ulong GetStateHash()
     {
         if (_isDirty)
@@ -158,6 +163,10 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
         return _stateHash;
     }
 
+    /// <summary>
+    /// Marks the material as dirty, forcing a hash recalculation on next GetStateHash() call.
+    /// Called automatically when any material property is modified.
+    /// </summary>
     private void MarkDirty()
     {
         _isDirty = true;
