@@ -243,6 +243,26 @@ public sealed class Rigidbody3D : MonoBehaviour
         set => _body.Torque = new JVector(value.X, value.Y, value.Z);
     }
 
+    /// <summary>
+    /// Event triggered when this rigidbody begins colliding with another rigidbody.
+    /// </summary>
+    public event Action<Rigidbody3D, ContactInfo> BeginCollide;
+
+    /// <summary>
+    /// Event triggered when this rigidbody stops colliding with another rigidbody.
+    /// </summary>
+    public event Action<Rigidbody3D> EndCollide;
+
+    /// <summary>
+    /// Information about a collision contact.
+    /// </summary>
+    public struct ContactInfo
+    {
+        public Double3 Point;
+        public Double3 Normal;
+        public double ImpulseMagnitude;
+    }
+
     [SerializeIgnore]
     internal RigidBody _body;
 
@@ -260,7 +280,49 @@ public sealed class Rigidbody3D : MonoBehaviour
             //RotationConstraint = new JVector(rotationConstraints.x, rotationConstraints.y, rotationConstraints.z),
             //TranslationConstraint = new JVector(translationConstraints.x, translationConstraints.y, translationConstraints.z)
         };
+
+        // Hook up collision events
+        _body.BeginCollide += OnJitterBeginCollide;
+        _body.EndCollide += OnJitterEndCollide;
+
         return _body;
+    }
+
+    private void OnJitterBeginCollide(Arbiter arbiter)
+    {
+        // Get the other body in the collision
+        var otherBody = arbiter.Body1 == _body ? arbiter.Body2 : arbiter.Body1;
+
+        if (otherBody.Tag is RigidBodyUserData userData && userData.Rigidbody != null)
+        {
+            // Get contact information from the first contact point if available
+            var contact = arbiter.Handle.Data.Contact0;
+            var normal = contact.Normal;
+            var relPos = contact.RelativePosition2;
+
+            // Calculate world position of contact
+            var worldPos = otherBody.Position + relPos;
+
+            var contactInfo = new ContactInfo
+            {
+                Point = new Double3(worldPos.X, worldPos.Y, worldPos.Z),
+                Normal = new Double3(normal.X, normal.Y, normal.Z),
+                ImpulseMagnitude = contact.Impulse
+            };
+
+            BeginCollide?.Invoke(userData.Rigidbody, contactInfo);
+        }
+    }
+
+    private void OnJitterEndCollide(Arbiter arbiter)
+    {
+        // Get the other body in the collision
+        var otherBody = arbiter.Body1 == _body ? arbiter.Body2 : arbiter.Body1;
+
+        if (otherBody.Tag is RigidBodyUserData userData && userData.Rigidbody != null)
+        {
+            EndCollide?.Invoke(userData.Rigidbody);
+        }
     }
 
     public override void OnValidate()
@@ -300,7 +362,14 @@ public sealed class Rigidbody3D : MonoBehaviour
 
     public override void OnDisable()
     {
-        if (_body != null && !_body.Handle.IsZero) GameObject.Scene.Physics.World?.Remove(_body);
+        if (_body != null && !_body.Handle.IsZero)
+        {
+            // Unhook collision events
+            _body.BeginCollide -= OnJitterBeginCollide;
+            _body.EndCollide -= OnJitterEndCollide;
+
+            GameObject.Scene.Physics.World?.Remove(_body);
+        }
     }
 
     internal void UpdateProperties(RigidBody rb)
