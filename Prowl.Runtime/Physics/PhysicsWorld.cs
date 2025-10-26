@@ -29,6 +29,16 @@ public class PhysicsWorld
     public bool UseMultithreading = true;
     public bool AutoSyncTransforms = true;
 
+    /// <summary>
+    /// Event triggered before each physics step.
+    /// </summary>
+    public event Action<double> PreStep;
+
+    /// <summary>
+    /// Event triggered after each physics step.
+    /// </summary>
+    public event Action<double> PostStep;
+
     public PhysicsWorld()
     {
         World = new World();
@@ -36,6 +46,20 @@ public class PhysicsWorld
         World.DynamicTree.Filter = World.DefaultDynamicTreeFilter;
         World.BroadPhaseFilter = new LayerFilter();
         World.NarrowPhaseFilter = new TriangleEdgeCollisionFilter();
+
+        // Hook up physics step events
+        World.PreStep += OnPreStep;
+        World.PostStep += OnPostStep;
+    }
+
+    private void OnPreStep(double deltaTime)
+    {
+        PreStep?.Invoke(deltaTime);
+    }
+
+    private void OnPostStep(double deltaTime)
+    {
+        PostStep?.Invoke(deltaTime);
     }
 
     public void Clear()
