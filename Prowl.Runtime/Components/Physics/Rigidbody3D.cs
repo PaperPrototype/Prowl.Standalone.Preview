@@ -36,6 +36,8 @@ public sealed class Rigidbody3D : MonoBehaviour
     [SerializeField] private double linearSleepThreshold = 0.1;
     [SerializeField] private double angularSleepThreshold = 0.1;
 
+    private double interpTimer = 0;
+
     /// <summary>
     /// Gets or sets a value indicating whether this Rigidbody3D is static.
     /// </summary>
@@ -341,8 +343,17 @@ public sealed class Rigidbody3D : MonoBehaviour
     {
         if (_body == null || _body.Handle.IsZero) return;
 
-        Transform.Position = new Double3(_body.Position.X, _body.Position.Y, _body.Position.Z);
-        Transform.Rotation = new Quaternion(_body.Orientation.X, _body.Orientation.Y, _body.Orientation.Z, _body.Orientation.W);
+        interpTimer += Time.DeltaTime;
+
+        _body.PredictPose(interpTimer, out JVector predictedPosition, out JQuaternion predictedOrientation);
+
+        Transform.Position = new Double3(predictedPosition.X, predictedPosition.Y, predictedPosition.Z);
+        Transform.Rotation = new Quaternion(predictedOrientation.X, predictedOrientation.Y, predictedOrientation.Z, predictedOrientation.W);
+    }
+
+    public override void FixedUpdate()
+    {
+        interpTimer = 0;
     }
 
     public override void DrawGizmos()
