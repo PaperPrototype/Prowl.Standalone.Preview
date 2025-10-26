@@ -4,23 +4,15 @@
 //
 // 3D Audio Demo
 //
-// This demo demonstrates the 3D audio system with:
-// - Multiple audio sources positioned in 3D space
-// - Doppler effect on moving sources
-// - Distance attenuation and reference distance
-// - Reverb effects in different zones
-// - Audio filters (lowpass, highpass, bandpass)
-// - Flying camera to navigate the scene
-//
 // Controls:
 //   Movement:  WASD / Arrow Keys / Gamepad Left Stick
 //   Look:      Mouse Move (when RMB held) / Gamepad Right Stick
 //   Fly Up:    E / Gamepad A Button
 //   Fly Down:  Q / Gamepad B Button
 //   Sprint:    Left Shift / Gamepad Left Stick Click
-//   Toggle Reverb: R
-//   Cycle Filter: F
 //
+
+using Prowl.Runtime.Audio;
 
 using Prowl.Runtime;
 using Prowl.Runtime.Audio;
@@ -29,6 +21,7 @@ using Prowl.Runtime.Resources;
 using Prowl.Vector;
 
 using MouseButton = Prowl.Runtime.MouseButton;
+using Prowl.Runtime.Audio.Effects;
 
 namespace AudioDemo;
 
@@ -72,12 +65,6 @@ public sealed class AudioDemoGame : Game
 
         // Load audio files from executable directory
         LoadAudioFiles();
-
-        // Set global audio properties
-        AudioEngine.DopplerScale = 1.0f;
-        AudioEngine.SpeedOfSound = 343.5f;
-        AudioEngine.DistanceScale = 1.0f;
-
 
         // Create directional light
         GameObject lightGO = new("Directional Light");
@@ -131,7 +118,7 @@ public sealed class AudioDemoGame : Game
         {
             try
             {
-                ambientClip = AudioClip.LoadFromFile(ambientPath, true);
+                ambientClip = new AudioClip(ambientPath);
                 Debug.Log($"Loaded: {ambientPath}");
             }
             catch (Exception ex)
@@ -150,7 +137,7 @@ public sealed class AudioDemoGame : Game
         {
             try
             {
-                engineClip = AudioClip.LoadFromFile(enginePath, true);
+                engineClip = new AudioClip(enginePath);
                 Debug.Log($"Loaded: {enginePath}");
             }
             catch (Exception ex)
@@ -169,7 +156,7 @@ public sealed class AudioDemoGame : Game
         {
             try
             {
-                musicClip = AudioClip.LoadFromFile(musicPath, true);
+                musicClip = new AudioClip(musicPath);
                 Debug.Log($"Loaded: {musicPath}");
             }
             catch (Exception ex)
@@ -201,6 +188,7 @@ public sealed class AudioDemoGame : Game
             maxDistance: 10
         );
         staticSource.Clip = ambientClip ?? engineClip ?? musicClip;
+        staticSource.AddEffect(new ReverbEffect(44100, 2) { RoomSize = 1f });
 
         // 2. Moving source with Doppler effect (orbiting far out)
         var moving = CreateAudioSourceAt(
@@ -249,11 +237,10 @@ public sealed class AudioDemoGame : Game
 
         AudioSource audioSource = go.AddComponent<AudioSource>();
         audioSource.PlayOnStart = true;
-        audioSource.Looping = looping;
-        audioSource.Volume = volume;
-        audioSource.Pitch = pitch;
-        audioSource.MaxDistance = maxDistance;
-        audioSource.ReferenceDistance = 1.0;
+        audioSource.Loop = looping;
+        audioSource.Volume = (float)volume;
+        audioSource.Pitch = (float)pitch;
+        audioSource.MaxDistance = (float)maxDistance;
 
         audioSources.Add(audioSource);
         scene.Add(go);

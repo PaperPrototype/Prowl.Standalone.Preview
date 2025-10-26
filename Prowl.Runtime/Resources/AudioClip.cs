@@ -1,255 +1,271 @@
-﻿// This file is part of the Prowl Game Engine
-// Licensed under the MIT License. See the LICENSE file in the project root for details.
+// This software is available as a choice of the following licenses. Choose
+// whichever you prefer.
 
 using System;
-using System.Buffers.Binary;
-using System.IO;
+using System.Runtime.InteropServices;
 
+using Prowl.Echo;
 using Prowl.Runtime.Audio;
 
-namespace Prowl.Runtime;
-
-public sealed class AudioClip : EngineObject
+namespace Prowl.Runtime.Resources
 {
-    public byte[] Data;
-    public BufferAudioFormat Format;
-    public int SizeInBytes;
-    public int SampleRate;
-
-    public int Channels => GetChannelCount(Format);
-    public int BitsPerSample => GetBitsPerSample(Format);
-    public double Duration => (double)SampleCount / SampleRate;
-    public int SampleCount => Data.Length / Channels;
-
-    public static AudioClip Create(string name, byte[] data, short numChannels, short bitsPerSample, int sampleRate)
-    {
-        if (bitsPerSample == 24)
-        {
-            data = Convert24BitTo16Bit(data);
-            bitsPerSample = 16; // Update bits per sample to 16
-        }
-
-        return new AudioClip
-        {
-            Name = name,
-            Data = data,
-            Format = MapFormat(numChannels, bitsPerSample),
-            SizeInBytes = data.Length,
-            SampleRate = sampleRate
-        };
-    }
-
     /// <summary>
-    /// Loads an audio clip from a file (.wav)
+    /// Represents audio data that can be played back or streamed by an AudioSource. Supported file types are WAV/MP3/FlAC/OGG.
     /// </summary>
-    /// <param name="filePath">Path to the audio file</param>
-    /// <param name="enforceMono">If true, stereo audio will be automatically converted to mono by averaging the left and right channels.
-    /// This is required for 3D positional audio - OpenAL cannot apply distance attenuation or 3D spatialization to stereo sources.
-    /// If false and the file is stereo, it will play at full volume regardless of distance when used with AudioSource.</param>
-    public static AudioClip LoadFromFile(string filePath, bool enforceMono = false)
+    public sealed class AudioClip : EngineObject, ISerializable
     {
-        FileInfo file = new FileInfo(filePath);
-        if (!file.Exists)
-            throw new FileNotFoundException($"Audio file not found: {filePath}");
+        private string filePath;
+        private string name;
+        private IntPtr handle;
+        private UInt64 dataSize;
+        private UInt64 hashCode;
+        private bool streamFromDisk;
 
-        using (FileStream stream = file.OpenRead())
+        /// <summary>
+        /// If the constructor with 'string filePath' overloaded is used this will contain the file path, or string.Empty otherwise.
+        /// </summary>
+        /// <value></value>
+        public string FilePath
         {
-            return LoadFromStream(stream, file.Name, enforceMono);
-        }
-    }
-
-    /// <summary>
-    /// Loads an audio clip from a stream (.wav format)
-    /// </summary>
-    /// <param name="stream">Stream containing audio data</param>
-    /// <param name="name">Name for the audio clip</param>
-    /// <param name="enforceMono">If true, stereo audio will be automatically converted to mono by averaging the left and right channels.
-    /// This is required for 3D positional audio - OpenAL cannot apply distance attenuation or 3D spatialization to stereo sources.
-    /// If false and the stream contains stereo audio, it will play at full volume regardless of distance when used with AudioSource.</param>
-    public static AudioClip LoadFromStream(System.IO.Stream stream, string name, bool enforceMono = false)
-    {
-        var buffer = new byte[stream.Length];
-        stream.Read(buffer, 0, buffer.Length);
-        return LoadWav(buffer, name, enforceMono);
-    }
-
-    private static AudioClip LoadWav(byte[] buffer, string name, bool enforceMono)
-    {
-        ReadOnlySpan<byte> fileSpan = new ReadOnlySpan<byte>(buffer);
-
-        int index = 0;
-        if (fileSpan[index++] != 'R' || fileSpan[index++] != 'I' || fileSpan[index++] != 'F' || fileSpan[index++] != 'F')
-        {
-            throw new InvalidDataException("Given file is not in RIFF format");
+            get => filePath;
         }
 
-        var chunkSize = BinaryPrimitives.ReadInt32LittleEndian(fileSpan.Slice(index, 4));
-        index += 4;
-
-        if (fileSpan[index++] != 'W' || fileSpan[index++] != 'A' || fileSpan[index++] != 'V' || fileSpan[index++] != 'E')
+        /// <summary>
+        /// The name of this AudioClip. If the filepath constructor is used it will contain the filepath, otherwise the string is empty.
+        /// </summary>
+        /// <value></value>
+        public string Name
         {
-            throw new InvalidDataException("Given file is not in WAVE format");
+            get => name;
+            set => name = value;
         }
 
-        short numChannels = -1;
-        int sampleRate = -1;
-        int byteRate = -1;
-        short blockAlign = -1;
-        short bitsPerSample = -1;
-        byte[] audioData = null;
-
-        while (index + 4 < fileSpan.Length)
+        /// <summary>
+        /// If true, data will be streamed from disk. This is useful when a sound is longer than just a couple of seconds. If data is loaded from memory, this property has no effect.
+        /// </summary>
+        /// <value></value>
+        public bool StreamFromDisk
         {
-            var identifier = "" + (char)fileSpan[index++] + (char)fileSpan[index++] + (char)fileSpan[index++] + (char)fileSpan[index++];
-            var size = BinaryPrimitives.ReadInt32LittleEndian(fileSpan.Slice(index, 4));
-            index += 4;
+            get => streamFromDisk;
+        }
 
-            if (identifier == "fmt ")
+        /// <summary>
+        /// If the constructor with 'byte[] data' overload is used this will contain a pointer to the allocated memory of the data. Do not manually free!
+        /// </summary>
+        /// <value></value>
+        public IntPtr Handle
+        {
+            get => handle;
+        }
+
+        /// <summary>
+        /// Gets the hash code used to identify the data of this AudioClip. Only applicable if the 'byte[] data' overload is used.
+        /// </summary>
+        /// <value></value>
+        public UInt64 Hash
+        {
+            get => hashCode;
+        }
+
+        /// <summary>
+        /// If the constructor with 'byte[] data' overload is used this will contain the size of the data in number of bytes.
+        /// </summary>
+        /// <value></value>
+        public UInt64 DataSize
+        {
+            get
             {
-                if (size != 16)
+                if(handle != IntPtr.Zero)
                 {
-                    throw new InvalidDataException($"Unknown Audio Format with subchunk1 size {size}");
+                    return dataSize;
                 }
-                else
-                {
-                    var audioFormat = BinaryPrimitives.ReadInt16LittleEndian(fileSpan.Slice(index, 2));
-                    index += 2;
-                    if (audioFormat != 1)
-                    {
-                        throw new InvalidDataException($"Unknown Audio Format with ID {audioFormat}");
-                    }
-                    else
-                    {
-                        numChannels = BinaryPrimitives.ReadInt16LittleEndian(fileSpan.Slice(index, 2));
-                        index += 2;
-                        sampleRate = BinaryPrimitives.ReadInt32LittleEndian(fileSpan.Slice(index, 4));
-                        index += 4;
-                        byteRate = BinaryPrimitives.ReadInt32LittleEndian(fileSpan.Slice(index, 4));
-                        index += 4;
-                        blockAlign = BinaryPrimitives.ReadInt16LittleEndian(fileSpan.Slice(index, 2));
-                        index += 2;
-                        bitsPerSample = BinaryPrimitives.ReadInt16LittleEndian(fileSpan.Slice(index, 2));
-                        index += 2;
-                    }
-                }
+                return 0;
             }
-            else if (identifier == "data")
+        }
+
+        /// <summary>
+        /// Creates a new AudioClip instance which gets its data from a file on disk. The file must be in an encoded format.
+        /// </summary>
+        /// <param name="filePath">The filepath of the encoded audio file (WAV/MP3/FLAC)</param>
+        /// <param name="streamFromDisk">If true, streams data from disk rather than loading the entire file into memory for playback. Typically you'd stream from disk if a sound is more than just a couple of seconds long.</param>
+        public AudioClip(string filePath, bool streamFromDisk = true)
+        {
+            if(!System.IO.File.Exists(filePath))
+                throw new System.IO.FileNotFoundException("Can't create AudioClip because the file does not exist: " + filePath);
+
+            this.filePath = filePath;
+            this.name = filePath;
+            this.streamFromDisk = streamFromDisk;
+            this.handle = IntPtr.Zero;
+            this.hashCode = 0;
+        }
+
+        /// <summary>
+        /// Creates a new AudioClip instance which gets its data from memory. The data must be in an encoded format.
+        /// </summary>
+        /// <param name="data">Must be encoded audio data (either WAV/MP3/WAV)</param>
+        /// <param name="isUnique">If true, then this clip will not use shared memory. If true, this clip will reuse existing memory if possible.</param>
+        public AudioClip(byte[] data, bool isUnique = false)
+        {
+            if(data == null)
+                throw new System.ArgumentException("Can't create AudioClip because the data is null");
+
+            this.filePath = string.Empty;
+            this.name = string.Empty;
+            this.streamFromDisk = false;
+            this.dataSize = (UInt64)data.Length;
+
+            if(isUnique)
+                this.hashCode = (UInt64)data.GetHashCode();
+            else
+                this.hashCode = GetHashCode(data, data.Length);
+
+            if(AudioContext.GetAudioClipHandle(hashCode, out IntPtr existingHandle))
             {
-                audioData = fileSpan.Slice(index, size).ToArray();
-                index += size;
+                handle = existingHandle;
             }
             else
             {
-                index += size;
+                handle = Marshal.AllocHGlobal(data.Length);
+
+                if(handle != IntPtr.Zero)
+                {            
+                    Marshal.Copy(data, 0, handle, data.Length);
+                    AudioContext.Add(this);
+                }
             }
         }
 
-        if (audioData == null)
+        public override void OnDispose()
         {
-            throw new InvalidDataException("WAV file does not contain a data chunk");
+            AudioContext.Remove(this);
         }
 
-        // Convert stereo to mono if requested
-        if (enforceMono && numChannels == 2)
+        /// <summary>
+        /// This methods creates a hash of the given data.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        private UInt64 GetHashCode(byte[] data, int size)
         {
-            audioData = ConvertStereoToMono(audioData, bitsPerSample);
-            numChannels = 1;
-            Debug.Log($"Converted stereo audio '{name}' to mono for 3D spatialization");
-        }
+            UInt64 hash = 0;
 
-        AudioClip audioClip = AudioClip.Create(name, audioData, numChannels, bitsPerSample, sampleRate);
-        return audioClip;
-    }
-
-    public static BufferAudioFormat MapFormat(int numChannels, int bitsPerSample) => bitsPerSample switch
-    {
-        8 => numChannels == 1 ? BufferAudioFormat.Mono8 : BufferAudioFormat.Stereo8,
-        16 => numChannels == 1 ? BufferAudioFormat.Mono16 : BufferAudioFormat.Stereo16,
-        32 => numChannels == 1 ? BufferAudioFormat.MonoF : BufferAudioFormat.StereoF,
-        _ => throw new NotSupportedException("The specified sound format is not supported."),
-    };
-
-    private static byte[] ConvertStereoToMono(byte[] stereoData, int bitsPerSample)
-    {
-        int bytesPerSample = bitsPerSample / 8;
-        int stereoSampleCount = stereoData.Length / (bytesPerSample * 2); // 2 channels
-        byte[] monoData = new byte[stereoSampleCount * bytesPerSample];
-
-        if (bitsPerSample == 8)
-        {
-            // 8-bit audio (unsigned)
-            for (int i = 0; i < stereoSampleCount; i++)
+            for(int i = 0; i < size; i++) 
             {
-                int left = stereoData[i * 2];
-                int right = stereoData[i * 2 + 1];
-                monoData[i] = (byte)((left + right) / 2);
+                hash = data[i] + (hash << 6) + (hash << 16) - hash;
             }
+
+            return hash;            
         }
-        else if (bitsPerSample == 16)
+
+        public void Serialize(ref EchoObject compound, SerializationContext ctx)
         {
-            // 16-bit audio (signed)
-            for (int i = 0; i < stereoSampleCount; i++)
+            // Save the name
+            compound.Add("Name", new EchoObject(name ?? string.Empty));
+
+            // Check if this is a file-based clip
+            bool isFileBased = !string.IsNullOrEmpty(filePath);
+            compound.Add("IsFileBased", new EchoObject(isFileBased));
+
+            if (isFileBased)
             {
-                short left = (short)(stereoData[i * 4] | (stereoData[i * 4 + 1] << 8));
-                short right = (short)(stereoData[i * 4 + 2] | (stereoData[i * 4 + 3] << 8));
-                short mono = (short)((left + right) / 2);
-                monoData[i * 2] = (byte)(mono & 0xFF);
-                monoData[i * 2 + 1] = (byte)((mono >> 8) & 0xFF);
+                // For file-based clips, just save the file path and streaming flag
+                compound.Add("FilePath", new EchoObject(filePath));
+                compound.Add("StreamFromDisk", new EchoObject(streamFromDisk));
+
+                // Write empty data for consistency
+                compound.Add("AudioData", new EchoObject(new byte[0]));
+                compound.Add("DataSize", new EchoObject(0L));
+                compound.Add("HashCode", new EchoObject(0L));
+            }
+            else if (handle != IntPtr.Zero && dataSize > 0)
+            {
+                // For in-memory clips, serialize the actual data
+                // Copy the audio data from unmanaged memory to a managed byte array
+                byte[] audioData = new byte[dataSize];
+                Marshal.Copy(handle, audioData, 0, (int)dataSize);
+
+                compound.Add("FilePath", new EchoObject(string.Empty));
+                compound.Add("StreamFromDisk", new EchoObject(false));
+                compound.Add("AudioData", new EchoObject(audioData));
+                compound.Add("DataSize", new EchoObject((long)dataSize));
+                compound.Add("HashCode", new EchoObject((long)hashCode));
+            }
+            else
+            {
+                // Invalid state - no file path and no data
+                compound.Add("FilePath", new EchoObject(string.Empty));
+                compound.Add("StreamFromDisk", new EchoObject(false));
+                compound.Add("AudioData", new EchoObject(new byte[0]));
+                compound.Add("DataSize", new EchoObject(0L));
+                compound.Add("HashCode", new EchoObject(0L));
             }
         }
-        else if (bitsPerSample == 32)
+
+        public void Deserialize(EchoObject value, SerializationContext ctx)
         {
-            // 32-bit float audio
-            for (int i = 0; i < stereoSampleCount; i++)
+            // Restore the name
+            name = value["Name"].StringValue;
+
+            bool isFileBased = value["IsFileBased"].BoolValue;
+
+            if (isFileBased)
             {
-                float left = BitConverter.ToSingle(stereoData, i * 8);
-                float right = BitConverter.ToSingle(stereoData, i * 8 + 4);
-                float mono = (left + right) / 2f;
-                byte[] monoBytes = BitConverter.GetBytes(mono);
-                Array.Copy(monoBytes, 0, monoData, i * 4, 4);
+                // Reconstruct file-based clip
+                filePath = value["FilePath"].StringValue;
+                streamFromDisk = value["StreamFromDisk"].BoolValue;
+                handle = IntPtr.Zero;
+                hashCode = 0;
+                dataSize = 0;
+
+                // Verify the file still exists
+                if (!System.IO.File.Exists(filePath))
+                {
+                    Debug.LogError($"AudioClip deserialization warning: File not found: {filePath}");
+                }
+            }
+            else
+            {
+                // Reconstruct in-memory clip
+                long storedDataSize = value["DataSize"].LongValue;
+
+                if (storedDataSize > 0)
+                {
+                    filePath = string.Empty;
+                    streamFromDisk = false;
+
+                    byte[] audioData = value["AudioData"].ByteArrayValue;
+                    dataSize = (UInt64)storedDataSize;
+                    hashCode = (UInt64)value["HashCode"].LongValue;
+
+                    // Check if we can reuse existing memory
+                    if (AudioContext.GetAudioClipHandle(hashCode, out IntPtr existingHandle))
+                    {
+                        handle = existingHandle;
+                    }
+                    else
+                    {
+                        // Allocate new memory and copy the data
+                        handle = Marshal.AllocHGlobal(audioData.Length);
+
+                        if (handle != IntPtr.Zero)
+                        {
+                            Marshal.Copy(audioData, 0, handle, audioData.Length);
+                            AudioContext.Add(this);
+                        }
+                    }
+                }
+                else
+                {
+                    // Invalid state - no data
+                    filePath = string.Empty;
+                    streamFromDisk = false;
+                    handle = IntPtr.Zero;
+                    hashCode = 0;
+                    dataSize = 0;
+                }
             }
         }
-
-        return monoData;
-    }
-
-    private static byte[] Convert24BitTo16Bit(byte[] data)
-    {
-        int sampleCount = data.Length / 3;
-        byte[] result = new byte[sampleCount * 2];
-
-        for (int i = 0; i < sampleCount; i++)
-        {
-            // Read 24-bit sample
-            int sample = (data[i * 3] & 0xFF) |
-                         ((data[i * 3 + 1] & 0xFF) << 8) |
-                         ((data[i * 3 + 2] & 0xFF) << 16);
-
-            // Handle sign extension if the sample is negative
-            if ((sample & 0x800000) != 0)
-            {
-                sample |= unchecked((int)0xFF000000); // Sign extend
-            }
-
-            // Convert to 16-bit sample by shifting right and truncating
-            short sample16 = (short)(sample >> 8);
-
-            // Write 16-bit sample
-            result[i * 2] = (byte)(sample16 & 0xFF);
-            result[i * 2 + 1] = (byte)((sample16 >> 8) & 0xFF);
-        }
-
-        return result;
-    }
-
-    private static int GetChannelCount(BufferAudioFormat format)
-    {
-        return format == BufferAudioFormat.Mono8 || format == BufferAudioFormat.Mono16 || format == BufferAudioFormat.MonoF ? 1 : 2;
-    }
-
-    private static int GetBitsPerSample(BufferAudioFormat format)
-    {
-        return format == BufferAudioFormat.Mono8 || format == BufferAudioFormat.Stereo8 ? 8 :
-            format == BufferAudioFormat.Mono16 || format == BufferAudioFormat.Stereo16 ? 16 : 32;
     }
 }

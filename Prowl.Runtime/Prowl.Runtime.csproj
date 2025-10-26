@@ -36,4 +36,22 @@
     <EmbeddedResource Include="Assets\Defaults\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <LibraryFiles Include="..\Libraries\**\*.*" />
+  </ItemGroup>
+
+  <!-- Copy native libraries to output -->
+  <Target Name="CopyLibraries" AfterTargets="Build">
+    <Copy SourceFiles="@(LibraryFiles)" DestinationFiles="@(LibraryFiles->'$(OutputPath)runtimes\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <!-- Collect runtime files for referencing projects -->
+  <ItemGroup>
+    <None Include="..\Libraries\**\*.*">
+      <Link>runtimes\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
+  </ItemGroup>
+
 </Project>

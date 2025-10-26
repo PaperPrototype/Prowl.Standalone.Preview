@@ -6,8 +6,9 @@ using System.Diagnostics.CodeAnalysis;
 
 using Echo.Logging;
 
-using Prowl.PaperUI;
 using Prowl.Runtime.Audio;
+
+using Prowl.PaperUI;
 using Prowl.Runtime.GUI;
 using Prowl.Runtime.Resources;
 using Prowl.Vector;
@@ -45,7 +46,8 @@ public abstract class Game
         {
             Graphics.Initialize();
 
-            AudioSystem.Initialize();
+            AudioContext.Initialize(44100, 2, 2048);
+            //AudioContext.Initialize(sampleRate, channels, 2048);
 
             _paperRenderer = new PaperRenderer();
             _paperRenderer.Initialize(width, height);
@@ -60,7 +62,7 @@ public abstract class Game
             {
                 UpdatePaperInput();
 
-                AudioSystem.UpdatePool();
+                AudioContext.Update();
 
                 time.Update();
                 Time.TimeStack.Clear();
@@ -146,7 +148,7 @@ public abstract class Game
         {
             Closing();
 
-            AudioSystem.Dispose();
+            AudioContext.Deinitialize();
             Graphics.Dispose();
 
             Debug.Log("Is terminating...");
