@@ -545,11 +545,13 @@ public class GameObject : EngineObject, ISerializable
     {
         if (component.CanDestroy() == false) return;
 
-        _components.Remove(component);
-        _componentCache.Remove(component.GetType(), component);
+        if (_components.Remove(component))
+        {
+            _componentCache.Remove(component.GetType(), component);
 
-        if (component.EnabledInHierarchy) component.OnDisable();
-        if (component.HasStarted) component.OnDispose(); // OnDestroy is only called if the component has previously been active
+            if (component.EnabledInHierarchy) component.OnDisable();
+            if (component.HasStarted) component.OnDispose(); // OnDestroy is only called if the component has previously been active
+        }
     }
 
     /// <summary>
