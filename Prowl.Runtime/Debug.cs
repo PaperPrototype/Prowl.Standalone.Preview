@@ -714,7 +714,7 @@ public class GizmoBuilder
             _wire ??= new()
             {
                 MeshTopology = GraphicsBackend.Primitives.Topology.Lines,
-                IndexFormat = IndexFormat.UInt16,
+                IndexFormat = IndexFormat.UInt32,
             };
 
             _wire.Vertices = [.. _wireData.Vertices.Select(v => (Float3)v)];
@@ -741,7 +741,7 @@ public class GizmoBuilder
             _solid ??= new()
             {
                 MeshTopology = GraphicsBackend.Primitives.Topology.Triangles,
-                IndexFormat = IndexFormat.UInt16,
+                IndexFormat = IndexFormat.UInt32,
             };
 
             if (cameraRelative)
