@@ -86,7 +86,7 @@ namespace Prowl.Runtime.Resources
         /// <summary>
         /// Creates a new AudioClip instance which gets its data from a file on disk. The file must be in an encoded format.
         /// </summary>
-        /// <param name="filePath">The filepath of the encoded audio file (WAV/MP3/FLAC)</param>
+        /// <param name="filePath">The filepath of the encoded audio file (WAV/MP3/FLAC/OGG)</param>
         /// <param name="streamFromDisk">If true, streams data from disk rather than loading the entire file into memory for playback. Typically you'd stream from disk if a sound is more than just a couple of seconds long.</param>
         public AudioClip(string filePath, bool streamFromDisk = true)
         {
@@ -103,7 +103,7 @@ namespace Prowl.Runtime.Resources
         /// <summary>
         /// Creates a new AudioClip instance which gets its data from memory. The data must be in an encoded format.
         /// </summary>
-        /// <param name="data">Must be encoded audio data (either WAV/MP3/WAV)</param>
+        /// <param name="data">Must be encoded audio data (either WAV/MP3/FLAC/OGG)</param>
         /// <param name="isUnique">If true, then this clip will not use shared memory. If true, this clip will reuse existing memory if possible.</param>
         public AudioClip(byte[] data, bool isUnique = false)
         {
