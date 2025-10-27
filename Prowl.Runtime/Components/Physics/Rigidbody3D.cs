@@ -347,7 +347,9 @@ public sealed class Rigidbody3D : MonoBehaviour
 
         interpTimer += Time.DeltaTime;
 
-        _body.PredictPose(interpTimer, out JVector predictedPosition, out JQuaternion predictedOrientation);
+        //_body.PredictPose(interpTimer, out JVector predictedPosition, out JQuaternion predictedOrientation);
+        JVector predictedPosition = _body.Position;
+        JQuaternion predictedOrientation = _body.Orientation;
 
         Transform.Position = new Double3(predictedPosition.X, predictedPosition.Y, predictedPosition.Z);
         Transform.Rotation = new Quaternion(predictedOrientation.X, predictedOrientation.Y, predictedOrientation.Z, predictedOrientation.W);
