@@ -119,7 +119,7 @@ public abstract class Collider : MonoBehaviour
     /// </summary>
     private void RegisterShapes()
     {
-        if (_attachedBody == null)
+        if (_attachedBody == null || _attachedBody.Handle.IsZero)
             return;
 
         // Create shapes based on whether we're attached to a Rigidbody3D or static
