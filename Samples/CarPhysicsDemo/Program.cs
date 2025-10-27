@@ -283,7 +283,7 @@ public class ThirdPersonCamera : MonoBehaviour
     private double currentYaw = 0;
     private double currentPitch = 20;
 
-    public override void FixedUpdate()
+    public override void Update()
     {
         if (Target == null || !Target.IsValid()) return;
 
@@ -308,16 +308,16 @@ public class ThirdPersonCamera : MonoBehaviour
         Double3 offset = -direction * Distance + new Double3(0, Height, 0);
         Double3 desiredPosition = Target.Transform.Position + offset;
 
-        //// Smooth camera movement (manual lerp)
-        //double lerpFactor = Math.Clamp(Smoothness * Time.DeltaTime, 0, 1);
-        //Transform.Position = Transform.Position + (desiredPosition - Transform.Position) * lerpFactor;
-        //
-        //// Look at target
-        //Double3 lookDirection = Target.Transform.Position + new Double3(0, 1, 0) - Transform.Position;
-        //if (Double3.LengthSquared(lookDirection) > 0.001)
-        //{
-        //    Transform.Rotation = Quaternion.LookRotation(lookDirection, Double3.UnitY);
-        //}
+        // Smooth camera movement (manual lerp)
+        double lerpFactor = Math.Clamp(Smoothness * Time.DeltaTime, 0, 1);
+        Transform.Position = Transform.Position + (desiredPosition - Transform.Position) * lerpFactor;
+        
+        // Look at target
+        Double3 lookDirection = Target.Transform.Position + new Double3(0, 1, 0) - Transform.Position;
+        if (Double3.LengthSquared(lookDirection) > 0.001)
+        {
+            Transform.Rotation = Quaternion.LookRotation(lookDirection, Double3.UnitY);
+        }
     }
 }
 
