@@ -141,6 +141,17 @@ public abstract class Collider : MonoBehaviour
                 _attachedBody.AddShape(shape, false);
             }
         }
+
+        if (_attachedRigidbody3D != null)
+        {
+            // Set mas to itself to force inertia tensor recalculation
+            _attachedRigidbody3D.Mass = _attachedRigidbody3D.Mass;
+        }
+        else
+        {
+            // Static bodies just have 1 as mass, it doesnt really matter i dont think
+            _attachedBody.SetMassInertia(1.0);
+        }
     }
 
     /// <summary>
