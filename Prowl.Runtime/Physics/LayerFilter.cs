@@ -71,7 +71,7 @@ public class LayerFilter : IBroadPhaseFilter
                 rbsB.RigidBody.Tag is not Rigidbody3D.RigidBodyUserData udB)
                 return true;
 
-            if (udA.Rigidbody.InstanceID < udA.Rigidbody.InstanceID) (rbsA, rbsB) = (rbsB, rbsA);
+            if (udA.InstanceID < udA.InstanceID) (rbsA, rbsB) = (rbsB, rbsA);
             bool isIgnored = _ignore.Contains(new Pair(udA.Rigidbody, udA.Rigidbody));
             bool canCollide = CollisionMatrix.GetLayerCollision(udA.Layer, udB.Layer);
 

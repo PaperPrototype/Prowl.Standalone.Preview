@@ -68,8 +68,6 @@ public sealed class PhysicsDemo : Game
         floor.Transform.Position = new Double3(0, -0.5f, 0);
 
         // Add static rigidbody for floor
-        Rigidbody3D floorRigidbody = floor.AddComponent<Rigidbody3D>();
-        floorRigidbody.IsStatic = true;
         BoxCollider floorCollider = floor.AddComponent<BoxCollider>();
         floorCollider.Size = new Double3(20, 1, 20);
 

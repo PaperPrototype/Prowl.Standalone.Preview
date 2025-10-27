@@ -21,6 +21,12 @@ public class PhysicsWorld
 
     public World World { get; private set; }
 
+    /// <summary>
+    /// Static rigidbodies indexed by layer. Each layer has its own static rigidbody to ensure collision filtering works correctly.
+    /// Orphan colliders (colliders without a Rigidbody3D component) will attach to the static rigidbody for their layer.
+    /// </summary>
+    private Dictionary<int, Jitter2.Dynamics.RigidBody> _staticRigidbodiesByLayer = new();
+
     public Double3 Gravity = new(0, -9.81f, 0);
     public int SolverIterations = 8;
     public int RelaxIterations = 4;
@@ -52,6 +58,31 @@ public class PhysicsWorld
         World.PostStep += OnPostStep;
     }
 
+    /// <summary>
+    /// Gets or creates a static rigidbody for the specified layer.
+    /// Each layer has its own static rigidbody to ensure collision filtering works correctly.
+    /// </summary>
+    public Jitter2.Dynamics.RigidBody GetOrCreateStaticRigidBody(int layer)
+    {
+        if (_staticRigidbodiesByLayer.TryGetValue(layer, out var staticBody))
+        {
+            return staticBody;
+        }
+
+        // Create a new static rigidbody for this layer
+        staticBody = World.CreateRigidBody();
+        staticBody.IsStatic = true;
+        staticBody.Tag = new Rigidbody3D.RigidBodyUserData()
+        {
+            Rigidbody = null, // No Rigidbody3D component associated with this
+            InstanceID = layer, // This is just used to sort for collision filtering, it just needs to be a consistent value
+            Layer = layer
+        };
+
+        _staticRigidbodiesByLayer[layer] = staticBody;
+        return staticBody;
+    }
+
     private void OnPreStep(double deltaTime)
     {
         PreStep?.Invoke(deltaTime);
@@ -65,6 +96,9 @@ public class PhysicsWorld
     public void Clear()
     {
         World?.Clear();
+
+        // Clear the static rigidbodies dictionary - they will be recreated as needed
+        _staticRigidbodiesByLayer.Clear();
     }
 
     public void Update()

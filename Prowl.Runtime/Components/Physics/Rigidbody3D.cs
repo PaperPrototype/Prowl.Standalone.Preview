@@ -17,6 +17,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     public class RigidBodyUserData
     {
         public Rigidbody3D Rigidbody { get; set; }
+        public int InstanceID { get; set; }
         public int Layer { get; set; }
         //public bool HasTransformConstraints { get; set; }
         //public JVector RotationConstraint { get; set; }
@@ -277,6 +278,7 @@ public sealed class Rigidbody3D : MonoBehaviour
         _body.Tag = new RigidBodyUserData()
         {
             Rigidbody = this,
+            InstanceID = this.InstanceID,
             Layer = GameObject.LayerIndex,
             //HasTransformConstraints = rotationConstraints != Vector3Int.one || translationConstraints != Vector3Int.one,
             //RotationConstraint = new JVector(rotationConstraints.x, rotationConstraints.y, rotationConstraints.z),
@@ -369,12 +371,46 @@ public sealed class Rigidbody3D : MonoBehaviour
         {
             CreateBody(GameObject.Scene.Physics.World);
         }
+
+        // Claim all child colliders that aren't already claimed
+        ClaimChildColliders();
+    }
+
+    /// <summary>
+    /// Claims all colliders in this GameObject and its children that aren't already claimed by another rigidbody.
+    /// </summary>
+    private void ClaimChildColliders()
+    {
+        if (_body == null || _body.Handle.IsZero)
+            return;
+
+        // Get all colliders in this GameObject and its children
+        var colliders = GetComponentsInChildren<Collider>();
+
+        foreach (var collider in colliders)
+        {
+            // Try to attach the collider to this rigidbody
+            // This will fail if the collider is already claimed by another rigidbody
+            collider.TryAttachTo(this);
+        }
     }
 
     public override void OnDisable()
     {
         if (_body != null && !_body.Handle.IsZero)
         {
+            // Detach all child colliders - they will attach to the static rigidbody when they re-enable
+            var colliders = GetComponentsInChildren<Collider>();
+            foreach (var collider in colliders)
+            {
+                if (collider.IsValid() && collider.Enabled)
+                {
+                    collider.Detach();
+                    // Re-enable the collider so it attaches to the static rigidbody
+                    collider.OnEnable();
+                }
+            }
+
             // Unhook collision events
             _body.BeginCollide -= OnJitterBeginCollide;
             _body.EndCollide -= OnJitterEndCollide;
@@ -397,6 +433,7 @@ public sealed class Rigidbody3D : MonoBehaviour
         rb.Tag = new RigidBodyUserData()
         {
             Rigidbody = this,
+            InstanceID = this.InstanceID,
             Layer = GameObject.LayerIndex,
         };
         rb.SetMassInertia(mass);
@@ -404,13 +441,17 @@ public sealed class Rigidbody3D : MonoBehaviour
 
     internal void UpdateShapes(RigidBody rb)
     {
+        // Remove all shapes from this rigidbody
         rb.RemoveShape(rb.Shapes, false);
-        foreach (Collider shape in GetComponents<Collider>())
+
+        // Get all child colliders and have them re-attach
+        var colliders = GetComponentsInChildren<Collider>();
+        foreach (var collider in colliders)
         {
-            Jitter2.Collision.Shapes.RigidBodyShape[] result = shape.CreateTransformedShapes();
-            if (result == null) continue;
-            foreach (Jitter2.Collision.Shapes.RigidBodyShape s in result)
-                rb.AddShape(s, false);
+            // Detach the collider first (in case it's attached to us or static)
+            collider.Detach();
+            // Then try to attach it to this rigidbody
+            collider.TryAttachTo(this);
         }
     }
 
