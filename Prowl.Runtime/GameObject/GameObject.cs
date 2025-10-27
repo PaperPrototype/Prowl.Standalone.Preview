@@ -512,7 +512,7 @@ public class GameObject : EngineObject, ISerializable
             foreach (MonoBehaviour c in componentList)
             {
                 if (c.HasStarted) // OnDestroy is only called if the component has previously been active
-                    c.OnDispose();
+                    c.Dispose();
 
                 _components.Remove(c);
             }
@@ -534,7 +534,7 @@ public class GameObject : EngineObject, ISerializable
         _componentCache.Remove(typeof(T), component);
 
         if (component.EnabledInHierarchy) component.OnDisable();
-        if (component.HasStarted) component.OnDispose(); // OnDestroy is only called if the component has previously been active
+        if (component.HasStarted) component.Dispose(); // OnDestroy is only called if the component has previously been active
     }
 
     /// <summary>
@@ -550,7 +550,7 @@ public class GameObject : EngineObject, ISerializable
             _componentCache.Remove(component.GetType(), component);
 
             if (component.EnabledInHierarchy) component.OnDisable();
-            if (component.HasStarted) component.OnDispose(); // OnDestroy is only called if the component has previously been active
+            if (component.HasStarted) component.Dispose(); // OnDestroy is only called if the component has previously been active
         }
     }
 
@@ -874,7 +874,7 @@ public class GameObject : EngineObject, ISerializable
             if (component.EnabledInHierarchy && scene.IsValid() && scene.IsActive)
                 component.OnDisable();
 
-            if (component.HasStarted) component.OnDispose(); // OnDispose is only called if the component has previously been active
+            if (component.HasStarted) component.Dispose(); // OnDispose is only called if the component has previously been active
             component.Dispose();
         }
         _components.Clear();
