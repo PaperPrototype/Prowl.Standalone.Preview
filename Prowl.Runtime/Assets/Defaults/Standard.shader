@@ -260,28 +260,9 @@ Pass "StandardShadow"
 		{
             #include "Fragment"
 
-			in vec3 worldPos;
-			in vec3 worldNormal;
-
-			// Point light shadow uniforms (will be -1 for directional/spot lights)
-			uniform vec3 _PointLightPosition;
-			uniform float _PointLightRange;
-			uniform float _PointLightShadowBias;
-
 			void main()
 			{
-				// Check if we're rendering for a point light (_PointLightRange > 0)
-				if (_PointLightRange > 0.0) {
-					// Calculate distance from light and normalize by range
-					float dist = length(worldPos - _PointLightPosition);
-					float normalizedDepth = dist / _PointLightRange;
-
-					gl_FragDepth = clamp(normalizedDepth, 0.0, 1.0);
-				}
-				else
-                {
                     gl_FragDepth = gl_FragCoord.z;
-                }
 			}
 		}
 	ENDGLSL

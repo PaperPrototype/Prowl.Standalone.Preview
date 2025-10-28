@@ -4,6 +4,7 @@
 using Prowl.Runtime.Rendering;
 using Prowl.Runtime.Resources;
 using Prowl.Vector;
+using Prowl.Vector.Geometry;
 
 using Material = Prowl.Runtime.Resources.Material;
 using Shader = Prowl.Runtime.Resources.Shader;
@@ -76,7 +77,63 @@ public class DirectionalLight : Light
         view = Double4x4.CreateLookTo(snappedPosition - (forward * ShadowDistance * 0.5), forward, Transform.Up);
     }
 
-    public void PrepareShadowData(bool cameraRelative, Double3 cameraPosition, int atlasX, int atlasY, int atlasWidth)
+    public override void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, bool cameraRelative, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
+    {
+        if (!DoCastShadows())
+        {
+            // No shadows, still need to prepare light data with invalid atlas coordinates
+            PrepareShadowData(cameraRelative, cameraPosition, -1, -1, 0);
+            return;
+        }
+
+        // Get shadow resolution
+        int res = (int)ShadowResolution;
+
+        // Reserve space in shadow atlas
+        Int2? slot = ShadowAtlas.ReserveTiles(res, res, GetLightID());
+
+        int atlasX, atlasY, atlasWidth;
+
+        if (slot != null)
+        {
+            atlasX = slot.Value.X;
+            atlasY = slot.Value.Y;
+            atlasWidth = res;
+
+            // Draw the shadow map
+            Double3 forward = -Transform.Forward; // directional light is inverted
+            Double3 right = Transform.Right;
+            Double3 up = Transform.Up;
+
+            // Set range to -1 to indicate this is not a point light
+            PropertyState.SetGlobalFloat("_PointLightRange", -1.0f);
+
+            Graphics.Device.Viewport(slot.Value.X, slot.Value.Y, (uint)res, (uint)res);
+
+            // Use camera-following shadow matrix for directional lights
+            GetShadowMatrix(cameraPosition, res, out Double4x4 view, out Double4x4 proj);
+
+            if (cameraRelative)
+                view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
+
+            Frustum frustum = Frustum.FromMatrix(proj * view);
+
+            System.Collections.Generic.HashSet<int> culledRenderableIndices = pipeline.CullRenderables(renderables, frustum, LayerMask.Everything);
+            pipeline.AssignCameraMatrices(view, proj);
+            pipeline.DrawRenderables(renderables, "LightMode", "ShadowCaster", new ViewerData(GetLightPosition(), forward, right, up), culledRenderableIndices, false);
+        }
+        else
+        {
+            atlasX = -1;
+            atlasY = -1;
+            atlasWidth = 0;
+        }
+
+        // Prepare shadow data for light to use during rendering
+        PrepareShadowData(cameraRelative, cameraPosition, atlasX, atlasY, atlasWidth);
+    }
+
+    private void PrepareShadowData(bool cameraRelative, Double3 cameraPosition, int atlasX, int atlasY, int atlasWidth)
     {
         // Use camera-following shadow matrix when atlas width is available
         Double4x4 view, proj;
