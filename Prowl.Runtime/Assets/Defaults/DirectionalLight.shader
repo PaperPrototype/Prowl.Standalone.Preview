@@ -144,13 +144,13 @@ Pass "DirectionalLight"
 				float c = cos(randomRotation);
 				mat2 rotationMatrix = mat2(c, -s, s, c);
 
-				for(int i = 0; i < 16; i++) {
+				for(int i = 0; i < 8; i++) {
 					vec2 offset = rotationMatrix * poissonDisk[i] * texelSize * filterRadius;
 					vec2 sampleCoords = clamp(atlasCoords + offset, shadowMin, shadowMax);
 					float pcfDepth = texture(_ShadowAtlas, sampleCoords).r;
 					shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
 				}
-				shadow /= 16.0;
+				shadow /= 8.0;
 			}
 
 			return shadow * _ShadowStrength;
