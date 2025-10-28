@@ -21,13 +21,24 @@ public class DirectionalLight : Light
         _4096 = 4096,
     }
 
-    public Resolution ShadowResolution = Resolution._1024;
+    public enum CascadeCount : int
+    {
+        One = 1,
+        Two = 2,
+        Four = 4,
+    }
 
-    public double ShadowDistance = 50f;
+    public Resolution ShadowResolution = Resolution._512;
+    public CascadeCount Cascades = CascadeCount.Four;
+
+    public double ShadowDistance = 150f;
 
     private Material? _lightMaterial;
-    private Double4x4 _shadowMatrix;
-    private Double4 _shadowAtlasParams;
+
+    // Cascade data (max 4 cascades)
+    private Double4x4[] _cascadeShadowMatrices = new Double4x4[4];
+    private Double4[] _cascadeAtlasParams = new Double4[4]; // xy = atlas pos, z = atlas size, w = split distance
+    private int _activeCascades = 0;
 
     public override void Update()
     {
@@ -38,93 +49,128 @@ public class DirectionalLight : Light
     {
         Debug.DrawArrow(Transform.Position, -Transform.Forward, Color.Yellow);
         Debug.DrawWireCircle(Transform.Position, Transform.Forward, 0.5f, Color.Yellow);
+
+        // Create and Draw each Frustum
+        foreach (var cascade in _cascadeShadowMatrices)
+        {
+            Frustum frustum = Frustum.FromMatrix(cascade);
+            var corners = frustum.GetCorners();
+
+            // Corner indices from GetCorners():
+            // 0: Near-Left-Bottom,  1: Near-Right-Bottom,  2: Near-Left-Top,  3: Near-Right-Top
+            // 4: Far-Left-Bottom,   5: Far-Right-Bottom,   6: Far-Left-Top,   7: Far-Right-Top
+
+            Debug.DrawLine(corners[0], corners[1], Color.Cyan);
+            Debug.DrawLine(corners[1], corners[3], Color.Cyan);
+            Debug.DrawLine(corners[3], corners[2], Color.Cyan);
+            Debug.DrawLine(corners[2], corners[0], Color.Cyan);
+
+            Debug.DrawLine(corners[4], corners[5], Color.Cyan);
+            Debug.DrawLine(corners[5], corners[7], Color.Cyan);
+            Debug.DrawLine(corners[7], corners[6], Color.Cyan);
+            Debug.DrawLine(corners[6], corners[4], Color.Cyan);
+
+            Debug.DrawLine(corners[0], corners[4], Color.Cyan);
+            Debug.DrawLine(corners[1], corners[5], Color.Cyan);
+            Debug.DrawLine(corners[2], corners[6], Color.Cyan);
+            Debug.DrawLine(corners[3], corners[7], Color.Cyan);
+        }
     }
 
 
     public override LightType GetLightType() => LightType.Directional;
 
-    private void GetShadowMatrix(Double3 cameraPosition, int shadowResolution, out Double4x4 view, out Double4x4 projection)
+    private void GetShadowMatrix(Double3 cameraPosition, int shadowResolution, double cascadeDistance, out Double4x4 view, out Double4x4 projection)
     {
         Double3 forward = -Transform.Forward;
-        projection = Double4x4.CreateOrtho(ShadowDistance, ShadowDistance, 0.1f, ShadowDistance);
+        projection = Double4x4.CreateOrtho(cascadeDistance, cascadeDistance, -cascadeDistance * 0.5f, cascadeDistance * 0.5f);
 
         // Calculate texel size in world units
-        double texelSize = (ShadowDistance * 2.0) / shadowResolution;
+        double texelSize = (cascadeDistance * 2.0) / shadowResolution;
 
         // Build orthonormal basis for light space
         Double3 lightUp = Double3.Normalize(Transform.Up);
         Double3 lightRight = Double3.Normalize(Double3.Cross(lightUp, forward));
         lightUp = Double3.Normalize(Double3.Cross(forward, lightRight)); // Recompute to ensure orthogonality
 
-        // Project camera position onto the light's perpendicular plane (X and Y in light space)
+        // Project camera position onto light space axes
         double x = Double3.Dot(cameraPosition, lightRight);
         double y = Double3.Dot(cameraPosition, lightUp);
+        double z = Double3.Dot(cameraPosition, forward); // KEEP the Z component! god damnit lost so much time to this
 
-        // Snap to texel grid in light space
+        // Snap only X and Y to texel grid in light space
         x = Maths.Round(x / texelSize) * texelSize;
         y = Maths.Round(y / texelSize) * texelSize;
 
-        // Reconstruct the snapped position (only X and Y are snapped, keep camera's position along light direction)
-        Double3 snappedPosition = (lightRight * x) + (lightUp * y);
+        // Reconstruct the snapped position (X and Y snapped, Z preserved)
+        Double3 snappedPosition = (lightRight * x) + (lightUp * y) + (forward * z);
 
-        // Position the shadow map at the snapped position, offset back by half the shadow distance
-        view = Double4x4.CreateLookTo(snappedPosition - (forward * ShadowDistance * 0.5), forward, Transform.Up);
+        // Position the shadow map at the snapped position
+        view = Double4x4.CreateLookTo(snappedPosition, forward, Transform.Up);
     }
 
     public override void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
     {
-        int atlasX, atlasY, atlasWidth;
-
         if (!DoCastShadows())
         {
-            // No shadows - set invalid atlas coordinates
-            atlasX = -1;
-            atlasY = -1;
-            atlasWidth = 0;
+            // No shadows
+            _activeCascades = 0;
+            return;
         }
-        else
-        {
-            // Get shadow resolution
-            int res = (int)ShadowResolution;
 
-            // Reserve space in shadow atlas
-            Int2? slot = ShadowAtlas.ReserveTiles(res, res, GetLightID());
+        // Determine number of cascades
+        int numCascades = (int)Cascades;
+        _activeCascades = numCascades;
+
+        // Calculate linear split distances
+        double cascadeInterval = ShadowDistance / numCascades;
+
+        // Get shadow resolution per cascade
+        int res = (int)ShadowResolution;
+
+        // Light direction vectors
+        Double3 forward = -Transform.Forward;
+        Double3 right = Transform.Right;
+        Double3 up = Transform.Up;
+
+        // Render each cascade
+        for (int cascadeIndex = 0; cascadeIndex < numCascades; cascadeIndex++)
+        {
+            // Calculate this cascade's distance (linear split)
+            double cascadeDistance = cascadeInterval * (cascadeIndex + 1);
+
+            // Reserve space in shadow atlas for this cascade
+            Int2? slot = ShadowAtlas.ReserveTiles(res, res, GetLightID() + cascadeIndex);
 
             if (slot != null)
             {
-                atlasX = slot.Value.X;
-                atlasY = slot.Value.Y;
-                atlasWidth = res;
+                int atlasX = slot.Value.X;
+                int atlasY = slot.Value.Y;
 
-                // Draw the shadow map
-                Double3 forward = -Transform.Forward; // directional light is inverted
-                Double3 right = Transform.Right;
-                Double3 up = Transform.Up;
+                // Set viewport to this cascade's atlas region
+                Graphics.Device.Viewport(atlasX, atlasY, (uint)res, (uint)res);
 
-                Graphics.Device.Viewport(slot.Value.X, slot.Value.Y, (uint)res, (uint)res);
-
-                // Use camera-following shadow matrix for directional lights
-                GetShadowMatrix(cameraPosition, res, out Double4x4 view, out Double4x4 proj);
+                // Calculate shadow matrix for this cascade distance
+                GetShadowMatrix(cameraPosition, res, cascadeDistance, out Double4x4 view, out Double4x4 proj);
 
                 if (RenderPipeline.CAMERA_RELATIVE)
                     view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
 
                 Frustum frustum = Frustum.FromMatrix(proj * view);
 
+                // Cull and render shadow casters for this cascade
                 System.Collections.Generic.HashSet<int> culledRenderableIndices = pipeline.CullRenderables(renderables, frustum, LayerMask.Everything);
                 pipeline.AssignCameraMatrices(view, proj);
                 pipeline.DrawRenderables(renderables, "LightMode", "ShadowCaster", new ViewerData(GetLightPosition(), forward, right, up), culledRenderableIndices, false);
 
-                // Store shadow data for later use in OnRenderLight
-                _shadowMatrix = proj * view;
-                _shadowAtlasParams = new Double4(atlasX, atlasY, atlasWidth, 0);
+                // Store cascade data for shader
+                _cascadeShadowMatrices[cascadeIndex] = proj * view;
+                _cascadeAtlasParams[cascadeIndex] = new Double4(atlasX, atlasY, res, cascadeDistance);
             }
             else
             {
-                // Failed to reserve atlas space
-                atlasX = -1;
-                atlasY = -1;
-                atlasWidth = 0;
+                // Failed to reserve atlas space for this cascade
+                _cascadeAtlasParams[cascadeIndex] = new Double4(-1, -1, 0, cascadeDistance);
             }
         }
     }
@@ -152,12 +198,20 @@ public class DirectionalLight : Light
         _lightMaterial.SetFloat("_LightIntensity", (float)Intensity);
 
         // Set shadow properties
-        _lightMaterial.SetMatrix("_ShadowMatrix", _shadowMatrix);
         _lightMaterial.SetFloat("_ShadowBias", (float)ShadowBias);
         _lightMaterial.SetFloat("_ShadowNormalBias", (float)ShadowNormalBias);
         _lightMaterial.SetFloat("_ShadowStrength", (float)ShadowStrength);
         _lightMaterial.SetFloat("_ShadowQuality", (float)ShadowQuality);
-        _lightMaterial.SetVector("_ShadowAtlasParams", _shadowAtlasParams);
+
+        // Set cascade data
+        _lightMaterial.SetInt("_CascadeCount", _activeCascades);
+
+        // Set cascade matrices and atlas parameters
+        for (int i = 0; i < 4; i++)
+        {
+            _lightMaterial.SetMatrix($"_CascadeShadowMatrix{i}", _cascadeShadowMatrices[i]);
+            _lightMaterial.SetVector($"_CascadeAtlasParams{i}", _cascadeAtlasParams[i]);
+        }
 
         // Draw fullscreen quad with the directional light shader
         Graphics.Blit(gBuffer, destination, _lightMaterial, 0, false, false);

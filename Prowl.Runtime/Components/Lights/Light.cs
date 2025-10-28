@@ -19,8 +19,8 @@ public abstract class Light : MonoBehaviour, IRenderableLight
     public Color Color = Color.White;
     public double Intensity = 8.0f;
     public double ShadowStrength = 1.0f;
-    public double ShadowBias = 0.05f;
-    public double ShadowNormalBias = 1f;
+    public double ShadowBias = 0.001f;
+    public double ShadowNormalBias = 0.0f;
     public bool CastShadows = true;
     public ShadowQuality ShadowQuality = ShadowQuality.Hard;
 

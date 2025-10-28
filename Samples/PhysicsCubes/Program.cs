@@ -25,13 +25,13 @@ public sealed class PhysicsDemo : Game
 
     public override void Initialize()
     {
+        DrawGizmos = true;
         scene = new Scene();
 
         // Create directional light
         GameObject lightGO = new("Directional Light");
         DirectionalLight light = lightGO.AddComponent<DirectionalLight>();
         light.ShadowQuality = ShadowQuality.Soft;
-        light.ShadowBias = 0.5f;
         lightGO.Transform.LocalEulerAngles = new Double3(-45, 45, 0);
         scene.Add(lightGO);
 
