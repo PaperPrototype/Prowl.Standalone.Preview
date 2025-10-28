@@ -15,7 +15,6 @@ public enum DefaultShader
     UI,
     Gizmos,
     Blit,
-    DeferredLighting,
     DirectionalLight,
     DeferredCompose,
 

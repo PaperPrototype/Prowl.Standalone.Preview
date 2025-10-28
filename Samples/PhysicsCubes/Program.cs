@@ -47,7 +47,9 @@ public sealed class PhysicsDemo : Game
 
         camera.Effects =
         [
-            new ScreenSpaceReflectionEffect(),
+            new ScreenSpaceReflectionEffect()
+            {
+            },
             new FXAAEffect(),
             new BokehDepthOfFieldEffect(),
             new KawaseBloomEffect(),

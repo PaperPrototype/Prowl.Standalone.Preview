@@ -133,28 +133,9 @@ public sealed class Shader : EngineObject, ISerializationCallbackReceiver
     /// </summary>
     public static Shader LoadDefault(DefaultShader shader)
     {
-        string fileName = shader switch
-        {
-            DefaultShader.Standard => "Standard.shader",
-            DefaultShader.Unlit => "Unlit.shader",
-            DefaultShader.Line => "Line.shader",
-            DefaultShader.Invalid => "Invalid.shader",
-            DefaultShader.UI => "UI.shader",
-            DefaultShader.Gizmos => "Gizmos.shader",
-            DefaultShader.Blit => "Blit.shader",
-            DefaultShader.DeferredLighting => "DeferredLighting.shader",
-            DefaultShader.DeferredCompose => "DeferredCompose.shader",
-            DefaultShader.DirectionalLight => "DirectionalLight.shader",
-            DefaultShader.ProceduralSkybox => "ProceduralSkybox.shader",
-            DefaultShader.Tonemapper => "Tonemapper.shader",
-            DefaultShader.SSR => "SSR.shader",
-            DefaultShader.FXAA => "FXAA.shader",
-            DefaultShader.Bloom => "Bloom.shader",
-            DefaultShader.BokehDoF => "BokehDoF.shader",
-            _ => throw new ArgumentException($"Unknown default shader: {shader}")
-        };
+        string fileName = shader.ToString();
 
-        string resourcePath = $"Assets/Defaults/{fileName}";
+        string resourcePath = $"Assets/Defaults/{fileName}.shader";
         string shaderCode = EmbeddedResources.ReadAllText(resourcePath);
 
         if (!AssetImporting.ShaderParser.ParseShader(resourcePath, shaderCode, path =>
@@ -185,29 +166,9 @@ public sealed class Shader : EngineObject, ISerializationCallbackReceiver
     /// </summary>
     internal static string LoadDefaultInclude(DefaultShaderInclude include)
     {
-        string fileName = include switch
-        {
-            DefaultShaderInclude.Fragment => "Fragment.glsl",
-            DefaultShaderInclude.PBR => "PBR.glsl",
-            DefaultShaderInclude.Random => "Random.glsl",
-            DefaultShaderInclude.ShaderVariables => "ShaderVariables.glsl",
-            DefaultShaderInclude.Utilities => "Utilities.glsl",
-            DefaultShaderInclude.VertexAttributes => "VertexAttributes.glsl",
-            _ => throw new ArgumentException($"Unknown shader include: {include}")
-        };
+        string fileName = include.ToString();
 
-        return EmbeddedResources.ReadAllText($"Assets/Defaults/{fileName}");
-    }
-
-    /// <summary>
-    /// Tries to convert an include file name to a DefaultShaderInclude enum
-    /// </summary>
-    internal static bool TryGetDefaultInclude(string includeName, out DefaultShaderInclude include)
-    {
-        // Remove .glsl extension if present
-        includeName = includeName.Replace(".glsl", "", StringComparison.OrdinalIgnoreCase);
-
-        return Enum.TryParse(includeName, true, out include);
+        return EmbeddedResources.ReadAllText($"Assets/Defaults/{fileName}.glsl");
     }
 
     public void OnBeforeSerialize() { }

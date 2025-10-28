@@ -61,7 +61,6 @@ public class DefaultRenderPipeline : RenderPipeline
     private static Material s_defaultMaterial;
     private static Material s_skybox;
     private static Material s_gizmo;
-    private static Material s_deferredLighting;
     private static Material s_deferredCompose;
 
     private static RenderTexture? s_shadowMap;
@@ -86,7 +85,6 @@ public class DefaultRenderPipeline : RenderPipeline
         s_gizmo ??= new Material(Shader.LoadDefault(DefaultShader.Gizmos));
 
         // Load deferred shaders
-        s_deferredLighting ??= new Material(Shader.LoadDefault(DefaultShader.DeferredLighting));
         s_deferredCompose ??= new Material(Shader.LoadDefault(DefaultShader.DeferredCompose));
 
         if (s_skyDome.IsNotValid())
