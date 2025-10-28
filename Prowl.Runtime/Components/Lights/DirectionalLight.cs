@@ -43,13 +43,6 @@ public class DirectionalLight : Light
 
     public override LightType GetLightType() => LightType.Directional;
 
-    private void GetShadowMatrix(out Double4x4 view, out Double4x4 projection)
-    {
-        Double3 forward = -Transform.Forward;
-        projection = Double4x4.CreateOrtho(ShadowDistance, ShadowDistance, 0.1f, ShadowDistance);
-        view = Double4x4.CreateLookTo(Transform.Position - (forward * ShadowDistance * 0.5), forward, Transform.Up);
-    }
-
     private void GetShadowMatrix(Double3 cameraPosition, int shadowResolution, out Double4x4 view, out Double4x4 projection)
     {
         Double3 forward = -Transform.Forward;

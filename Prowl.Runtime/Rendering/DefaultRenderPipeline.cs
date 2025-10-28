@@ -155,7 +155,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
         // =======================================================
         // 5. Setup Lighting and Shadows
-        SetupLightingAndShadows(css, lights, renderables);
+        RenderShadowAtlas(css, lights, renderables);
 
         // 5.1 Re-Assign camera matrices (The Lighting can modify these)
         AssignCameraMatrices(css.View, css.Projection);
@@ -332,15 +332,7 @@ public class DefaultRenderPipeline : RenderPipeline
         Graphics.Device.Viewport(0, 0, (uint)Window.InternalWindow.FramebufferSize.X, (uint)Window.InternalWindow.FramebufferSize.Y);
     }
 
-    private void SetupLightingAndShadows(CameraSnapshot css, IReadOnlyList<IRenderableLight> lights, IReadOnlyList<IRenderable> renderables)
-    {
-        CreateLightBuffer(css.CameraPosition, css.CullingMask, lights, renderables);
-
-        //PropertyState.SetGlobalBuffer("_Lights", LightBuffer, 0);
-        //PropertyState.SetGlobalInt("_LightCount", LightCount);
-    }
-
-    private void CreateLightBuffer(Double3 cameraPosition, LayerMask cullingMask, IReadOnlyList<IRenderableLight> lights, IReadOnlyList<IRenderable> renderables)
+    private void RenderShadowAtlas(CameraSnapshot css, IReadOnlyList<IRenderableLight> lights, IReadOnlyList<IRenderable> renderables)
     {
         Graphics.Device.BindFramebuffer(ShadowAtlas.GetAtlas().frameBuffer);
         Graphics.Device.Clear(0.0f, 0.0f, 0.0f, 1.0f, ClearFlags.Depth | ClearFlags.Stencil);
@@ -348,20 +340,18 @@ public class DefaultRenderPipeline : RenderPipeline
         // Process all lights - each light handles its own shadow rendering
         foreach (IRenderableLight light in lights)
         {
-            if (cullingMask.HasLayer(light.GetLayer()) == false)
+            if (css.CullingMask.HasLayer(light.GetLayer()) == false)
                 continue;
 
             if (light is Light lightComponent)
             {
-                lightComponent.RenderShadows(this, cameraPosition, renderables);
+                lightComponent.RenderShadows(this, css.CameraPosition, renderables);
             }
         }
     }
 
     private void RenderSkybox(CameraSnapshot css)
     {
-        s_skybox.SetMatrix("prowl_MatVP", css.Projection * css.OriginView);
-
         // Set sun direction for skybox from scene's directional light
         var sun = css.Scene.Lights.FirstOrDefault(l => l is IRenderableLight rl && rl.GetLightType() == LightType.Directional);
         if (sun != null)
