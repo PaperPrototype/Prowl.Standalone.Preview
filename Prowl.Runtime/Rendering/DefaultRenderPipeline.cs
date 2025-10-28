@@ -579,6 +579,11 @@ public class DefaultRenderPipeline : RenderPipeline
     private static void RenderSkybox(CameraSnapshot css)
     {
         s_skybox.SetMatrix("prowl_MatVP", css.Projection * css.OriginView);
+
+        // Set sun direction for skybox from scene's directional light
+        Double3 sunDir = GetSunDirection(css.Scene.Lights);
+        s_skybox.SetVector("_SunDir", sunDir);
+
         Graphics.DrawMeshNow(s_skyDome, s_skybox);
     }
 

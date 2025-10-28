@@ -55,63 +55,6 @@ layout(std140) uniform GlobalUniforms
     // Shadow parameters
     vec2 prowl_ShadowAtlasSize;
     vec2 _padding3;
-
-    // Directional Light (Sun)
-    vec3 prowl_SunDirection;
-    float prowl_SunIntensity;
-    vec3 prowl_SunColor;
-    float prowl_SunShadowBias;
-    mat4 prowl_SunShadowMatrix;
-    vec4 prowl_SunShadowParams;      // x: shadowNormalBias, y: shadowStrength, z: shadowDistance, w: shadowQuality
-    vec4 prowl_SunAtlasParams;       // x: atlasX, y: atlasY, z: atlasWidth, w: unused
-
-    // Point Lights - 4 lights packed
-    vec4 prowl_4PointLightPosX;
-    vec4 prowl_4PointLightPosY;
-    vec4 prowl_4PointLightPosZ;
-    vec4 prowl_4PointLightColorR;
-    vec4 prowl_4PointLightColorG;
-    vec4 prowl_4PointLightColorB;
-    vec4 prowl_4PointLightIntensity;
-    vec4 prowl_4PointLightRange;
-    vec4 prowl_4PointLightShadowBias;
-    vec4 prowl_4PointLightShadowNormalBias;
-    vec4 prowl_4PointLightShadowStrength;
-    vec4 prowl_4PointLightShadowQuality;
-    vec4 prowl_4PointLightAtlasX;
-    vec4 prowl_4PointLightAtlasY;
-    vec4 prowl_4PointLightAtlasWidth;
-
-    // Spot Lights - 4 lights packed
-    vec4 prowl_4SpotLightPosX;
-    vec4 prowl_4SpotLightPosY;
-    vec4 prowl_4SpotLightPosZ;
-    vec4 prowl_4SpotLightDirX;
-    vec4 prowl_4SpotLightDirY;
-    vec4 prowl_4SpotLightDirZ;
-    vec4 prowl_4SpotLightColorR;
-    vec4 prowl_4SpotLightColorG;
-    vec4 prowl_4SpotLightColorB;
-    vec4 prowl_4SpotLightIntensity;
-    vec4 prowl_4SpotLightRange;
-    vec4 prowl_4SpotLightInnerAngle;
-    vec4 prowl_4SpotLightOuterAngle;
-    vec4 prowl_4SpotLightShadowBias;
-    vec4 prowl_4SpotLightShadowNormalBias;
-    vec4 prowl_4SpotLightShadowStrength;
-    vec4 prowl_4SpotLightShadowQuality;
-    vec4 prowl_4SpotLightAtlasX;
-    vec4 prowl_4SpotLightAtlasY;
-    vec4 prowl_4SpotLightAtlasWidth;
-    mat4 prowl_SpotLightShadowMatrix0;
-    mat4 prowl_SpotLightShadowMatrix1;
-    mat4 prowl_SpotLightShadowMatrix2;
-    mat4 prowl_SpotLightShadowMatrix3;
-
-    // Light counts
-    int prowl_PointLightCount;
-    int prowl_SpotLightCount;
-    vec2 _padding4;
 };
 
 // Per-object uniforms (set per draw call)
