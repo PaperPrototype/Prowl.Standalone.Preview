@@ -915,6 +915,75 @@ public class Mesh : EngineObject, ISerializable
         return mesh;
     }
 
+    /// <summary>
+    /// Creates a cone mesh pointing up along the Y axis.
+    /// </summary>
+    /// <param name="radius">Radius of the cone base.</param>
+    /// <param name="height">Height of the cone.</param>
+    /// <param name="slices">Number of subdivisions around the cone.</param>
+    /// <returns>A new cone mesh.</returns>
+    public static Mesh CreateCone(float radius, float height, int slices = 16)
+    {
+        Mesh mesh = new();
+
+        List<Float3> vertices = [];
+        List<Float2> uvs = [];
+        List<uint> indices = [];
+
+        float halfHeight = height / 2.0f;
+
+        // Apex vertex (top of cone)
+        int apexIndex = 0;
+        vertices.Add(new Float3(0, halfHeight, 0));
+        uvs.Add(new Float2(0.5f, 1.0f));
+
+        // Base center vertex (for base cap)
+        int baseCenterIndex = 1;
+        vertices.Add(new Float3(0, -halfHeight, 0));
+        uvs.Add(new Float2(0.5f, 0.0f));
+
+        // Generate vertices around the base circle
+        for (int i = 0; i <= slices; i++)
+        {
+            float angle = 2 * MathF.PI * i / slices;
+            float x = radius * MathF.Cos(angle);
+            float z = radius * MathF.Sin(angle);
+            float u = (float)i / slices;
+
+            // Vertex for sides
+            vertices.Add(new Float3(x, -halfHeight, z));
+            uvs.Add(new Float2(u, 0.0f));
+        }
+
+        int baseStart = 2; // First base vertex index
+
+        // Generate indices for cone sides (from apex to base)
+        for (int i = 0; i < slices; i++)
+        {
+            indices.Add((uint)apexIndex);
+            indices.Add((uint)(baseStart + i));
+            indices.Add((uint)(baseStart + i + 1));
+        }
+
+        // Generate indices for base cap (circle at bottom)
+        for (int i = 0; i < slices; i++)
+        {
+            indices.Add((uint)baseCenterIndex);
+            indices.Add((uint)(baseStart + i + 1));
+            indices.Add((uint)(baseStart + i));
+        }
+
+        mesh.vertices = [.. vertices];
+        mesh.uv = [.. uvs];
+        mesh.indices = [.. indices];
+
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
+
+        return mesh;
+    }
+
     public static Mesh CreateTriangle(Float3 a, Float3 b, Float3 c)
     {
         Mesh mesh = new();

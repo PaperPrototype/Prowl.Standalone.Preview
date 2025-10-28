@@ -323,9 +323,9 @@ public sealed class PhysicsDemo : Game
         BoxCollider cubeCollider = cube.AddComponent<BoxCollider>();
         cubeCollider.Size = new Double3(0.5, 0.5, 0.5);
 
-        //var light = cube.AddComponent<PointLight>();
-        //light.intensity = 32;
-        //light.color = new Color(RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), 1f);
+        var light = cube.AddComponent<SpotLight>();
+        light.Intensity = 32;
+        light.Color = new Color(RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), 1f);
 
         scene.Add(cube);
 

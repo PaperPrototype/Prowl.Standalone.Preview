@@ -237,11 +237,7 @@ public class DefaultRenderPipeline : RenderPipeline
             if (css.CullingMask.HasLayer(light.GetLayer()) == false)
                 continue;
 
-            // Only render directional lights for now
-            if (light is DirectionalLight dirLight)
-            {
-                dirLight.OnRenderLight(gBuffer, lightAccumulation, css);
-            }
+            light.OnRenderLight(gBuffer, lightAccumulation, css);
         }
 
         // =======================================================
