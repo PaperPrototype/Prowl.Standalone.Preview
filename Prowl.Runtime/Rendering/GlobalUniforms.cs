@@ -42,10 +42,6 @@ public struct GlobalUniformsData
     public Float4 _CosTime;                   // 16 bytes
     public Float4 prowl_DeltaTime;            // 16 bytes
 
-    // Shadow parameters
-    public Float2 prowl_ShadowAtlasSize;      // 8 bytes
-    public Float2 _padding3;                  // 8 bytes padding
-
 #pragma warning restore IDE1006 // Naming Styles
 }
 
@@ -191,13 +187,6 @@ public static class GlobalUniforms
     public static void SetDeltaTime(Double4 value)
     {
         s_data.prowl_DeltaTime = (Float4)value;
-        s_isDirty = true;
-    }
-
-    // Shadow parameters
-    public static void SetShadowAtlasSize(Double2 value)
-    {
-        s_data.prowl_ShadowAtlasSize = (Float2)value;
         s_isDirty = true;
     }
 

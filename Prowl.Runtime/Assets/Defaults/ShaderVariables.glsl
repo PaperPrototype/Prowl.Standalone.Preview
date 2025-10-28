@@ -32,10 +32,6 @@ layout(std140) uniform GlobalUniforms
     vec4 _SinTime;
     vec4 _CosTime;
     vec4 prowl_DeltaTime;
-
-    // Shadow parameters
-    vec2 prowl_ShadowAtlasSize;
-    vec2 _padding3;
 };
 
 // Per-object uniforms (set per draw call)

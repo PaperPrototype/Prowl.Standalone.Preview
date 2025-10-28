@@ -105,7 +105,10 @@ public class DirectionalLight : Light
         _lightMaterial.SetTexture("_GBufferD", gBuffer.InternalTextures[3]);
         _lightMaterial.SetTexture("_CameraDepthTexture", gBuffer.InternalDepth);
 
-        // Shadow atlas texture is set globally by pipeline
+        // Set shadow atlas texture and size
+        var shadowAtlas = ShadowAtlas.GetAtlas();
+        _lightMaterial.SetTexture("_ShadowAtlas", shadowAtlas.InternalDepth);
+        _lightMaterial.SetVector("_ShadowAtlasSize", new Double2(shadowAtlas.Width, shadowAtlas.Height));
 
         // Set directional light properties
         _lightMaterial.SetVector("_LightDirection", Transform.Forward);

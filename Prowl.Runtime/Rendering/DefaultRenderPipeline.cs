@@ -468,11 +468,8 @@ public class DefaultRenderPipeline : RenderPipeline
     {
         CreateLightBuffer(css.CameraPosition, css.CullingMask, lights, renderables);
 
-        if (s_shadowMap.IsValid())
-            PropertyState.SetGlobalTexture("_ShadowAtlas", s_shadowMap.InternalDepth);
         //PropertyState.SetGlobalBuffer("_Lights", LightBuffer, 0);
         //PropertyState.SetGlobalInt("_LightCount", LightCount);
-        GlobalUniforms.SetShadowAtlasSize(new Double2(ShadowAtlas.GetSize(), ShadowAtlas.GetSize()));
     }
 
     private static void CreateLightBuffer(Double3 cameraPosition, LayerMask cullingMask, IReadOnlyList<IRenderableLight> lights, IReadOnlyList<IRenderable> renderables)
