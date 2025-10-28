@@ -62,6 +62,7 @@ public class DefaultRenderPipeline : RenderPipeline
     private static Material s_skybox;
     private static Material s_gizmo;
     private static Material s_deferredLighting;
+    private static Material s_deferredCompose;
 
     private static RenderTexture? s_shadowMap;
 
@@ -84,8 +85,9 @@ public class DefaultRenderPipeline : RenderPipeline
         s_skybox ??= new Material(Shader.LoadDefault(DefaultShader.ProceduralSkybox));
         s_gizmo ??= new Material(Shader.LoadDefault(DefaultShader.Gizmos));
 
-        // Load deferred lighting shader
+        // Load deferred shaders
         s_deferredLighting ??= new Material(Shader.LoadDefault(DefaultShader.DeferredLighting));
+        s_deferredCompose ??= new Material(Shader.LoadDefault(DefaultShader.DeferredCompose));
 
         if (s_skyDome.IsNotValid())
         {
@@ -348,69 +350,92 @@ public class DefaultRenderPipeline : RenderPipeline
         DrawRenderables(renderables, "RenderOrder", "Opaque", new ViewerData(css), culledRenderableIndices, false);
 
         // =======================================================
-        // 7. Deferred Lighting Pass
-        // Create output buffer for deferred lighting result
-        RenderTexture deferredOutput = RenderTexture.GetTemporaryRT((int)camera.PixelWidth, (int)camera.PixelHeight, true, [
-            isHDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b, // Final lit color
+        // 7. Deferred Lighting Pass - Render each light's contribution
+        // Create light accumulation buffer
+        RenderTexture lightAccumulation = RenderTexture.GetTemporaryRT((int)camera.PixelWidth, (int)camera.PixelHeight, false, [
+            isHDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b, // Accumulated lighting
             ]);
 
-        // Set GBuffer textures for deferred lighting shader
+        // Set GBuffer textures as global textures for shaders
         PropertyState.SetGlobalTexture("_GBufferA", gBuffer.InternalTextures[0]);
         PropertyState.SetGlobalTexture("_GBufferB", gBuffer.InternalTextures[1]);
         PropertyState.SetGlobalTexture("_GBufferC", gBuffer.InternalTextures[2]);
         PropertyState.SetGlobalTexture("_GBufferD", gBuffer.InternalTextures[3]);
         PropertyState.SetGlobalTexture("_CameraDepthTexture", gBuffer.InternalDepth);
 
-        // Perform deferred lighting pass
-        if (s_deferredLighting != null)
+        // Clear light accumulation to black
+        Graphics.Device.BindFramebuffer(lightAccumulation.frameBuffer);
+        Graphics.Device.Clear(0, 0, 0, 0, ClearFlags.Color);
+
+        // Render each light's contribution (additive blending)
+        foreach (IRenderableLight light in lights)
         {
-            Graphics.Blit(gBuffer, deferredOutput, s_deferredLighting, 0, false, false);
-        }
-        else
-        {
-            // Fallback if deferred lighting shader is not available
-            Graphics.Blit(gBuffer, deferredOutput, null, 0, false, false);
+            if (css.CullingMask.HasLayer(light.GetLayer()) == false)
+                continue;
+
+            // Only render directional lights for now
+            if (light is DirectionalLight dirLight)
+            {
+                dirLight.OnRenderLight(gBuffer, lightAccumulation, css);
+            }
         }
 
-        // Copy depth from GBuffer to deferred output for transparent rendering
+        // =======================================================
+        // 8. Deferred Composition Pass - Combine light accumulation with GBuffer
+        // Create final composition output
+        RenderTexture composedOutput = RenderTexture.GetTemporaryRT((int)camera.PixelWidth, (int)camera.PixelHeight, true, [
+            isHDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b,
+            ]);
+
+        // Set light accumulation texture for compose shader
+        s_deferredCompose.SetTexture("_LightAccumulation", lightAccumulation.InternalTextures[0]);
+        s_deferredCompose.SetTexture("_GBufferA", gBuffer.InternalTextures[0]);
+        s_deferredCompose.SetTexture("_GBufferB", gBuffer.InternalTextures[1]);
+        s_deferredCompose.SetTexture("_GBufferD", gBuffer.InternalTextures[3]);
+
+        // Perform composition
+        Graphics.Blit(lightAccumulation, composedOutput, s_deferredCompose, 0, false, false);
+
+        // Copy depth from GBuffer to composed output for transparent rendering
         Graphics.Device.BindFramebuffer(gBuffer.frameBuffer, FBOTarget.Read);
-        Graphics.Device.BindFramebuffer(deferredOutput.frameBuffer, FBOTarget.Draw);
-        Graphics.Device.BlitFramebuffer(0, 0, gBuffer.Width, gBuffer.Height, 0, 0, deferredOutput.Width, deferredOutput.Height, ClearFlags.Depth, BlitFilter.Nearest);
+        Graphics.Device.BindFramebuffer(composedOutput.frameBuffer, FBOTarget.Draw);
+        Graphics.Device.BlitFramebuffer(0, 0, gBuffer.Width, gBuffer.Height, 0, 0, composedOutput.Width, composedOutput.Height, ClearFlags.Depth, BlitFilter.Nearest);
 
-        // Bind deferred output for transparent rendering
-        Graphics.Device.BindFramebuffer(deferredOutput.frameBuffer);
+        // Bind composed output for transparent rendering
+        Graphics.Device.BindFramebuffer(composedOutput.frameBuffer);
 
         // =======================================================
-        // 8. Apply opaque post-processing effects
+        // 9. Apply opaque post-processing effects
         if (opaqueEffects.Count > 0)
-            DrawImageEffects(deferredOutput, opaqueEffects, ref isHDR);
+            DrawImageEffects(composedOutput, opaqueEffects, ref isHDR);
 
         // =======================================================
-        // 9. Transparent geometry (Forward rendered on top of deferred result)
+        // 10. Transparent geometry (Forward rendered on top of composed result)
         DrawRenderables(renderables, "RenderOrder", "Transparent", new ViewerData(css), culledRenderableIndices, false);
 
         // =======================================================
-        // 10. Apply final post-processing effects
+        // 11. Apply final post-processing effects
         if (finalEffects.Count > 0)
-            DrawImageEffects(deferredOutput, finalEffects, ref isHDR);
+            DrawImageEffects(composedOutput, finalEffects, ref isHDR);
 
         // =======================================================
-        // 11. Render Gizmos
+        // 12. Render Gizmos
         RenderGizmos(css);
 
         // =======================================================
-        // 12. Blit Result to target, If target is null Blit will go to the Screen/Window
-        Graphics.Blit(deferredOutput, target, null, 0, false, false);
+        // 13. Blit Result to target, If target is null Blit will go to the Screen/Window
+        Graphics.Blit(composedOutput, target, null, 0, false, false);
 
         // =======================================================
-        // 13. Post Render
+        // 14. Post Render
         foreach (ImageEffect effect in all)
             effect.OnPostRender(camera);
 
         // =======================================================
-        // 14. Cleanup temporary render textures
+        // 15. Cleanup temporary render textures
         RenderTexture.ReleaseTemporaryRT(gBuffer);
-        RenderTexture.ReleaseTemporaryRT(deferredOutput);
+        RenderTexture.ReleaseTemporaryRT(lightAccumulation);
+        RenderTexture.ReleaseTemporaryRT(composedOutput);
 
         // Reset bound framebuffer if any is bound
         Graphics.Device.UnbindFramebuffer();
@@ -441,9 +466,6 @@ public class DefaultRenderPipeline : RenderPipeline
 
     private static void SetupLightingAndShadows(CameraSnapshot css, IReadOnlyList<IRenderableLight> lights, IReadOnlyList<IRenderable> renderables)
     {
-        ShadowAtlas.TryInitialize();
-        ShadowAtlas.Clear();
-
         CreateLightBuffer(css.CameraPosition, css.CullingMask, lights, renderables);
 
         if (s_shadowMap.IsValid())
@@ -453,44 +475,25 @@ public class DefaultRenderPipeline : RenderPipeline
         GlobalUniforms.SetShadowAtlasSize(new Double2(ShadowAtlas.GetSize(), ShadowAtlas.GetSize()));
     }
 
-    // Reusable arrays to avoid allocations per frame
-    private static (IRenderableLight light, double distanceSq)[] s_tempSpotLights = new (IRenderableLight, double)[32];
-    private static (IRenderableLight light, double distanceSq)[] s_tempPointLights = new (IRenderableLight, double)[32];
-    private static int s_tempSpotCount = 0;
-    private static int s_tempPointCount = 0;
-
     private static void CreateLightBuffer(Double3 cameraPosition, LayerMask cullingMask, IReadOnlyList<IRenderableLight> lights, IReadOnlyList<IRenderable> renderables)
     {
         Graphics.Device.BindFramebuffer(ShadowAtlas.GetAtlas().frameBuffer);
         Graphics.Device.Clear(0.0f, 0.0f, 0.0f, 1.0f, ClearFlags.Depth | ClearFlags.Stencil);
 
-        // We have AtlasWidth slots for shadow maps
-        // a single shadow map can consume multiple slots if its larger then 128x128
-        // We need to distribute these slots and resolutions out to lights
-        // based on their distance from the camera
-        int numDirLights = 0;
-        int spotLightIndex = 0;
-        int pointLightIndex = 0;
-        const int MAX_SPOT_LIGHTS = 4;
-        const int MAX_POINT_LIGHTS = 4;
-
-        // Reset temp counts
-        s_tempSpotCount = 0;
-        s_tempPointCount = 0;
+        // Find closest directional light
         DirectionalLight? closestDirectional = null;
         double closestDirDistSq = double.MaxValue;
 
-        // Single pass: separate by type and calculate squared distances (faster than Distance)
         foreach (IRenderableLight light in lights)
         {
             if (cullingMask.HasLayer(light.GetLayer()) == false)
                 continue;
 
-            Double3 toLight = light.GetLightPosition() - cameraPosition;
-            double distanceSq = toLight.X * toLight.X + toLight.Y * toLight.Y + toLight.Z * toLight.Z;
-
             if (light is DirectionalLight dir)
             {
+                Double3 toLight = light.GetLightPosition() - cameraPosition;
+                double distanceSq = toLight.X * toLight.X + toLight.Y * toLight.Y + toLight.Z * toLight.Z;
+
                 // Keep only the closest directional light
                 if (distanceSq < closestDirDistSq)
                 {
@@ -498,107 +501,24 @@ public class DefaultRenderPipeline : RenderPipeline
                     closestDirDistSq = distanceSq;
                 }
             }
-            else if (light is SpotLight)
-            {
-                // Grow array if needed
-                if (s_tempSpotCount >= s_tempSpotLights.Length)
-                    Array.Resize(ref s_tempSpotLights, s_tempSpotLights.Length * 2);
-
-                s_tempSpotLights[s_tempSpotCount++] = (light, distanceSq);
-            }
-            else if (light is PointLight)
-            {
-                // Grow array if needed
-                if (s_tempPointCount >= s_tempPointLights.Length)
-                    Array.Resize(ref s_tempPointLights, s_tempPointLights.Length * 2);
-
-                s_tempPointLights[s_tempPointCount++] = (light, distanceSq);
-            }
         }
 
-        // Partial sort: only sort enough to get the N closest lights
-        // This is O(n log k) instead of O(n log n) where k = MAX_LIGHTS
-        PartialSort(s_tempSpotLights, s_tempSpotCount, MAX_SPOT_LIGHTS);
-        PartialSort(s_tempPointLights, s_tempPointCount, MAX_POINT_LIGHTS);
-
-        // Process directional light first
+        // Process directional light shadows
         if (closestDirectional.IsValid())
         {
-            ProcessLight(closestDirectional, Math.Sqrt(closestDirDistSq), cameraPosition, renderables, ref numDirLights, ref spotLightIndex, ref pointLightIndex, MAX_SPOT_LIGHTS, MAX_POINT_LIGHTS);
-        }
-
-        // Process closest spot lights
-        int spotLightsToProcess = Math.Min(s_tempSpotCount, MAX_SPOT_LIGHTS);
-        for (int i = 0; i < spotLightsToProcess; i++)
-        {
-            (IRenderableLight light, double distanceSq) = s_tempSpotLights[i];
-            ProcessLight(light, Math.Sqrt(distanceSq), cameraPosition, renderables, ref numDirLights, ref spotLightIndex, ref pointLightIndex, MAX_SPOT_LIGHTS, MAX_POINT_LIGHTS);
-        }
-
-        // Process closest point lights
-        int pointLightsToProcess = Math.Min(s_tempPointCount, MAX_POINT_LIGHTS);
-        for (int i = 0; i < pointLightsToProcess; i++)
-        {
-            (IRenderableLight light, double distanceSq) = s_tempPointLights[i];
-            ProcessLight(light, Math.Sqrt(distanceSq), cameraPosition, renderables, ref numDirLights, ref spotLightIndex, ref pointLightIndex, MAX_SPOT_LIGHTS, MAX_POINT_LIGHTS);
-        }
-
-        // Set the light counts in global uniforms
-        GlobalUniforms.SetSpotLightCount(spotLightIndex);
-        GlobalUniforms.SetPointLightCount(pointLightIndex);
-        GlobalUniforms.Upload();
-    }
-
-    // Partial sort: only sorts the first 'k' elements, much faster when k << n
-    private static void PartialSort((IRenderableLight light, double distanceSq)[] array, int count, int k)
-    {
-        if (count <= 1 || k <= 0) return;
-
-        k = Math.Min(k, count);
-
-        // Use selection for small k, which is optimal for partial sorting
-        for (int i = 0; i < k; i++)
-        {
-            int minIndex = i;
-            double minDist = array[i].distanceSq;
-
-            // Find minimum in remaining elements
-            for (int j = i + 1; j < count; j++)
-            {
-                if (array[j].distanceSq < minDist)
-                {
-                    minDist = array[j].distanceSq;
-                    minIndex = j;
-                }
-            }
-
-            // Swap if needed
-            if (minIndex != i)
-            {
-                (array[minIndex], array[i]) = (array[i], array[minIndex]);
-            }
+            ProcessLight(closestDirectional, Math.Sqrt(closestDirDistSq), cameraPosition, renderables);
         }
     }
 
-    private static void ProcessLight(IRenderableLight light, double distance, Double3 cameraPosition, IReadOnlyList<IRenderable> renderables,
-        ref int numDirLights, ref int spotLightIndex, ref int pointLightIndex, int MAX_SPOT_LIGHTS, int MAX_POINT_LIGHTS)
+    private static void ProcessLight(DirectionalLight light, double distance, Double3 cameraPosition, IReadOnlyList<IRenderable> renderables)
     {
-        // Calculate resolution based on distance (already calculated)
-        int res = CalculateResolution(distance);
-        if (light is DirectionalLight dir)
-            res = (int)dir.ShadowResolution;
+        // Get shadow resolution
+        int res = (int)light.ShadowResolution;
 
         if (light.DoCastShadows())
         {
-            // Find a slot for the shadow map
-            Int2? slot;
-            bool isPointLight = light is PointLight;
-
-            // Point lights need a 2x3 grid for cubemap faces
-            if (isPointLight)
-                slot = ShadowAtlas.ReserveCubemapTiles(res, light.GetLightID());
-            else
-                slot = ShadowAtlas.ReserveTiles(res, res, light.GetLightID());
+            // Reserve space in shadow atlas
+            Int2? slot = ShadowAtlas.ReserveTiles(res, res, light.GetLightID());
 
             int AtlasX, AtlasY, AtlasWidth;
 
@@ -611,69 +531,26 @@ public class DefaultRenderPipeline : RenderPipeline
                 // Draw the shadow map
                 s_shadowMap = ShadowAtlas.GetAtlas();
 
-                // For point lights, render 6 faces
-                if (isPointLight && light is PointLight pointLight)
-                {
-                    // Set point light uniforms for shadow rendering
-                    PropertyState.SetGlobalVector("_PointLightPosition", pointLight.Transform.Position);
-                    PropertyState.SetGlobalFloat("_PointLightRange", pointLight.Range);
-                    PropertyState.SetGlobalFloat("_PointLightShadowBias", pointLight.ShadowBias);
+                Double3 forward = -light.Transform.Forward; // directional light is inverted
+                Double3 right = light.Transform.Right;
+                Double3 up = light.Transform.Up;
 
-                    for (int face = 0; face < 6; face++)
-                    {
-                        // Calculate viewport for this face in the 2x3 grid
-                        int col = face % 2;
-                        int row = face / 2;
-                        int viewportX = AtlasX + (col * res);
-                        int viewportY = AtlasY + (row * res);
+                // Set range to -1 to indicate this is not a point light
+                PropertyState.SetGlobalFloat("_PointLightRange", -1.0f);
 
-                        Graphics.Device.Viewport(viewportX, viewportY, (uint)res, (uint)res);
+                Graphics.Device.Viewport(slot.Value.X, slot.Value.Y, (uint)res, (uint)res);
 
-                        pointLight.GetShadowMatrixForFace(face, out Double4x4 view, out Double4x4 proj, out Double3 forward, out Double3 up);
-                        Double3 right = Double3.Cross(forward, up);
-                        if (CAMERA_RELATIVE)
-                            view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
+                // Use camera-following shadow matrix for directional lights
+                light.GetShadowMatrix(cameraPosition, res, out Double4x4 view, out Double4x4 proj);
 
-                        Frustum frustum = Frustum.FromMatrix(proj * view);
+                if (CAMERA_RELATIVE)
+                    view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
 
-                        HashSet<int> culledRenderableIndices = CullRenderables(renderables, frustum, LayerMask.Everything);
-                        AssignCameraMatrices(view, proj);
-                        DrawRenderables(renderables, "LightMode", "ShadowCaster", new ViewerData(light.GetLightPosition(), forward, right, up), culledRenderableIndices, false);
-                    }
+                Frustum frustum = Frustum.FromMatrix(proj * view);
 
-                    // Reset uniforms for non-point lights
-                    PropertyState.SetGlobalFloat("_PointLightRange", -1.0f);
-                }
-                else
-                {
-                    Double3 forward = ((MonoBehaviour)light).Transform.Forward;
-                    if (light is DirectionalLight)
-                        forward = -forward; // directional light is inverted atm
-                    Double3 right = ((MonoBehaviour)light).Transform.Right;
-                    Double3 up = ((MonoBehaviour)light).Transform.Up;
-
-                    // Regular directional/spot light rendering
-                    // Set range to -1 to indicate this is not a point light
-                    PropertyState.SetGlobalFloat("_PointLightRange", -1.0f);
-
-                    Graphics.Device.Viewport(slot.Value.X, slot.Value.Y, (uint)res, (uint)res);
-
-                    // Use camera-following shadow matrix for directional lights
-                    Double4x4 view, proj;
-                    if (light is DirectionalLight dirLight)
-                        dirLight.GetShadowMatrix(cameraPosition, res, out view, out proj);
-                    else
-                        light.GetShadowMatrix(out view, out proj);
-
-                    if (CAMERA_RELATIVE)
-                        view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
-
-                    Frustum frustum = Frustum.FromMatrix(proj * view);
-
-                    HashSet<int> culledRenderableIndices = CullRenderables(renderables, frustum, LayerMask.Everything);
-                    AssignCameraMatrices(view, proj);
-                    DrawRenderables(renderables, "LightMode", "ShadowCaster", new ViewerData(light.GetLightPosition(), forward, right, up), culledRenderableIndices, false);
-                }
+                HashSet<int> culledRenderableIndices = CullRenderables(renderables, frustum, LayerMask.Everything);
+                AssignCameraMatrices(view, proj);
+                DrawRenderables(renderables, "LightMode", "ShadowCaster", new ViewerData(light.GetLightPosition(), forward, right, up), culledRenderableIndices, false);
             }
             else
             {
@@ -682,55 +559,14 @@ public class DefaultRenderPipeline : RenderPipeline
                 AtlasWidth = 0;
             }
 
-
-            if (light is DirectionalLight dirLight2)
-            {
-                dirLight2.UploadToGPU(CAMERA_RELATIVE, cameraPosition, AtlasX, AtlasY, AtlasWidth);
-            }
-            else if (light is SpotLight spotLight && spotLightIndex < MAX_SPOT_LIGHTS)
-            {
-                spotLight.UploadToGPU(CAMERA_RELATIVE, cameraPosition, AtlasX, AtlasY, AtlasWidth, spotLightIndex);
-                spotLightIndex++;
-            }
-            else if (light is PointLight pointLight && pointLightIndex < MAX_POINT_LIGHTS)
-            {
-                pointLight.UploadToGPU(CAMERA_RELATIVE, cameraPosition, AtlasX, AtlasY, AtlasWidth, pointLightIndex);
-                pointLightIndex++;
-            }
+            // Upload shadow data to GPU for shader to use
+            light.UploadShadowDataToGPU(CAMERA_RELATIVE, cameraPosition, AtlasX, AtlasY, AtlasWidth);
         }
         else
         {
-            if (light is DirectionalLight dirL)
-            {
-                dirL.UploadToGPU(CAMERA_RELATIVE, cameraPosition, -1, -1, 0);
-            }
-            else if (light is SpotLight spotLight && spotLightIndex < MAX_SPOT_LIGHTS)
-            {
-                spotLight.UploadToGPU(CAMERA_RELATIVE, cameraPosition, -1, -1, 0, spotLightIndex);
-                spotLightIndex++;
-            }
-            else if (light is PointLight pointLight && pointLightIndex < MAX_POINT_LIGHTS)
-            {
-                pointLight.UploadToGPU(CAMERA_RELATIVE, cameraPosition, -1, -1, 0, pointLightIndex);
-                pointLightIndex++;
-            }
+            // No shadows, still need to upload light data
+            light.UploadShadowDataToGPU(CAMERA_RELATIVE, cameraPosition, -1, -1, 0);
         }
-
-        // Set the light counts in global uniforms
-        GlobalUniforms.SetSpotLightCount(spotLightIndex);
-        GlobalUniforms.SetPointLightCount(pointLightIndex);
-        GlobalUniforms.Upload();
-    }
-
-    private static int CalculateResolution(double distance)
-    {
-        double t = Maths.Clamp(distance / 48f, 0, 1);
-        int minSize = ShadowAtlas.GetMinShadowSize();
-        int maxSize = ShadowAtlas.GetMaxShadowSize();
-        int resolution = Maths.RoundToInt(Maths.Lerp(maxSize, minSize, t));
-
-        // Clamp to valid range
-        return Maths.Clamp(resolution, minSize, maxSize);
     }
 
     private static Double3 GetSunDirection(IReadOnlyList<IRenderableLight> lights)

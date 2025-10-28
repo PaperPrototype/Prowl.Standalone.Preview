@@ -164,6 +164,9 @@ public static class Graphics
 
         Device.BindVertexArray(null);
         Device.Clear(0, 0, 0, 1, ClearFlags.Color | ClearFlags.Depth | ClearFlags.Stencil);
+
+        ShadowAtlas.TryInitialize();
+        ShadowAtlas.Clear();
     }
 
     public static void EndFrame()

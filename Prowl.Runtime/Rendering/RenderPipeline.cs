@@ -42,6 +42,15 @@ public interface IRenderableLight
     public Double3 GetLightDirection();
     public bool DoCastShadows();
     public void GetShadowMatrix(out Double4x4 view, out Double4x4 projection);
+
+    /// <summary>
+    /// Renders the light's contribution to the scene.
+    /// Similar to ImageEffect.OnRenderImage, lights control their own drawing.
+    /// </summary>
+    /// <param name="gBuffer">GBuffer containing scene geometry data</param>
+    /// <param name="destination">Destination render texture to draw light contribution to</param>
+    /// <param name="css">Camera snapshot containing view/projection matrices and other camera data</param>
+    public void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, DefaultRenderPipeline.CameraSnapshot css);
 }
 
 public abstract class RenderPipeline : EngineObject

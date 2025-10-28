@@ -2,7 +2,11 @@
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
 using Prowl.Runtime.Rendering;
+using Prowl.Runtime.Resources;
 using Prowl.Vector;
+
+using Material = Prowl.Runtime.Resources.Material;
+using Shader = Prowl.Runtime.Resources.Shader;
 
 namespace Prowl.Runtime;
 
@@ -19,6 +23,8 @@ public class DirectionalLight : Light
     public Resolution ShadowResolution = Resolution._1024;
 
     public double ShadowDistance = 50f;
+
+    private Material? _lightMaterial;
 
     public override void Update()
     {
@@ -68,7 +74,7 @@ public class DirectionalLight : Light
         view = Double4x4.CreateLookTo(snappedPosition - (forward * ShadowDistance * 0.5), forward, Transform.Up);
     }
 
-    public void UploadToGPU(bool cameraRelative, Double3 cameraPosition, int atlasX, int atlasY, int atlasWidth)
+    public void UploadShadowDataToGPU(bool cameraRelative, Double3 cameraPosition, int atlasX, int atlasY, int atlasWidth)
     {
         // Use camera-following shadow matrix when atlas width is available (meaning we have shadow resolution info)
         Double4x4 view, proj;
@@ -88,5 +94,24 @@ public class DirectionalLight : Light
         GlobalUniforms.SetSunShadowMatrix(proj * view);
         GlobalUniforms.SetSunShadowParams(new Double4(ShadowNormalBias, ShadowStrength, ShadowDistance, (double)ShadowQuality));
         GlobalUniforms.SetSunAtlasParams(new Double4(atlasX, atlasY, atlasWidth, 0));
+        GlobalUniforms.Upload();
+    }
+
+    public override void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, DefaultRenderPipeline.CameraSnapshot css)
+    {
+        // Create material if needed
+        _lightMaterial ??= new Material(Shader.LoadDefault(DefaultShader.DirectionalLight));
+
+        // Set GBuffer textures
+        _lightMaterial.SetTexture("_GBufferA", gBuffer.InternalTextures[0]);
+        _lightMaterial.SetTexture("_GBufferB", gBuffer.InternalTextures[1]);
+        _lightMaterial.SetTexture("_GBufferC", gBuffer.InternalTextures[2]);
+        _lightMaterial.SetTexture("_GBufferD", gBuffer.InternalTextures[3]);
+        _lightMaterial.SetTexture("_CameraDepthTexture", gBuffer.InternalDepth);
+
+        // Shadow atlas is already set as a global texture in the pipeline
+
+        // Draw fullscreen quad with the directional light shader
+        Graphics.Blit(gBuffer, destination, _lightMaterial, 0, false, false);
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
 using Prowl.Runtime.Rendering;
+using Prowl.Runtime.Resources;
 using Prowl.Vector;
 
 namespace Prowl.Runtime;
@@ -36,4 +37,5 @@ public abstract class Light : MonoBehaviour, IRenderableLight
     public virtual Double3 GetLightDirection() => Transform.Forward;
     public virtual bool DoCastShadows() => CastShadows;
     public abstract void GetShadowMatrix(out Double4x4 view, out Double4x4 projection);
+    public abstract void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, DefaultRenderPipeline.CameraSnapshot css);
 }
