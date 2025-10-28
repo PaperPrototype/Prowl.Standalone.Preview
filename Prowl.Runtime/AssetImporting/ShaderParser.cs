@@ -480,7 +480,7 @@ public static class ShaderParser
                     break;
 
                 case "Blend":
-                    ParseBlendState(tokenizer, pass.State);
+                    ParseBlendState(tokenizer, ref pass.State);
                     break;
 
                 case "Cull":
@@ -564,7 +564,7 @@ public static class ShaderParser
         return tags;
     }
 
-    private static void ParseBlendState(Tokenizer<ShaderToken> tokenizer, RasterizerState state)
+    private static void ParseBlendState(Tokenizer<ShaderToken> tokenizer, ref RasterizerState state)
     {
         // Enable blending by default
         state.DoBlend = true;
