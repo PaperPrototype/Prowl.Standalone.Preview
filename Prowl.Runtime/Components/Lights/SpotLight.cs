@@ -133,7 +133,7 @@ public class SpotLight : Light
         // Create cone mesh if needed (shared by all spot lights)
         if (_mesh == null || !_mesh.IsValid())
         {
-            _mesh = Mesh.CreateSphere((float)Range + 1f, 6, 6);
+            _mesh = Mesh.CreateSphere(1f, 6, 6);
         }
 
         // Create material if needed
@@ -169,8 +169,12 @@ public class SpotLight : Light
         _lightMaterial.SetMatrix("_ShadowMatrix", _shadowMatrix);
         _lightMaterial.SetVector("_ShadowAtlasParams", _shadowAtlasParams);
 
+#warning TODO: Use Cone and fit properly!
         // Combine transformations
         Double4x4 model = this.Transform.LocalToWorldMatrix;
+        // scale by range
+        Double4x4 scale = Double4x4.CreateScale(new Double3(Range, Range, Range));
+        model = model * scale;
 
         // Handle camera-relative rendering
         if (RenderPipeline.CAMERA_RELATIVE)

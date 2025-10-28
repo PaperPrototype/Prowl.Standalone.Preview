@@ -12,41 +12,26 @@ namespace Prowl.Runtime.Rendering;
 public static class ShadowAtlas
 {
     private static int size;
-    private static int maxShadowSize;
     private static RenderTexture? atlas;
 
-    // Skyline algorithm data structures
-    private struct SkylineSegment
+    // Simple Guillotine algorithm - maintains a list of free rectangles
+    private class FreeRect
     {
-        public int X;       // Start position
-        public int Y;       // Height of this segment
-        public int Width;   // Width of this segment
+        public int X;
+        public int Y;
+        public int Width;
+        public int Height;
 
-        public SkylineSegment(int x, int y, int width)
-        {
-            X = x;
-            Y = y;
-            Width = width;
-        }
-    }
-
-    private struct PackedRect
-    {
-        public int X, Y, Width, Height;
-        public int LightID;
-
-        public PackedRect(int x, int y, int width, int height, int lightID)
+        public FreeRect(int x, int y, int width, int height)
         {
             X = x;
             Y = y;
             Width = width;
             Height = height;
-            LightID = lightID;
         }
     }
 
-    private static List<SkylineSegment> skyline = [];
-    private static List<PackedRect> packedRects = [];
+    private static List<FreeRect> freeRects = [];
 
     public static void TryInitialize()
     {
@@ -54,174 +39,109 @@ public static class ShadowAtlas
 
         bool supports8k = Graphics.MaxTextureSize >= 8192;
         size = supports8k ? 8192 : 4096;
-        maxShadowSize = 1024;
 
         atlas ??= new RenderTexture(size, size, true, []);
 
-        // Initialize skyline with one segment spanning the entire width at y=0
-        skyline.Clear();
-        skyline.Add(new SkylineSegment(0, 0, size));
-        packedRects.Clear();
+        // Initialize with one large free rectangle covering the entire atlas
+        freeRects.Clear();
+        freeRects.Add(new FreeRect(0, 0, size, size));
     }
 
     public static int GetMinShadowSize() => 32; // Minimum shadow resolution
-    public static int GetMaxShadowSize() => maxShadowSize;
     public static int GetSize() => size;
     public static RenderTexture? GetAtlas() => atlas;
 
     public static Int2? ReserveTiles(int width, int height, int lightID)
     {
         // Clamp to min/max bounds
-        width = Math.Clamp(width, 32, maxShadowSize);
-        height = Math.Clamp(height, 32, maxShadowSize);
+        width = Math.Max(width, 32);
+        height = Math.Max(height, 32);
 
         if (width > size || height > size)
             return null;
 
-        // Find best position using bottom-left heuristic
+        // Find the best free rectangle using Best-Short-Side-Fit (BSSF) heuristic
         int bestIndex = -1;
-        int bestY = int.MaxValue;
-        int bestX = int.MaxValue;
-        int bestWastedArea = int.MaxValue;
+        int bestShortSideFit = int.MaxValue;
+        int bestLongSideFit = int.MaxValue;
 
-        for (int i = 0; i < skyline.Count; i++)
+        for (int i = 0; i < freeRects.Count; i++)
         {
-            int x = skyline[i].X;
-            int y = 0;
-            int wastedArea = 0;
+            FreeRect rect = freeRects[i];
 
-            if (!CanFit(i, width, height, ref x, ref y, ref wastedArea))
-                continue;
-
-            // Prefer lower positions (bottom-left), then leftmost, then least waste
-            if (y < bestY || (y == bestY && x < bestX) || (y == bestY && x == bestX && wastedArea < bestWastedArea))
+            // Check if the rectangle fits
+            if (rect.Width >= width && rect.Height >= height)
             {
-                bestIndex = i;
-                bestY = y;
-                bestX = x;
-                bestWastedArea = wastedArea;
+                int leftoverX = rect.Width - width;
+                int leftoverY = rect.Height - height;
+                int shortSideFit = Math.Min(leftoverX, leftoverY);
+                int longSideFit = Math.Max(leftoverX, leftoverY);
+
+                if (shortSideFit < bestShortSideFit ||
+                    (shortSideFit == bestShortSideFit && longSideFit < bestLongSideFit))
+                {
+                    bestIndex = i;
+                    bestShortSideFit = shortSideFit;
+                    bestLongSideFit = longSideFit;
+                }
             }
         }
 
         if (bestIndex == -1)
-            return null;
+            return null; // No suitable space found
 
-        // Place the rectangle
-        PlaceRect(bestIndex, bestX, bestY, width, height, lightID);
+        // Place the rectangle in the best location
+        FreeRect chosen = freeRects[bestIndex];
+        int placedX = chosen.X;
+        int placedY = chosen.Y;
 
-        return new Int2(bestX, bestY);
-    }
+        // Split the chosen rectangle using the Guillotine method
+        // We split along the shorter leftover axis for better space utilization
+        List<FreeRect> newRects = new List<FreeRect>();
 
-    // Reserve tiles for point light cubemap shadows (2x3 grid layout)
-    public static Int2? ReserveCubemapTiles(int faceSize, int lightID)
-    {
-        int cubemapWidth = faceSize * 2;  // 2 faces wide
-        int cubemapHeight = faceSize * 3; // 3 faces tall
-        return ReserveTiles(cubemapWidth, cubemapHeight, lightID);
-    }
+        int leftoverWidth = chosen.Width - width;
+        int leftoverHeight = chosen.Height - height;
 
-    private static bool CanFit(int segmentIndex, int width, int height, ref int outX, ref int outY, ref int wastedArea)
-    {
-        int x = skyline[segmentIndex].X;
-        int y = skyline[segmentIndex].Y;
-
-        // Check if we go beyond atlas width
-        if (x + width > size)
-            return false;
-
-        int maxY = y;
-        int currentX = x;
-        int segmentIdx = segmentIndex;
-        wastedArea = 0;
-
-        // Check all segments we would overlap
-        while (currentX < x + width && segmentIdx < skyline.Count)
+        if (leftoverWidth > 0 && leftoverHeight > 0)
         {
-            SkylineSegment segment = skyline[segmentIdx];
-            maxY = Math.Max(maxY, segment.Y);
-
-            // Check if height fits
-            if (maxY + height > size)
-                return false;
-
-            // Calculate wasted area (area below rect but above skyline)
-            int overlapWidth = Math.Min(segment.X + segment.Width, x + width) - currentX;
-            wastedArea += overlapWidth * (maxY - segment.Y);
-
-            currentX += overlapWidth;
-            segmentIdx++;
-        }
-
-        outX = x;
-        outY = maxY;
-        return true;
-    }
-
-    private static void PlaceRect(int segmentIndex, int x, int y, int width, int height, int lightID)
-    {
-        packedRects.Add(new PackedRect(x, y, width, height, lightID));
-
-        int newY = y + height;
-        int rectRight = x + width;
-        int i = segmentIndex;
-
-        // Handle segment that starts before rectangle
-        if (skyline[i].X < x)
-        {
-            SkylineSegment segment = skyline[i];
-            int leftWidth = x - segment.X;
-            skyline[i] = new SkylineSegment(segment.X, segment.Y, leftWidth);
-            i++;
-
-            // Insert new segment for overlapped portion if needed
-            if (segment.X + segment.Width > rectRight)
+            // Both dimensions have leftover space - split into two rectangles
+            if (leftoverWidth <= leftoverHeight)
             {
-                skyline.Insert(i, new SkylineSegment(rectRight, segment.Y,
-                    segment.X + segment.Width - rectRight));
-            }
-        }
-
-        // Remove or trim segments covered by rectangle
-        while (i < skyline.Count && skyline[i].X < rectRight)
-        {
-            SkylineSegment segment = skyline[i];
-
-            if (segment.X + segment.Width <= rectRight)
-            {
-                skyline.RemoveAt(i);
+                // Horizontal split
+                newRects.Add(new FreeRect(chosen.X + width, chosen.Y, leftoverWidth, chosen.Height));
+                newRects.Add(new FreeRect(chosen.X, chosen.Y + height, width, leftoverHeight));
             }
             else
             {
-                skyline[i] = new SkylineSegment(rectRight, segment.Y,
-                    segment.X + segment.Width - rectRight);
-                break;
+                // Vertical split
+                newRects.Add(new FreeRect(chosen.X, chosen.Y + height, chosen.Width, leftoverHeight));
+                newRects.Add(new FreeRect(chosen.X + width, chosen.Y, leftoverWidth, height));
             }
         }
-
-        // Insert new segment for placed rectangle
-        skyline.Insert(i, new SkylineSegment(x, newY, width));
-
-        MergeSkyline();
-    }
-
-    private static void MergeSkyline()
-    {
-        for (int i = 0; i < skyline.Count - 1; i++)
+        else if (leftoverWidth > 0)
         {
-            if (skyline[i].Y == skyline[i + 1].Y)
-            {
-                skyline[i] = new SkylineSegment(skyline[i].X, skyline[i].Y, skyline[i].Width + skyline[i + 1].Width);
-                skyline.RemoveAt(i + 1);
-                i--;
-            }
+            // Only horizontal space left
+            newRects.Add(new FreeRect(chosen.X + width, chosen.Y, leftoverWidth, chosen.Height));
         }
+        else if (leftoverHeight > 0)
+        {
+            // Only vertical space left
+            newRects.Add(new FreeRect(chosen.X, chosen.Y + height, chosen.Width, leftoverHeight));
+        }
+
+        // Remove the used rectangle and add the new free rectangles
+        freeRects.RemoveAt(bestIndex);
+        freeRects.AddRange(newRects);
+
+        // TODO: Merge adjacent rectangles to reduce fragmentation
+
+        return new Int2(placedX, placedY);
     }
 
     public static void Clear()
     {
-        // Reset skyline to initial state
-        skyline.Clear();
-        skyline.Add(new SkylineSegment(0, 0, size));
-        packedRects.Clear();
+        // Reset to initial state with one large free rectangle
+        freeRects.Clear();
+        freeRects.Add(new FreeRect(0, 0, size, size));
     }
 }

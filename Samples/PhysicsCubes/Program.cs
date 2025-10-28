@@ -323,16 +323,16 @@ public sealed class PhysicsDemo : Game
         BoxCollider cubeCollider = cube.AddComponent<BoxCollider>();
         cubeCollider.Size = new Double3(0.5, 0.5, 0.5);
 
-        var light = cube.AddComponent<SpotLight>();
+        var light = cube.AddComponent<PointLight>();
         light.ShadowQuality = ShadowQuality.Soft;
-        light.Intensity = 64;
+        light.Intensity = 32;
         light.Color = new Color(RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), 1f);
         light.Transform.Rotation = cameraGO.Transform.Rotation;
 
         scene.Add(cube);
 
         // Add velocity in the direction the camera is facing
-        cubeRb.LinearVelocity = cameraGO.Transform.Forward * 20.0;
+        cubeRb.LinearVelocity = cameraGO.Transform.Forward * 1.0;
 
 
         shootCounter++;
@@ -404,7 +404,7 @@ public sealed class PhysicsDemo : Game
         }
 
         // Shoot cube with left mouse button
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButtonDown(0))
         {
             ShootCube();
         }

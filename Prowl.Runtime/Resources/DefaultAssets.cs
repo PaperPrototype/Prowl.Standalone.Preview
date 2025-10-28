@@ -17,6 +17,7 @@ public enum DefaultShader
     Blit,
     DirectionalLight,
     SpotLight,
+    PointLight,
     DeferredCompose,
 
     ProceduralSkybox,
