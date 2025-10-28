@@ -49,8 +49,8 @@ public sealed class PhysicsDemo : Game
         [
             new ScreenSpaceReflectionEffect(),
             new FXAAEffect(),
-            new KawaseBloomEffect(),
             new BokehDepthOfFieldEffect(),
+            new KawaseBloomEffect(),
             new TonemapperEffect(),
         ];
 

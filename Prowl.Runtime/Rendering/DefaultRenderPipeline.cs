@@ -621,7 +621,6 @@ public class DefaultRenderPipeline : RenderPipeline
 
     private static void DrawImageEffects(RenderTexture forwardBuffer, List<ImageEffect> effects, ref bool isHDR)
     {
-        return;
         // Early exit if no effects to process
         if (effects == null || effects.Count == 0)
             return;

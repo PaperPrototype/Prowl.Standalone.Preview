@@ -34,8 +34,8 @@ Pass "SSR"
 
         uniform sampler2D _MainTex;
         uniform sampler2D _CameraDepthTexture;
-        uniform sampler2D _CameraNormalsTexture;
-        uniform sampler2D _CameraSurfaceTexture;
+        uniform sampler2D _GBufferB; // RGB = Normal (view space), A = ShadingMode
+        uniform sampler2D _GBufferC; // R = Roughness, G = Metalness, B = Specular, A = Unused
         
         uniform int _RayStepCount;
         uniform float _ScreenEdgeFade;
@@ -77,16 +77,19 @@ Pass "SSR"
 			vec3 color = base.rgb;
 			OutputColor = base;
 
-            // Get surface data
-            vec4 surfaceData = texture(_CameraSurfaceTexture, TexCoords); // R: Roughness, G: Metallicness
-            float smoothness = 1.0 - surfaceData.r;
-            float metallic = surfaceData.g;
+            // Get surface data from GBufferC
+            vec4 gbufferC = texture(_GBufferC, TexCoords); // R: Roughness, G: Metalness, B: Specular
+            float roughness = gbufferC.r;
+            float metallic = gbufferC.g;
+            float smoothness = 1.0 - roughness;
 
 			smoothness = smoothness * smoothness;
 
 			if(smoothness > 0.01)
 			{
-                vec3 normal = normalize(texture(_CameraNormalsTexture, TexCoords).xyz);
+                // Get view-space normal from GBufferB and unpack from [0,1] to [-1,1]
+                vec3 viewNormal = texture(_GBufferB, TexCoords).rgb * 2.0 - 1.0;
+                vec3 normal = normalize(viewNormal);
 
 				vec3 screenPos = getScreenPos(TexCoords, _CameraDepthTexture);
 				vec3 viewPos = getViewFromScreenPos(screenPos);
