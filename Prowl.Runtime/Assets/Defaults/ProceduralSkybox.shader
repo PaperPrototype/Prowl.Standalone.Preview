@@ -9,6 +9,7 @@ Pass "Skybox"
     Tags { "RenderOrder" = "Opaque" }
 
     // Rasterizer culling mode
+    Blend Off
     Cull None
     ZTest Lequal
 
@@ -248,30 +249,41 @@ Pass "Skybox"
 
 	    Fragment
 	    {
-	    	layout(location = 0) out vec4 OutputColor;
-	    	layout(location = 1) out vec4 OutputMotion;
-	    	layout(location = 2) out vec4 OutputNormal;
-	    	
+	    	// GBuffer layout for deferred rendering:
+	    	// BufferA: RGB = Albedo, A = AO
+	    	// BufferB: RGB = Normal (view space), A = ShadingMode
+	    	// BufferC: R = Roughness, G = Metalness, B = Specular, A = Unused
+	    	// BufferD: Custom Data per Shading Mode (Emissive for Unlit mode)
+	    	layout(location = 0) out vec4 gBufferA;
+	    	layout(location = 1) out vec4 gBufferB;
+	    	layout(location = 2) out vec4 gBufferC;
+	    	layout(location = 3) out vec4 gBufferD;
+
             in vec3 vSkyColor;
             in vec3 vDirection;
             in vec3 vSunDir;
 
 	    	void main()
 	    	{
-	    		//OutputColor = vec4(1.0, 0.0, 0.0, 1.0);
-                //return;
-
                 vec3 color = vSkyColor;
 
-                
 	            color.rgb += smoothstep(0.996, 0.9965, dot(normalize(vDirection), vSunDir)); // Sun
 
                 // Apply exposure.
                 color = 1.0 - exp(-1.0 * color);
 
-	    		OutputColor = vec4(color, 1.0);
-                OutputMotion = vec4(0.0, 0.0, 0.0, 1.0);
-                OutputNormal = vec4(0.0, 0.0, 0.0, 1.0);
+	    		// Output to GBuffer as Unlit (shading mode 0)
+	    		// BufferA: Black albedo (skybox doesn't need albedo)
+	    		gBufferA = vec4(color, 0.0);
+
+	    		// BufferB: Normal doesn't matter, but set shading mode to 0 (Unlit)
+	    		gBufferB = vec4(0.5, 0.5, 0.5, 0.0); // Normal encoded as 0.5 (neutral), shading mode = 0 (Unlit)
+
+	    		// BufferC: Material properties don't matter for unlit
+	    		gBufferC = vec4(0.0, 0.0, 0.0, 0.0);
+
+	    		// BufferD: For Unlit mode (0), RGBA is treated as Emissive
+	    		gBufferD = vec4(0.0, 0.0, 0.0, 0.0);
 	    	}
 
 	    }

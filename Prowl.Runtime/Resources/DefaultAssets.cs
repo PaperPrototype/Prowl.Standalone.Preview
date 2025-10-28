@@ -15,6 +15,7 @@ public enum DefaultShader
     UI,
     Gizmos,
     Blit,
+    DeferredLighting,
 
     ProceduralSkybox,
     Tonemapper,

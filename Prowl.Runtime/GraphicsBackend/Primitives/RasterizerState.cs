@@ -15,7 +15,7 @@ public struct RasterizerState
     public bool DepthWrite = true;
     public DepthMode Depth = DepthMode.Lequal;
 
-    public bool DoBlend = true;
+    public bool DoBlend = false;
     public Blending BlendSrc = Blending.SrcAlpha;
     public Blending BlendDst = Blending.OneMinusSrcAlpha;
     public BlendMode Blend = BlendMode.Add;

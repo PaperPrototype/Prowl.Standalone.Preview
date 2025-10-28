@@ -30,9 +30,6 @@ Pass "Standard"
 
 			out vec2 texCoord0;
 			out vec3 worldPos;
-			out vec4 currentPos;
-			out vec4 previousPos;
-			out float fogCoord;
 
 			out vec4 vColor;
 			out vec3 vNormal;
@@ -47,13 +44,7 @@ Pass "Standard"
 				vec3 skinnedNormal = GetSkinnedNormal(vertexNormal);
 
 				gl_Position = PROWL_MATRIX_MVP * skinnedPos;
-				fogCoord = gl_Position.z;
-				currentPos = gl_Position; // Clip space
 				texCoord0 = vertexTexCoord0;
-
-				// Previous position with current projection (using skinned position)
-				vec4 prevWorldPos = PROWL_MATRIX_M_PREVIOUS * skinnedPos;
-				previousPos = PROWL_MATRIX_VP_PREVIOUS * prevWorldPos;
 
 				worldPos = (PROWL_MATRIX_M * skinnedPos).xyz;
 
@@ -69,13 +60,7 @@ Pass "Standard"
 #else
 				// Non-skinned rendering (original code)
 				gl_Position = PROWL_MATRIX_MVP * vec4(vertexPosition, 1.0);
-				fogCoord = gl_Position.z;
-				currentPos = gl_Position; // Clip space
 				texCoord0 = vertexTexCoord0;
-
-				// Previous position with current projection
-				vec4 prevWorldPos = PROWL_MATRIX_M_PREVIOUS * vec4(vertexPosition, 1.0);
-				previousPos = PROWL_MATRIX_VP_PREVIOUS * prevWorldPos;
 
 				worldPos = (PROWL_MATRIX_M * vec4(vertexPosition, 1.0)).xyz;
 
@@ -93,20 +78,21 @@ Pass "Standard"
 		Fragment
 		{
             #include "Fragment"
-            #include "Lighting"
 
 			//#define USEGENERATEDNORMALS
 
-			layout (location = 0) out vec4 gAlbedo;
-			layout (location = 1) out vec4 gMotionVector;
-			layout (location = 2) out vec4 gNormal;
-			layout (location = 3) out vec4 gSurface;
+			// GBuffer layout:
+			// BufferA: RGB = Albedo, A = AO
+			// BufferB: RGB = Normal (view space), A = ShadingMode
+			// BufferC: R = Roughness, G = Metalness, B = Specular, A = Unused
+			// BufferD: Custom Data per Shading Mode (e.g., shading mode 0 = Unlit with RGBA as Emissive)
+			layout (location = 0) out vec4 gBufferA;
+			layout (location = 1) out vec4 gBufferB;
+			layout (location = 2) out vec4 gBufferC;
+			layout (location = 3) out vec4 gBufferD;
 
 			in vec2 texCoord0;
 			in vec3 worldPos;
-			in vec4 currentPos;
-			in vec4 previousPos;
-			in float fogCoord;
 			in vec4 vColor;
 			in vec3 vNormal;
 			in vec3 vTangent;
@@ -117,8 +103,6 @@ Pass "Standard"
 			uniform sampler2D _SurfaceTex; // surface - AO, roughness, metallic
 			uniform sampler2D _EmissionTex; // emission
 			uniform float _EmissionIntensity; // emission intensity
-
-			uniform sampler2D _ShadowAtlas;
 
 			uniform vec4 _MainColor;
 
@@ -172,12 +156,6 @@ Pass "Standard"
 
 			void main()
 			{
-				// Calculate screen-space motion vector
-				// Convert positions to NDC space [-1,1]
-				vec2 curNDC = (currentPos.xy / currentPos.w) - _CameraJitter;
-				vec2 prevNDC = (previousPos.xy / previousPos.w) - _CameraPreviousJitter;
-			    gMotionVector = vec4((curNDC - prevNDC) * 0.5, 0.0, 1.0);
-
 				// Albedo
 				vec4 albedo = texture(_MainTex, texCoord0) * vColor * _MainColor;
 
@@ -186,7 +164,6 @@ Pass "Standard"
 #ifdef HAS_TANGENTS
 				// Create tangent to world matrix
 				mat3 TBN = mat3(normalize(vTangent), normalize(vBitangent), normalize(vNormal));
-
 
                 // Normal mapping with fallback to generated normals
                 #ifdef USEGENERATEDNORMALS
@@ -206,86 +183,39 @@ Pass "Standard"
                 // Transform to view space
                 vec3 viewNormal = normalize(mat3(PROWL_MATRIX_V) * worldNormal);
 
-                // Output the normal
-                gNormal = vec4(viewNormal, 1.0); // Add explicit alpha
-
 				// AO, roughness, metallic
 				vec4 surface = texture(_SurfaceTex, texCoord0);
 				float ao = 1.0 - surface.r;
 				float roughness = surface.g;
 				float metallic = surface.b;
-				gSurface = vec4(roughness, metallic, 0.0, 1.0); // Add explicit alpha
 
 				// Emission
 				vec4 emission = texture(_EmissionTex, texCoord0) * _EmissionIntensity;
 
-				// Base color
+				// Convert albedo to linear space
 				vec3 baseColor = albedo.rgb;
 				baseColor.rgb = GammaToLinearSpace(baseColor.rgb);
 
-				// Calculate lighting
-				// Get directional light from global uniforms
-				SunLightStruct sun = GetDirectionalLight();
-				vec3 lighting = CalculateDirectionalLight(sun, worldPos, worldNormal, _WorldSpaceCameraPos.xyz, baseColor, metallic, roughness, ao, _ShadowAtlas, prowl_ShadowAtlasSize);
-				lighting += baseColor.rgb * CalculateAmbient(worldNormal);
+				// Calculate specular from metallic workflow
+				// For non-metals, specular is 0.04 (4% reflectance)
+				// For metals, specular is derived from albedo
+				float specular = mix(0.04, 1.0, metallic);
 
-				// Add spot lights (max 4)
-				for (int i = 0; i < prowl_SpotLightCount && i < 4; i++) {
-					SpotLightStruct spotLight = GetSpotLight(i);
-					lighting += CalculateSpotLight(spotLight, worldPos, worldNormal, _WorldSpaceCameraPos.xyz, baseColor, metallic, roughness, ao, _ShadowAtlas, prowl_ShadowAtlasSize);
-				}
+				// Output to GBuffer
+				// BufferA: RGB = Albedo, A = AO
+				gBufferA = vec4(baseColor, ao);
 
-				// Add point lights (max 4)
-				for (int i = 0; i < prowl_PointLightCount && i < 4; i++) {
-					PointLightStruct pointLight = GetPointLight(i);
-					lighting += CalculatePointLight(pointLight, worldPos, worldNormal, _WorldSpaceCameraPos.xyz, baseColor, metallic, roughness, ao, _ShadowAtlas, prowl_ShadowAtlasSize);
-				}
+				// BufferB: RGB = Normal (view space), A = ShadingMode
+				// ShadingMode: 0 = Unlit, 1 = Lit
+				float shadingMode = 1.0; // Lit by default for Standard shader
+				gBufferB = vec4(viewNormal * 0.5 + 0.5, shadingMode); // Encode normal to [0,1] range
 
-				// Add emission
-				lighting += emission.rgb * 1.0;
+				// BufferC: R = Roughness, G = Metalness, B = Specular, A = Unused
+				gBufferC = vec4(roughness, metallic, specular, 0.0);
 
-				// Final output
-				gAlbedo = vec4(lighting, 1.0);
-
-				// Apply fog
-				gAlbedo.rgb = ApplyFog(fogCoord, gAlbedo.rgb);
-			}
-		}
-	ENDGLSL
-}
-
-Pass "StandardMotionVector"
-{
-    Tags { "RenderOrder" = "DepthOnly" }
-
-    // Rasterizer culling mode
-    Cull Back
-
-	GLSLPROGRAM
-
-		Vertex
-		{
-            #include "Fragment"
-            #include "VertexAttributes"
-
-			void main()
-			{
-#ifdef SKINNED
-				// Apply skinning for depth pre-pass
-				vec4 skinnedPos = GetSkinnedPosition(vertexPosition);
-				gl_Position = PROWL_MATRIX_MVP * skinnedPos;
-#else
-				gl_Position = PROWL_MATRIX_MVP * vec4(vertexPosition, 1.0);
-#endif
-			}
-		}
-
-		Fragment
-		{
-            #include "Fragment"
-
-			void main()
-			{
+				// BufferD: Custom Data per Shading Mode
+				// For Lit mode (1), we store emission data
+				gBufferD = vec4(emission.rgb, 0.0);
 			}
 		}
 	ENDGLSL

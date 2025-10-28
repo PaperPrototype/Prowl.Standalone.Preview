@@ -61,6 +61,7 @@ public class DefaultRenderPipeline : RenderPipeline
     private static Material s_defaultMaterial;
     private static Material s_skybox;
     private static Material s_gizmo;
+    private static Material s_deferredLighting;
 
     private static RenderTexture? s_shadowMap;
 
@@ -82,6 +83,9 @@ public class DefaultRenderPipeline : RenderPipeline
         s_defaultMaterial ??= new Material(Shader.LoadDefault(DefaultShader.Standard));
         s_skybox ??= new Material(Shader.LoadDefault(DefaultShader.ProceduralSkybox));
         s_gizmo ??= new Material(Shader.LoadDefault(DefaultShader.Gizmos));
+
+        // Load deferred lighting shader
+        s_deferredLighting ??= new Material(Shader.LoadDefault(DefaultShader.DeferredLighting));
 
         if (s_skyDome.IsNotValid())
         {
@@ -291,40 +295,22 @@ public class DefaultRenderPipeline : RenderPipeline
         AssignCameraMatrices(css.View, css.Projection);
 
         // =======================================================
-        // 6. Pre-Depth Pass
-        // We draw objects to get the DepthBuffer but we also draw it into a ColorBuffer so we upload it as a Sampleable Texture
-        RenderTexture preDepth = RenderTexture.GetTemporaryRT((int)css.PixelWidth, (int)css.PixelHeight, true, []);
-
-        // Bind depth texture as the target
-        Graphics.Device.BindFramebuffer(preDepth.frameBuffer);
-        Graphics.Device.Clear(0f, 0f, 0, 0f, ClearFlags.Depth | ClearFlags.Stencil);
-
-        // Draw depth for all visible objects
-        DrawRenderables(renderables, "RenderOrder", "DepthOnly", new ViewerData(css), culledRenderableIndices, false);
-
-        // =======================================================
-        // 6.1. Set the depth texture for use in post-processing
-        PropertyState.SetGlobalTexture("_CameraDepthTexture", preDepth.InternalDepth);
-
-        // =======================================================
-        // 7. Opaque geometry
-        RenderTexture forwardBuffer = RenderTexture.GetTemporaryRT((int)camera.PixelWidth, (int)camera.PixelHeight, true, [
-            isHDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b, // Albedo
-            TextureImageFormat.Float2, // Motion Vectors
-            TextureImageFormat.Float3, // Normals
-            TextureImageFormat.Float2, // Surface
+        // 6. Create GBuffer for Deferred Rendering
+        // GBuffer layout:
+        // BufferA: RGB = Albedo, A = Alpha
+        // BufferB: RGB = Normal (view space), A = ShadingMode
+        // BufferC: R = Roughness, G = Metalness, B = Specular, A = AO
+        // BufferD: Custom Data per Shading Mode (e.g., Emissive for Lit mode)
+        RenderTexture gBuffer = RenderTexture.GetTemporaryRT((int)css.PixelWidth, (int)css.PixelHeight, true, [
+            TextureImageFormat.Float4, // BufferA - Albedo + Alpha
+            TextureImageFormat.Float4, // BufferB - Normal + ShadingMode
+            TextureImageFormat.Float4, // BufferC - Roughness, Metalness, Specular, AO
+            TextureImageFormat.Float4, // BufferD - Custom Data (Emissive, etc.)
             ]);
 
-        // Copy the depth buffer to the forward buffer
-        // This is technically not needed, however, a big reason people do a Pre-Depth pass outside post processing like SSAO
-        // Is so the GPU can early cull lighting calculations in forward rendering
-        // This turns Forward rendering into essentially deferred in the eyes of lighting, as it now only calculates lighting for pixels that are actually visible
-        Graphics.Device.BindFramebuffer(preDepth.frameBuffer, FBOTarget.Read);
-        Graphics.Device.BindFramebuffer(forwardBuffer.frameBuffer, FBOTarget.Draw);
-        Graphics.Device.BlitFramebuffer(0, 0, preDepth.Width, preDepth.Height, 0, 0, forwardBuffer.Width, forwardBuffer.Height, ClearFlags.Depth, BlitFilter.Nearest);
-
-        // 7.1 Bind the forward buffer fully, The bit only binds it for Drawing into, We need to bind it for reading too
-        Graphics.Device.BindFramebuffer(forwardBuffer.frameBuffer);
+        // Bind GBuffer as the target
+        Graphics.Device.BindFramebuffer(gBuffer.frameBuffer);
+        // 6.1 Clear GBuffer
         switch (camera.ClearFlags)
         {
             case CameraClearFlags.Skybox:
@@ -358,42 +344,73 @@ public class DefaultRenderPipeline : RenderPipeline
                 break;
         }
 
-        DrawRenderables(renderables, "RenderOrder", "Opaque", new ViewerData(css), culledRenderableIndices, true);
+        // 6.2 Draw opaque geometry to GBuffer
+        DrawRenderables(renderables, "RenderOrder", "Opaque", new ViewerData(css), culledRenderableIndices, false);
 
-        // 8.1 Set the Motion Vectors Texture for use in post-processing
-        PropertyState.SetGlobalTexture("_CameraMotionVectorsTexture", forwardBuffer.InternalTextures[1]);
-        // 8.2 Set the Normals Texture for use in post-processing
-        PropertyState.SetGlobalTexture("_CameraNormalsTexture", forwardBuffer.InternalTextures[2]);
-        // 8.3 Set the Surface Texture for use in post-processing
-        PropertyState.SetGlobalTexture("_CameraSurfaceTexture", forwardBuffer.InternalTextures[3]);
+        // =======================================================
+        // 7. Deferred Lighting Pass
+        // Create output buffer for deferred lighting result
+        RenderTexture deferredOutput = RenderTexture.GetTemporaryRT((int)camera.PixelWidth, (int)camera.PixelHeight, true, [
+            isHDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b, // Final lit color
+            ]);
 
-        // 9. Apply opaque post-processing effects
+        // Set GBuffer textures for deferred lighting shader
+        PropertyState.SetGlobalTexture("_GBufferA", gBuffer.InternalTextures[0]);
+        PropertyState.SetGlobalTexture("_GBufferB", gBuffer.InternalTextures[1]);
+        PropertyState.SetGlobalTexture("_GBufferC", gBuffer.InternalTextures[2]);
+        PropertyState.SetGlobalTexture("_GBufferD", gBuffer.InternalTextures[3]);
+        PropertyState.SetGlobalTexture("_CameraDepthTexture", gBuffer.InternalDepth);
+
+        // Perform deferred lighting pass
+        if (s_deferredLighting != null)
+        {
+            Graphics.Blit(gBuffer, deferredOutput, s_deferredLighting, 0, false, false);
+        }
+        else
+        {
+            // Fallback if deferred lighting shader is not available
+            Graphics.Blit(gBuffer, deferredOutput, null, 0, false, false);
+        }
+
+        // Copy depth from GBuffer to deferred output for transparent rendering
+        Graphics.Device.BindFramebuffer(gBuffer.frameBuffer, FBOTarget.Read);
+        Graphics.Device.BindFramebuffer(deferredOutput.frameBuffer, FBOTarget.Draw);
+        Graphics.Device.BlitFramebuffer(0, 0, gBuffer.Width, gBuffer.Height, 0, 0, deferredOutput.Width, deferredOutput.Height, ClearFlags.Depth, BlitFilter.Nearest);
+
+        // Bind deferred output for transparent rendering
+        Graphics.Device.BindFramebuffer(deferredOutput.frameBuffer);
+
+        // =======================================================
+        // 8. Apply opaque post-processing effects
         if (opaqueEffects.Count > 0)
-            DrawImageEffects(forwardBuffer, opaqueEffects, ref isHDR);
+            DrawImageEffects(deferredOutput, opaqueEffects, ref isHDR);
 
-        // 10. Transparent geometry
+        // =======================================================
+        // 9. Transparent geometry (Forward rendered on top of deferred result)
         DrawRenderables(renderables, "RenderOrder", "Transparent", new ViewerData(css), culledRenderableIndices, false);
 
-        // 11. Apply final post-processing effects
+        // =======================================================
+        // 10. Apply final post-processing effects
         if (finalEffects.Count > 0)
-            DrawImageEffects(forwardBuffer, finalEffects, ref isHDR);
+            DrawImageEffects(deferredOutput, finalEffects, ref isHDR);
 
-
-        //if (data.DisplayGizmo)
+        // =======================================================
+        // 11. Render Gizmos
         RenderGizmos(css);
 
-        // 12. Blit the Result to the camera's Target whether thats the Screen or a RenderTexture
+        // =======================================================
+        // 12. Blit Result to target, If target is null Blit will go to the Screen/Window
+        Graphics.Blit(deferredOutput, target, null, 0, false, false);
 
-        // 13. Blit Result to target, If target is null Blit will go to the Screen/Window
-        Graphics.Blit(forwardBuffer, target, null, 0, false, false);
-
-        // 14. Post Render
+        // =======================================================
+        // 13. Post Render
         foreach (ImageEffect effect in all)
             effect.OnPostRender(camera);
 
-
-        RenderTexture.ReleaseTemporaryRT(preDepth);
-        RenderTexture.ReleaseTemporaryRT(forwardBuffer);
+        // =======================================================
+        // 14. Cleanup temporary render textures
+        RenderTexture.ReleaseTemporaryRT(gBuffer);
+        RenderTexture.ReleaseTemporaryRT(deferredOutput);
 
         // Reset bound framebuffer if any is bound
         Graphics.Device.UnbindFramebuffer();
@@ -766,6 +783,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
     private static void DrawImageEffects(RenderTexture forwardBuffer, List<ImageEffect> effects, ref bool isHDR)
     {
+        return;
         // Early exit if no effects to process
         if (effects == null || effects.Count == 0)
             return;

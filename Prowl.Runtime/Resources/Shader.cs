@@ -142,6 +142,7 @@ public sealed class Shader : EngineObject, ISerializationCallbackReceiver
             DefaultShader.UI => "UI.shader",
             DefaultShader.Gizmos => "Gizmos.shader",
             DefaultShader.Blit => "Blit.shader",
+            DefaultShader.DeferredLighting => "DeferredLighting.shader",
             DefaultShader.ProceduralSkybox => "ProceduralSkybox.shader",
             DefaultShader.Tonemapper => "Tonemapper.shader",
             DefaultShader.SSR => "SSR.shader",
