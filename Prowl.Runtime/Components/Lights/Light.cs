@@ -36,7 +36,6 @@ public abstract class Light : MonoBehaviour, IRenderableLight
     public virtual Double3 GetLightPosition() => Transform.Position;
     public virtual Double3 GetLightDirection() => Transform.Forward;
     public virtual bool DoCastShadows() => CastShadows;
-    public abstract void GetShadowMatrix(out Double4x4 view, out Double4x4 projection);
 
     /// <summary>
     /// Renders this light's shadow map into the shadow atlas.
@@ -44,9 +43,8 @@ public abstract class Light : MonoBehaviour, IRenderableLight
     /// </summary>
     /// <param name="pipeline">The current render pipeline</param>
     /// <param name="cameraPosition">Position of the camera in world space</param>
-    /// <param name="cameraRelative">Whether camera-relative rendering is enabled</param>
     /// <param name="renderables">List of all renderables that could cast shadows</param>
-    public abstract void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, bool cameraRelative, System.Collections.Generic.IReadOnlyList<IRenderable> renderables);
+    public abstract void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables);
 
-    public abstract void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, DefaultRenderPipeline.CameraSnapshot css);
+    public abstract void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, RenderPipeline.CameraSnapshot css);
 }

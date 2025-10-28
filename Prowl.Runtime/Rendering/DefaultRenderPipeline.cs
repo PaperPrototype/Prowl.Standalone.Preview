@@ -353,7 +353,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
             if (light is Light lightComponent)
             {
-                lightComponent.RenderShadows(this, cameraPosition, CAMERA_RELATIVE, renderables);
+                lightComponent.RenderShadows(this, cameraPosition, renderables);
             }
         }
     }
