@@ -194,7 +194,7 @@ Pass "Standard"
 
 				// Convert albedo to linear space
 				vec3 baseColor = albedo.rgb;
-				baseColor.rgb = GammaToLinearSpace(baseColor.rgb);
+				baseColor.rgb = gammaToLinearSpace(baseColor.rgb);
 
 				// Calculate specular from metallic workflow
 				// For non-metals, specular is 0.04 (4% reflectance)

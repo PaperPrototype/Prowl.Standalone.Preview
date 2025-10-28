@@ -173,7 +173,7 @@ Pass "Tonemapper"
 
 			// Gamma Correct
 			//color = pow(color, vec3(1.0 / 2.2));
-            color = LinearToGammaSpace(color);
+            color = linearToGammaSpace(color);
 			
 			OutputColor = contrastMatrix() * saturationMatrix() * vec4(color, base.a);
 		}

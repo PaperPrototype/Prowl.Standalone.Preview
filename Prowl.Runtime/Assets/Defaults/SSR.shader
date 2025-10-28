@@ -41,13 +41,6 @@ Pass "RayMarch"
 
         layout(location = 0) out vec4 reflectionData;
 
-        // Get view space position from depth
-        vec3 getViewPosition(vec2 texCoord, float depth)
-        {
-            vec4 clipPos = vec4(texCoord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-            vec4 viewPos = inverse(prowl_MatP) * clipPos;
-            return viewPos.xyz / viewPos.w;
-        }
 
         // Project view space position to screen space (UV + depth)
         vec3 projectToScreenSpace(vec3 viewPos)
@@ -66,7 +59,7 @@ Pass "RayMarch"
         )
         {
             // Calculate end point in view space and project to screen
-            vec3 startView = getViewPosition(startScreen.xy, startScreen.z);
+            vec3 startView = getViewPos(startScreen.xy, startScreen.z);
             vec3 endView = startView + reflectionDir * 100.0; // Ray length in view space
             vec3 endScreen = projectToScreenSpace(endView);
 
@@ -144,7 +137,7 @@ Pass "RayMarch"
             float metalness = pbrData.g;
 
             // Get view space position and calculate reflection direction
-            vec3 viewPos = getViewPosition(TexCoords, startDepth);
+            vec3 viewPos = getViewPos(TexCoords, startDepth);
             vec3 viewDir = normalize(viewPos);
             vec3 reflectionDir = reflect(viewDir, viewNormal);
 

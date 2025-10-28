@@ -91,7 +91,7 @@ Pass "Unlit"
 				gSurface = vec4(1.0, 0.0, 0.0, 1.0);
 
 				vec3 baseColor = albedo.rgb;
-				baseColor.rgb = GammaToLinearSpace(baseColor.rgb);
+				baseColor.rgb = gammaToLinearSpace(baseColor.rgb);
 
 				gAlbedo = vec4(baseColor, albedo.a);
 				gAlbedo.rgb = ApplyFog(fogCoord, gAlbedo.rgb);

@@ -12,88 +12,72 @@
 #define PROWL_HALF_PI       1.57079632679
 #define PROWL_INV_HALF_PI   0.636619772367
 
-// Note: Fog and Ambient lighting are now applied globally in the DeferredCompose shader
-// They are no longer available in individual material shaders
-
 // Colors ===========================================================
 // http://chilliant.blogspot.com.au/2012/08/srgb-approximations-for-hlsl.html?m=1
-vec3 LinearToGammaSpace(vec3 lin)
+vec3 linearToGammaSpace(vec3 lin)
 {
     return max(1.055 * pow(max(lin, vec3(0.0)), vec3(0.416666667)) - 0.055, 0.0);
 }
 
 // http://chilliant.blogspot.com.au/2012/08/srgb-approximations-for-hlsl.html?m=1
-vec3 GammaToLinearSpace(vec3 gamma)
+vec3 gammaToLinearSpace(vec3 gamma)
 {
     return gamma * (gamma * (gamma * 0.305306011 + 0.682171111) + 0.012522878);
 }
 // ============================================================================
 
-float LinearizeDepth(float depth, float near, float far) 
+float linearizeDepth(float depth, float near, float far) 
 {
     float z = depth * 2.0 - 1.0; // Back to NDC [-1,1] range
     return (2.0 * near * far) / (far + near - z * (far - near));
 }
 
-float LinearizeDepthFromProjection(float depth) {
-    return LinearizeDepth(depth, _ProjectionParams.y, _ProjectionParams.z);
+float linearizeDepthFromProjection(float depth) {
+    return linearizeDepth(depth, _ProjectionParams.y, _ProjectionParams.z);
 }
 
-float GetFovFromProjectionMatrix(mat4 proj)
+float getFovFromProjectionMatrix(mat4 proj)
 {
     // proj[1][1] is M11, the Y scale
     // FOV = 2 * atan(1/M11)
     return 2.0 * atan(1.0 / proj[1][1]);
 }
 
-mat4 prowl_inverse(mat4 m) {
-    float n11 = m[0][0], n12 = m[1][0], n13 = m[2][0], n14 = m[3][0];
-    float n21 = m[0][1], n22 = m[1][1], n23 = m[2][1], n24 = m[3][1];
-    float n31 = m[0][2], n32 = m[1][2], n33 = m[2][2], n34 = m[3][2];
-    float n41 = m[0][3], n42 = m[1][3], n43 = m[2][3], n44 = m[3][3];
+// ----------------------------------------------------------------------------
 
-    float t11 = n23 * n34 * n42 - n24 * n33 * n42 + n24 * n32 * n43 - n22 * n34 * n43 - n23 * n32 * n44 + n22 * n33 * n44;
-    float t12 = n14 * n33 * n42 - n13 * n34 * n42 - n14 * n32 * n43 + n12 * n34 * n43 + n13 * n32 * n44 - n12 * n33 * n44;
-    float t13 = n13 * n24 * n42 - n14 * n23 * n42 + n14 * n22 * n43 - n12 * n24 * n43 - n13 * n22 * n44 + n12 * n23 * n44;
-    float t14 = n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34;
-
-    float det = n11 * t11 + n21 * t12 + n31 * t13 + n41 * t14;
-    float idet = 1.0 / det;
-
-    mat4 ret;
-
-    ret[0][0] = t11 * idet;
-    ret[0][1] = (n24 * n33 * n41 - n23 * n34 * n41 - n24 * n31 * n43 + n21 * n34 * n43 + n23 * n31 * n44 - n21 * n33 * n44) * idet;
-    ret[0][2] = (n22 * n34 * n41 - n24 * n32 * n41 + n24 * n31 * n42 - n21 * n34 * n42 - n22 * n31 * n44 + n21 * n32 * n44) * idet;
-    ret[0][3] = (n23 * n32 * n41 - n22 * n33 * n41 - n23 * n31 * n42 + n21 * n33 * n42 + n22 * n31 * n43 - n21 * n32 * n43) * idet;
-
-    ret[1][0] = t12 * idet;
-    ret[1][1] = (n13 * n34 * n41 - n14 * n33 * n41 + n14 * n31 * n43 - n11 * n34 * n43 - n13 * n31 * n44 + n11 * n33 * n44) * idet;
-    ret[1][2] = (n14 * n32 * n41 - n12 * n34 * n41 - n14 * n31 * n42 + n11 * n34 * n42 + n12 * n31 * n44 - n11 * n32 * n44) * idet;
-    ret[1][3] = (n12 * n33 * n41 - n13 * n32 * n41 + n13 * n31 * n42 - n11 * n33 * n42 - n12 * n31 * n43 + n11 * n32 * n43) * idet;
-
-    ret[2][0] = t13 * idet;
-    ret[2][1] = (n14 * n23 * n41 - n13 * n24 * n41 - n14 * n21 * n43 + n11 * n24 * n43 + n13 * n21 * n44 - n11 * n23 * n44) * idet;
-    ret[2][2] = (n12 * n24 * n41 - n14 * n22 * n41 + n14 * n21 * n42 - n11 * n24 * n42 - n12 * n21 * n44 + n11 * n22 * n44) * idet;
-    ret[2][3] = (n13 * n22 * n41 - n12 * n23 * n41 - n13 * n21 * n42 + n11 * n23 * n42 + n12 * n21 * n43 - n11 * n22 * n43) * idet;
-
-    ret[3][0] = t14 * idet;
-    ret[3][1] = (n13 * n24 * n31 - n14 * n23 * n31 + n14 * n21 * n33 - n11 * n24 * n33 - n13 * n21 * n34 + n11 * n23 * n34) * idet;
-    ret[3][2] = (n14 * n22 * n31 - n12 * n24 * n31 - n14 * n21 * n32 + n11 * n24 * n32 + n12 * n21 * n34 - n11 * n22 * n34) * idet;
-    ret[3][3] = (n12 * n23 * n31 - n13 * n22 * n31 + n13 * n21 * n32 - n11 * n23 * n32 - n12 * n21 * n33 + n11 * n22 * n33) * idet;
-
-    return ret;
+vec3 projectAndDivide(mat4 matrix, vec3 pos) {
+    vec4 p = matrix * vec4(pos, 1.0);
+    return p.xyz / p.w;
 }
 
-// Function to reconstruct view-space position from depth
-vec3 GetViewPos(vec2 uv, float depth, mat4 projectionMatrix)
-{
-    // Convert to NDC space
-    vec4 clipPos = vec4(uv * 2.0 - 1.0, depth, 1.0);
-
-    // Reconstruct view space position
-    vec4 viewPos = prowl_inverse(projectionMatrix) * clipPos;
-    return viewPos.xyz / viewPos.w;
+vec3 getScreenPos(vec2 tc, sampler2D depthSampler) {
+	return vec3(tc, texture(depthSampler, tc).x);
 }
+vec3 getScreenPos(vec2 tc, float depth) {
+	return vec3(tc, depth);
+}
+
+vec3 getScreenFromViewPos(vec3 viewPos) {
+	vec3 p = projectAndDivide(PROWL_MATRIX_P, viewPos);
+	return p * 0.5 + 0.5;
+}
+
+vec3 getNDCFromScreenPos(vec3 screenPos) {
+	return screenPos * 2.0 - 1.0;
+}
+
+vec3 getViewFromScreenPos(vec3 screenPos) {
+	return projectAndDivide(inverse(PROWL_MATRIX_P), getNDCFromScreenPos(screenPos));
+}
+
+vec3 getViewPos(vec2 tc, sampler2D depthSampler) {
+	return getViewFromScreenPos(getScreenPos(tc, depthSampler));
+}
+vec3 getViewPos(vec2 tc, float depth) {
+	return getViewFromScreenPos(getScreenPos(tc, depth));
+}
+
+// ----------------------------------------------------------------------------
+
 
 #endif
