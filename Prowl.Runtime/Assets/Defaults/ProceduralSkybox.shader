@@ -11,7 +11,9 @@ Pass "Skybox"
     // Rasterizer culling mode
     Blend Off
     Cull None
-    ZTest Lequal
+    //ZTest Lequal
+    ZTest Off
+    ZWrite Off
 
 	GLSLPROGRAM
 
@@ -276,13 +278,9 @@ Pass "Skybox"
 	    		// BufferA: Black albedo (skybox doesn't need albedo)
 	    		gBufferA = vec4(color, 0.0);
 
-	    		// BufferB: Normal doesn't matter, but set shading mode to 0 (Unlit)
-	    		gBufferB = vec4(0.5, 0.5, 0.5, 0.0); // Normal encoded as 0.5 (neutral), shading mode = 0 (Unlit)
-
-	    		// BufferC: Material properties don't matter for unlit
+	    		// Leave it all Zero, Skybox doesnt write to Depth, or to any other buffer other then color, its just a background like ClearColor almost
+	    		gBufferB = vec4(0.0, 0.0, 0.0, 0.0);
 	    		gBufferC = vec4(0.0, 0.0, 0.0, 0.0);
-
-	    		// BufferD: For Unlit mode (0), RGBA is treated as Emissive
 	    		gBufferD = vec4(0.0, 0.0, 0.0, 0.0);
 	    	}
 

@@ -12,39 +12,8 @@
 #define PROWL_HALF_PI       1.57079632679
 #define PROWL_INV_HALF_PI   0.636619772367
 
-// Fog ===========================================================
-// fogCoord = gl_Position.z;
-
-// Apply fog in fragment/pixel shader - Should match Unity's fog calculation
-vec3 ApplyFog(float fogCoord, vec3 color) {
-    float prowlFog = 0.0;
-    prowlFog += (fogCoord * prowl_FogParams.z + prowl_FogParams.w) * prowl_FogStates.x;
-    prowlFog += exp2(-fogCoord * prowl_FogParams.y) * prowl_FogStates.y;
-    prowlFog += exp2(-fogCoord * fogCoord * prowl_FogParams.x * prowl_FogParams.x) * prowl_FogStates.z;
-    return mix(prowl_FogColor.rgb, color, clamp(prowlFog, 0.0, 1.0));
-}
-// ============================================================================
-
-// Ambient Lighting ===========================================================
-vec3 CalculateAmbient(vec3 worldNormal)
-{
-    vec3 ambient = vec3(0.0);
-    
-    // Uniform ambient
-    ambient += prowl_AmbientColor.rgb * prowl_AmbientMode.x;
-    
-    // Hemisphere ambient
-    float upDot = dot(worldNormal, vec3(0.0, 1.0, 0.0));
-    ambient += mix(prowl_AmbientGroundColor.rgb, prowl_AmbientSkyColor.rgb, upDot * 0.5 + 0.5) * prowl_AmbientMode.y;
-    
-    return ambient;
-}
-
-// Apply ambient lighting
-vec3 ApplyAmbient(vec3 worldNormal, vec3 color) {
-    return color * CalculateAmbient(worldNormal);
-}
-// ============================================================================
+// Note: Fog and Ambient lighting are now applied globally in the DeferredCompose shader
+// They are no longer available in individual material shaders
 
 // Colors ===========================================================
 // http://chilliant.blogspot.com.au/2012/08/srgb-approximations-for-hlsl.html?m=1

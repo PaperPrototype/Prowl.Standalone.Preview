@@ -33,25 +33,6 @@ layout(std140) uniform GlobalUniforms
     vec4 _CosTime;
     vec4 prowl_DeltaTime;
 
-    // Fog parameters
-    vec4 prowl_FogColor;  // RGB color of fog
-    vec4 prowl_FogParams; // Packed parameters:
-                         // x: density/sqrt(ln(2)) - for Exp2 fog
-                         // y: density/ln(2) - for Exp fog
-                         // z: -1/(end-start) - for Linear fog
-                         // w: end/(end-start) - for Linear fog
-    vec3 prowl_FogStates; // x: 1 if linear is enabled, 0 otherwise
-                         // y: 1 if exp fog, 0 otherwise
-                         // z: 1 if exp2 fog, 0 otherwise
-    float _padding1;
-
-    // Ambient light parameters
-    vec2 prowl_AmbientMode;    // x: uniform, y: hemisphere
-    vec2 _padding2;
-    vec4 prowl_AmbientColor;
-    vec4 prowl_AmbientSkyColor;
-    vec4 prowl_AmbientGroundColor;
-
     // Shadow parameters
     vec2 prowl_ShadowAtlasSize;
     vec2 _padding3;

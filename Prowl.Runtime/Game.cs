@@ -102,39 +102,49 @@ public abstract class Game
             {
                 Debug.LogError("An exception occurred during the Update loop:");
                 Debug.LogError(e.ToString());
+                throw e;
             }
         };
 
         Window.Render += (delta) =>
         {
-            var scenesCopy = Scene.s_activeScenes.ToArray();
+            try
+            {
+                var scenesCopy = Scene.s_activeScenes.ToArray();
 
-            Graphics.StartFrame();
+                Graphics.StartFrame();
 
-            BeginRender();
+                BeginRender();
 
-            foreach (var scene in scenesCopy)
-                scene.Render();
+                foreach (var scene in scenesCopy)
+                    scene.Render();
 
-            EndRender();
+                EndRender();
 
-            Graphics.Device.UnbindFramebuffer();
-            Graphics.Device.Viewport(0, 0, (uint)Window.InternalWindow.FramebufferSize.X, (uint)Window.InternalWindow.FramebufferSize.Y);
+                Graphics.Device.UnbindFramebuffer();
+                Graphics.Device.Viewport(0, 0, (uint)Window.InternalWindow.FramebufferSize.X, (uint)Window.InternalWindow.FramebufferSize.Y);
 
-            _paper.BeginFrame(delta);
+                _paper.BeginFrame(delta);
 
-            BeginGui(_paper);
+                BeginGui(_paper);
 
-            foreach (var scene in scenesCopy)
-                scene.OnGui(_paper);
+                foreach (var scene in scenesCopy)
+                    scene.OnGui(_paper);
 
-            EndGui(_paper);
+                EndGui(_paper);
 
-            _paper.EndFrame();
+                _paper.EndFrame();
 
-            Graphics.EndFrame();
+                Graphics.EndFrame();
 
-            Debug.ClearGizmos();
+                Debug.ClearGizmos();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("An exception occurred during the Update loop:");
+                Debug.LogError(e.ToString());
+                throw e;
+            }
         };
 
         Window.Resize += (size) =>

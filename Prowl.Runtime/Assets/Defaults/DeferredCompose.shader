@@ -42,13 +42,60 @@ Pass "Compose"
 		uniform sampler2D _GBufferA; // RGB = Albedo, A = AO
 		uniform sampler2D _GBufferB; // RGB = Normal (view space), A = ShadingMode
 		uniform sampler2D _GBufferD; // Custom Data per Shading Mode (e.g., Emissive for Lit mode)
+		uniform sampler2D _CameraDepthTexture; // Depth texture for fog
 
 		// Light accumulation buffer
 		uniform sampler2D _LightAccumulation;
 
+		// Fog uniforms
+		uniform vec4 _FogColor;
+		uniform vec4 _FogParams; // x: density/sqrt(ln(2)) for Exp2, y: density/ln(2) for Exp, z: -1/(end-start) for Linear, w: end/(end-start) for Linear
+		uniform vec3 _FogStates;  // x: linear enabled, y: exp enabled, z: exp2 enabled
+
+		// Ambient lighting uniforms
+		uniform vec2 _AmbientMode; // x: uniform, y: hemisphere
+		uniform vec4 _AmbientColor;
+		uniform vec4 _AmbientSkyColor;
+		uniform vec4 _AmbientGroundColor;
+
+		// Ambient Lighting
+		vec3 CalculateAmbient(vec3 worldNormal)
+		{
+			vec3 ambient = vec3(0.0);
+
+			// Uniform ambient
+			ambient += _AmbientColor.rgb * _AmbientMode.x;
+
+			// Hemisphere ambient
+			float upDot = dot(worldNormal, vec3(0.0, 1.0, 0.0));
+			ambient += mix(_AmbientGroundColor.rgb, _AmbientSkyColor.rgb, upDot * 0.5 + 0.5) * _AmbientMode.y;
+
+			return ambient;
+		}
+
+		// Apply fog - fogCoord is the linear depth
+		vec3 ApplyFog(float fogCoord, vec3 color) {
+			float prowlFog = 0.0;
+			prowlFog += (fogCoord * _FogParams.z + _FogParams.w) * _FogStates.x;
+			prowlFog += exp2(-fogCoord * _FogParams.y) * _FogStates.y;
+			prowlFog += exp2(-fogCoord * fogCoord * _FogParams.x * _FogParams.x) * _FogStates.z;
+			return mix(_FogColor.rgb, color, clamp(prowlFog, 0.0, 1.0));
+		}
+
+		// Reconstruct world position from depth
+		vec3 WorldPosFromDepth(float depth, vec2 texCoord) {
+			float z = depth * 2.0 - 1.0;
+			vec4 clipSpacePosition = vec4(texCoord * 2.0 - 1.0, z, 1.0);
+			mat4 invVP = inverse(PROWL_MATRIX_VP);
+			vec4 worldSpacePosition = invVP * clipSpacePosition;
+			worldSpacePosition /= worldSpacePosition.w;
+			return worldSpacePosition.xyz;
+		}
+
 		void main()
 		{
 			// Sample textures
+			vec4 gbufferA = texture(_GBufferA, TexCoords);
 			vec4 gbufferB = texture(_GBufferB, TexCoords);
 			vec4 gbufferD = texture(_GBufferD, TexCoords);
 			vec3 lightAccumulation = texture(_LightAccumulation, TexCoords).rgb;
@@ -56,17 +103,29 @@ Pass "Compose"
 			float shadingMode = gbufferB.a;
 			vec3 emission = gbufferD.rgb;
 
+			vec3 color;
+
 			// Check shading mode
 			// 0 = Unlit, 1 = Lit
 			if (shadingMode != 1.0) {
 				// Unlit mode - use albedo + emission from GBuffer
-				vec4 gbufferA = texture(_GBufferA, TexCoords);
 				vec3 albedo = gbufferA.rgb;
-				finalColor = vec4(albedo + emission, 1.0);
+				color = albedo + emission;
 			} else {
 				// Lit mode - combine light accumulation with emissive
-				finalColor = vec4(lightAccumulation + emission, 1.0);
+				color = lightAccumulation + emission;
 			}
+
+			// Apply fog
+			float depth = texture(_CameraDepthTexture, TexCoords).r;
+            if(depth < 1.0)
+            {
+			    vec3 worldPos = WorldPosFromDepth(depth, TexCoords);
+			    float fogCoord = length(worldPos - _WorldSpaceCameraPos.xyz);
+			    color = ApplyFog(fogCoord, color);
+            }
+
+			finalColor = vec4(color, 1.0);
 		}
 	}
 

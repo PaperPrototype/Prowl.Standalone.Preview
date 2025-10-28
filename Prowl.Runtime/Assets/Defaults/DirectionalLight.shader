@@ -229,14 +229,9 @@ Pass "DirectionalLight"
 				return;
 			}
 
-			// Calculate lighting
-			vec3 lighting = vec3(0.0);
-
-			// Add ambient lighting
-			lighting += albedo.rgb * CalculateAmbient(worldNormal);
-
-			// Add directional light contribution
-			lighting += CalculateDirectionalLight(worldPos, worldNormal, _WorldSpaceCameraPos.xyz, albedo, metallic, roughness, ao);
+			// Calculate directional light contribution only
+			// Note: Ambient lighting is applied in the DeferredCompose shader
+			vec3 lighting = CalculateDirectionalLight(worldPos, worldNormal, _WorldSpaceCameraPos.xyz, albedo, metallic, roughness, ao);
 
 			finalColor = vec4(lighting, 1.0);
 		}

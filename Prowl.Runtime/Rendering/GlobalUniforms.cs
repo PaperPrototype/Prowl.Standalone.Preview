@@ -42,19 +42,6 @@ public struct GlobalUniformsData
     public Float4 _CosTime;                   // 16 bytes
     public Float4 prowl_DeltaTime;            // 16 bytes
 
-    // Fog parameters
-    public Float4 prowl_FogColor;             // 16 bytes
-    public Float4 prowl_FogParams;            // 16 bytes
-    public Float3 prowl_FogStates;            // 12 bytes
-    public float _padding1;                   // 4 bytes padding
-
-    // Ambient light parameters
-    public Float2 prowl_AmbientMode;          // 8 bytes
-    public Float2 _padding2;                  // 8 bytes padding
-    public Float4 prowl_AmbientColor;         // 16 bytes
-    public Float4 prowl_AmbientSkyColor;      // 16 bytes
-    public Float4 prowl_AmbientGroundColor;   // 16 bytes
-
     // Shadow parameters
     public Float2 prowl_ShadowAtlasSize;      // 8 bytes
     public Float2 _padding3;                  // 8 bytes padding
@@ -204,50 +191,6 @@ public static class GlobalUniforms
     public static void SetDeltaTime(Double4 value)
     {
         s_data.prowl_DeltaTime = (Float4)value;
-        s_isDirty = true;
-    }
-
-    // Fog parameters
-    public static void SetFogColor(Double4 value)
-    {
-        s_data.prowl_FogColor = (Float4)value;
-        s_isDirty = true;
-    }
-
-    public static void SetFogParams(Double4 value)
-    {
-        s_data.prowl_FogParams = (Float4)value;
-        s_isDirty = true;
-    }
-
-    public static void SetFogStates(Float3 value)
-    {
-        s_data.prowl_FogStates = value;
-        s_isDirty = true;
-    }
-
-    // Ambient light parameters
-    public static void SetAmbientMode(Double2 value)
-    {
-        s_data.prowl_AmbientMode = (Float2)value;
-        s_isDirty = true;
-    }
-
-    public static void SetAmbientColor(Double4 value)
-    {
-        s_data.prowl_AmbientColor = (Float4)value;
-        s_isDirty = true;
-    }
-
-    public static void SetAmbientSkyColor(Double4 value)
-    {
-        s_data.prowl_AmbientSkyColor = (Float4)value;
-        s_isDirty = true;
-    }
-
-    public static void SetAmbientGroundColor(Double4 value)
-    {
-        s_data.prowl_AmbientGroundColor = (Float4)value;
         s_isDirty = true;
     }
 

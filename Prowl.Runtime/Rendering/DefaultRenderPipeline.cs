@@ -188,32 +188,6 @@ public class DefaultRenderPipeline : RenderPipeline
         GlobalUniforms.SetCosTime(new Double4(Math.Cos(Time.TimeSinceStartup / 8), Math.Cos(Time.TimeSinceStartup / 4), Math.Cos(Time.TimeSinceStartup / 2), Math.Cos(Time.TimeSinceStartup)));
         GlobalUniforms.SetDeltaTime(new Double4(Time.DeltaTime, 1.0f / Time.DeltaTime, Time.SmoothDeltaTime, 1.0f / Time.SmoothDeltaTime));
 
-        // Fog
-        Scene.FogParams fog = css.Scene.Fog;
-        Double4 fogParams;
-        fogParams.X = fog.Density / Maths.Sqrt(0.693147181); // ln(2)
-        fogParams.Y = fog.Density / 0.693147181; // ln(2)
-        fogParams.Z = -1.0 / (fog.End - fog.Start);
-        fogParams.W = fog.End / (fog.End - fog.Start);
-        GlobalUniforms.SetFogColor(fog.Color);
-        GlobalUniforms.SetFogParams(fogParams);
-        GlobalUniforms.SetFogStates(new Float3(
-            fog.Mode == Scene.FogParams.FogMode.Linear ? 1 : 0,
-            fog.Mode == Scene.FogParams.FogMode.Exponential ? 1 : 0,
-            fog.Mode == Scene.FogParams.FogMode.ExponentialSquared ? 1 : 0
-            ));
-
-        // Ambient Lighting
-        Scene.AmbientLightParams ambient = css.Scene.Ambient;
-        GlobalUniforms.SetAmbientMode(new Double2(
-            ambient.Mode == Scene.AmbientLightParams.AmbientMode.Uniform ? 1 : 0,
-            ambient.Mode == Scene.AmbientLightParams.AmbientMode.Hemisphere ? 1 : 0
-        ));
-
-        GlobalUniforms.SetAmbientColor(ambient.Color);
-        GlobalUniforms.SetAmbientSkyColor(ambient.SkyColor);
-        GlobalUniforms.SetAmbientGroundColor(ambient.GroundColor);
-
         // Upload the global uniform buffer
         GlobalUniforms.Upload();
     }
@@ -387,11 +361,37 @@ public class DefaultRenderPipeline : RenderPipeline
             isHDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b,
             ]);
 
-        // Set light accumulation texture for compose shader
+        // Set GBuffer and light textures for compose shader
         s_deferredCompose.SetTexture("_LightAccumulation", lightAccumulation.InternalTextures[0]);
         s_deferredCompose.SetTexture("_GBufferA", gBuffer.InternalTextures[0]);
         s_deferredCompose.SetTexture("_GBufferB", gBuffer.InternalTextures[1]);
         s_deferredCompose.SetTexture("_GBufferD", gBuffer.InternalTextures[3]);
+        s_deferredCompose.SetTexture("_CameraDepthTexture", gBuffer.InternalDepth);
+
+        // Set fog parameters
+        Scene.FogParams fog = css.Scene.Fog;
+        Double4 fogParams = Double4.Zero;
+        fogParams.X = fog.Density / 1.2011224; // density/sqrt(ln(2))
+        fogParams.Y = fog.Density / 0.693147181; // ln(2)
+        fogParams.Z = -1.0 / (fog.End - fog.Start);
+        fogParams.W = fog.End / (fog.End - fog.Start);
+        s_deferredCompose.SetColor("_FogColor", fog.Color);
+        s_deferredCompose.SetVector("_FogParams", fogParams);
+        s_deferredCompose.SetVector("_FogStates", new Double3(
+            fog.Mode == Scene.FogParams.FogMode.Linear ? 1 : 0,
+            fog.Mode == Scene.FogParams.FogMode.Exponential ? 1 : 0,
+            fog.Mode == Scene.FogParams.FogMode.ExponentialSquared ? 1 : 0
+        ));
+
+        // Set ambient lighting parameters
+        Scene.AmbientLightParams ambient = css.Scene.Ambient;
+        s_deferredCompose.SetVector("_AmbientMode", new Double2(
+            ambient.Mode == Scene.AmbientLightParams.AmbientMode.Uniform ? 1 : 0,
+            ambient.Mode == Scene.AmbientLightParams.AmbientMode.Hemisphere ? 1 : 0
+        ));
+        s_deferredCompose.SetColor("_AmbientColor", ambient.Color);
+        s_deferredCompose.SetColor("_AmbientSkyColor", ambient.SkyColor);
+        s_deferredCompose.SetColor("_AmbientGroundColor", ambient.GroundColor);
 
         // Perform composition
         Graphics.Blit(lightAccumulation, composedOutput, s_deferredCompose, 0, false, false);
