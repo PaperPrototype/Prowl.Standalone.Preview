@@ -559,13 +559,13 @@ public class DefaultRenderPipeline : RenderPipeline
                 AtlasWidth = 0;
             }
 
-            // Upload shadow data to GPU for shader to use
-            light.UploadShadowDataToGPU(CAMERA_RELATIVE, cameraPosition, AtlasX, AtlasY, AtlasWidth);
+            // Prepare shadow data for light to use during rendering
+            light.PrepareShadowData(CAMERA_RELATIVE, cameraPosition, AtlasX, AtlasY, AtlasWidth);
         }
         else
         {
-            // No shadows, still need to upload light data
-            light.UploadShadowDataToGPU(CAMERA_RELATIVE, cameraPosition, -1, -1, 0);
+            // No shadows, still need to prepare light data
+            light.PrepareShadowData(CAMERA_RELATIVE, cameraPosition, -1, -1, 0);
         }
     }
 

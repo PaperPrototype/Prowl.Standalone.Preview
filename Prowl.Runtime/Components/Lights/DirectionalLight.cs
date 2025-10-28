@@ -25,6 +25,8 @@ public class DirectionalLight : Light
     public double ShadowDistance = 50f;
 
     private Material? _lightMaterial;
+    private Double4x4 _shadowMatrix;
+    private Double4 _shadowAtlasParams;
 
     public override void Update()
     {
@@ -74,9 +76,9 @@ public class DirectionalLight : Light
         view = Double4x4.CreateLookTo(snappedPosition - (forward * ShadowDistance * 0.5), forward, Transform.Up);
     }
 
-    public void UploadShadowDataToGPU(bool cameraRelative, Double3 cameraPosition, int atlasX, int atlasY, int atlasWidth)
+    public void PrepareShadowData(bool cameraRelative, Double3 cameraPosition, int atlasX, int atlasY, int atlasWidth)
     {
-        // Use camera-following shadow matrix when atlas width is available (meaning we have shadow resolution info)
+        // Use camera-following shadow matrix when atlas width is available
         Double4x4 view, proj;
         if (atlasWidth > 0)
             GetShadowMatrix(cameraPosition, atlasWidth, out view, out proj);
@@ -86,15 +88,9 @@ public class DirectionalLight : Light
         if (cameraRelative)
             view.Translation -= new Double4(cameraPosition.X, cameraPosition.Y, cameraPosition.Z, 0.0f);
 
-        // Use GlobalUniforms to set directional light data
-        GlobalUniforms.SetSunDirection(Transform.Forward);
-        GlobalUniforms.SetSunColor(new Double3(Color.R, Color.G, Color.B));
-        GlobalUniforms.SetSunIntensity(Intensity);
-        GlobalUniforms.SetSunShadowBias(ShadowBias);
-        GlobalUniforms.SetSunShadowMatrix(proj * view);
-        GlobalUniforms.SetSunShadowParams(new Double4(ShadowNormalBias, ShadowStrength, ShadowDistance, (double)ShadowQuality));
-        GlobalUniforms.SetSunAtlasParams(new Double4(atlasX, atlasY, atlasWidth, 0));
-        GlobalUniforms.Upload();
+        // Store shadow data for later use in OnRenderLight
+        _shadowMatrix = proj * view;
+        _shadowAtlasParams = new Double4(atlasX, atlasY, atlasWidth, 0);
     }
 
     public override void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, DefaultRenderPipeline.CameraSnapshot css)
@@ -109,7 +105,20 @@ public class DirectionalLight : Light
         _lightMaterial.SetTexture("_GBufferD", gBuffer.InternalTextures[3]);
         _lightMaterial.SetTexture("_CameraDepthTexture", gBuffer.InternalDepth);
 
-        // Shadow atlas is already set as a global texture in the pipeline
+        // Shadow atlas texture is set globally by pipeline
+
+        // Set directional light properties
+        _lightMaterial.SetVector("_LightDirection", Transform.Forward);
+        _lightMaterial.SetColor("_LightColor", Color);
+        _lightMaterial.SetFloat("_LightIntensity", (float)Intensity);
+
+        // Set shadow properties
+        _lightMaterial.SetMatrix("_ShadowMatrix", _shadowMatrix);
+        _lightMaterial.SetFloat("_ShadowBias", (float)ShadowBias);
+        _lightMaterial.SetFloat("_ShadowNormalBias", (float)ShadowNormalBias);
+        _lightMaterial.SetFloat("_ShadowStrength", (float)ShadowStrength);
+        _lightMaterial.SetFloat("_ShadowQuality", (float)ShadowQuality);
+        _lightMaterial.SetVector("_ShadowAtlasParams", _shadowAtlasParams);
 
         // Draw fullscreen quad with the directional light shader
         Graphics.Blit(gBuffer, destination, _lightMaterial, 0, false, false);
