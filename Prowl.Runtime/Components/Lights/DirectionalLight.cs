@@ -28,10 +28,10 @@ public class DirectionalLight : Light
         Four = 4,
     }
 
-    public Resolution ShadowResolution = Resolution._512;
+    public Resolution ShadowResolution = Resolution._1024;
     public CascadeCount Cascades = CascadeCount.Four;
 
-    public double ShadowDistance = 150f;
+    public double ShadowDistance = 100f;
 
     private Material? _lightMaterial;
 

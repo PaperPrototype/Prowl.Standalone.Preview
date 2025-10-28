@@ -25,7 +25,7 @@ public sealed class PhysicsDemo : Game
 
     public override void Initialize()
     {
-        DrawGizmos = true;
+        //DrawGizmos = true;
         scene = new Scene();
 
         // Create directional light
@@ -48,7 +48,7 @@ public sealed class PhysicsDemo : Game
         camera.Effects =
         [
             new FXAAEffect(),
-            new BokehDepthOfFieldEffect(),
+            //new BokehDepthOfFieldEffect(),
             new KawaseBloomEffect(),
             new TonemapperEffect(),
         ];
@@ -324,8 +324,10 @@ public sealed class PhysicsDemo : Game
         cubeCollider.Size = new Double3(0.5, 0.5, 0.5);
 
         var light = cube.AddComponent<SpotLight>();
-        light.Intensity = 32;
+        light.ShadowQuality = ShadowQuality.Soft;
+        light.Intensity = 64;
         light.Color = new Color(RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), 1f);
+        light.Transform.Rotation = cameraGO.Transform.Rotation;
 
         scene.Add(cube);
 

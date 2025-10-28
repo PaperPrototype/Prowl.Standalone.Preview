@@ -8,9 +8,9 @@ Pass "SpotLight"
 {
     Tags { "RenderOrder" = "Opaque" }
 
-    // Fullscreen pass settings
-    Cull None
-    ZTest Off
+    // Cone volume settings
+    Cull Front  // Cull front faces so we only render back faces (inside of cone)
+    ZTest Greater  // Only render where cone is in front of geometry
     ZWrite Off
     Blend Additive  // Additive blending for light accumulation
 
@@ -18,15 +18,15 @@ Pass "SpotLight"
 
 	Vertex
 	{
-		layout (location = 0) in vec3 vertexPosition;
-		layout (location = 1) in vec2 vertexTexCoord;
+		#include "Fragment"
 
-		out vec2 TexCoords;
+		layout (location = 0) in vec3 vertexPosition;
 
 		void main()
 		{
-			TexCoords = vertexTexCoord;
-		    gl_Position = vec4(vertexPosition, 1.0);
+			// Transform cone vertex using model-view-projection matrices
+			vec4 worldPos = prowl_ObjectToWorld * vec4(vertexPosition, 1.0);
+			gl_Position = PROWL_MATRIX_VP * worldPos;
 		}
 	}
 
@@ -36,8 +36,6 @@ Pass "SpotLight"
 		#include "PBR"
 
 		layout (location = 0) out vec4 finalColor;
-
-		in vec2 TexCoords;
 
 		// GBuffer textures
 		uniform sampler2D _GBufferA; // RGB = Albedo, A = AO
@@ -141,7 +139,7 @@ Pass "SpotLight"
             float slopeScaleBias = _ShadowBias * tan(acos(cosTheta));
             slopeScaleBias = clamp(slopeScaleBias, 0.0, _ShadowBias * 2.0);
             
-            // Combined bias: base + slope + texel offset
+            // Combined bias: base + slope
             float finalBias = _ShadowBias + slopeScaleBias;
             
             // Get current depth with improved bias
@@ -239,6 +237,9 @@ Pass "SpotLight"
 
 		void main()
 		{
+			// Calculate screen-space texture coordinates from fragment position
+			vec2 TexCoords = gl_FragCoord.xy / _ScreenParams.xy;
+
 			// Sample GBuffer
 			vec4 gbufferA = texture(_GBufferA, TexCoords);
 			vec4 gbufferB = texture(_GBufferB, TexCoords);

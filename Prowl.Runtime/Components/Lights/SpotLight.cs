@@ -11,8 +11,6 @@ using Shader = Prowl.Runtime.Resources.Shader;
 
 namespace Prowl.Runtime;
 
-#warning TODO: Use Mesh.CreateCone and draw that instead of drawing a Fullscreen Quad
-
 public class SpotLight : Light
 {
     public enum Resolution : int
@@ -24,11 +22,12 @@ public class SpotLight : Light
     }
 
     public Resolution ShadowResolution = Resolution._512;
-    public double Range = 10.0;
+    public double Range = 8.0;
     public double SpotAngle = 45.0; // Outer cone angle in degrees
     public double InnerSpotAngle = 30.0; // Inner cone angle in degrees for smooth falloff
 
     private Material? _lightMaterial;
+    private static Mesh? _mesh;
     private Double4x4 _shadowMatrix;
     private Double4 _shadowAtlasParams; // xy = atlas pos, z = atlas size, w = 1.0
 
@@ -131,6 +130,12 @@ public class SpotLight : Light
 
     public override void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, RenderPipeline.CameraSnapshot css)
     {
+        // Create cone mesh if needed (shared by all spot lights)
+        if (_mesh == null || !_mesh.IsValid())
+        {
+            _mesh = Mesh.CreateSphere((float)Range + 1f, 6, 6);
+        }
+
         // Create material if needed
         _lightMaterial ??= new Material(Shader.LoadDefault(DefaultShader.SpotLight));
 
@@ -164,7 +169,21 @@ public class SpotLight : Light
         _lightMaterial.SetMatrix("_ShadowMatrix", _shadowMatrix);
         _lightMaterial.SetVector("_ShadowAtlasParams", _shadowAtlasParams);
 
-        // Draw fullscreen quad with the spot light shader
-        Graphics.Blit(gBuffer, destination, _lightMaterial, 0, false, false);
+        // Combine transformations
+        Double4x4 model = this.Transform.LocalToWorldMatrix;
+
+        // Handle camera-relative rendering
+        if (RenderPipeline.CAMERA_RELATIVE)
+            model.Translation -= new Double4(css.CameraPosition, 0.0);
+
+        // Set transform matrices
+        _lightMaterial.SetMatrix("prowl_ObjectToWorld", model);
+        _lightMaterial.SetMatrix("prowl_WorldToObject", model.Invert());
+
+        // Bind destination framebuffer
+        Graphics.Device.BindFramebuffer(destination.frameBuffer);
+
+        // Draw cone mesh instead of fullscreen quad
+        Graphics.DrawMeshNow(_mesh, _lightMaterial, 0);
     }
 }
