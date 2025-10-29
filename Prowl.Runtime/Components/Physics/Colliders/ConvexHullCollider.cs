@@ -43,6 +43,8 @@ public sealed class ConvexHullCollider : Collider
 
     public override void OnEnable()
     {
+        base.OnEnable();
+
         if (mesh.IsNotValid())
         {
             MeshRenderer? renderer2 = GetComponent<MeshRenderer>();

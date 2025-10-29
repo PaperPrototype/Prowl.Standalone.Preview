@@ -37,7 +37,7 @@ public sealed class MeshCollider : Collider
         }
 
         List<JTriangle> triangles = ToTriangleList(mesh);
-        TriangleMesh triangleMesh = new(triangles);
+        TriangleMesh triangleMesh = new(triangles, true);
 
         TriangleShape[] shapes = new TriangleShape[triangles.Count];
         for (int i = 0; i < triangles.Count; i++)
@@ -48,6 +48,8 @@ public sealed class MeshCollider : Collider
 
     public override void OnEnable()
     {
+        base.OnEnable();
+
         if (mesh.IsNotValid())
         {
             MeshRenderer? renderer2 = GetComponent<MeshRenderer>();
