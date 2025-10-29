@@ -34,6 +34,7 @@ Pass "PointLight"
 	{
 		#include "Fragment"
 		#include "PBR"
+		#include "Shadow"
 
 		layout (location = 0) out vec4 finalColor;
 
@@ -69,42 +70,6 @@ Pass "PointLight"
 		uniform vec4 _ShadowFaceParams3;
 		uniform vec4 _ShadowFaceParams4;
 		uniform vec4 _ShadowFaceParams5;
-
-		// Poisson disk sampling pattern for smooth PCF
-		const vec2 poissonDisk[16] = vec2[](
-			vec2(-0.94201624, -0.39906216),
-			vec2(0.94558609, -0.76890725),
-			vec2(-0.094184101, -0.92938870),
-			vec2(0.34495938, 0.29387760),
-			vec2(-0.91588581, 0.45771432),
-			vec2(-0.81544232, -0.87912464),
-			vec2(-0.38277543, 0.27676845),
-			vec2(0.97484398, 0.75648379),
-			vec2(0.44323325, -0.97511554),
-			vec2(0.53742981, -0.47373420),
-			vec2(-0.26496911, -0.41893023),
-			vec2(0.79197514, 0.19090188),
-			vec2(-0.24188840, 0.99706507),
-			vec2(-0.81409955, 0.91437590),
-			vec2(0.19984126, 0.78641367),
-			vec2(0.14383161, -0.14100790)
-		);
-
-		// Simple hash function for random rotation
-		float InterleavedGradientNoise(vec2 position) {
-			vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
-			return fract(magic.z * fract(dot(position, magic.xy)));
-		}
-
-		// Reconstruct world position from depth
-		vec3 WorldPosFromDepth(float depth, vec2 texCoord) {
-			float z = depth * 2.0 - 1.0;
-			vec4 clipSpacePosition = vec4(texCoord * 2.0 - 1.0, z, 1.0);
-			mat4 invVP = inverse(PROWL_MATRIX_VP);
-			vec4 worldSpacePosition = invVP * clipSpacePosition;
-			worldSpacePosition /= worldSpacePosition.w;
-			return worldSpacePosition.xyz;
-		}
 
 		// Sample point light shadow from cubemap (6 faces in 3x2 grid)
 		float SampleShadow(vec3 worldPos, vec3 worldNormal)
@@ -172,61 +137,19 @@ Pass "PointLight"
 				return 0.0;
 			}
 
-			// Get shadow atlas coordinates for this face
+			// Get shadow atlas coordinates using common helper
 			vec2 shadowAtlasSize = vec2(textureSize(_ShadowAtlas, 0));
-			vec2 atlasCoords;
-			atlasCoords.x = faceParams.x + (projCoords.x * faceParams.z);
-			atlasCoords.y = faceParams.y + (projCoords.y * faceParams.z);
-
 			float atlasSize = shadowAtlasSize.x;
+			vec2 atlasCoords, shadowMin, shadowMax;
+			GetAtlasCoordinates(projCoords, faceParams, atlasSize, atlasCoords, shadowMin, shadowMax);
 
-			// Calculate shadow map boundaries to prevent bleeding
-			vec2 texelSize = vec2(1.0) / shadowAtlasSize;
-			vec2 shadowMin = vec2(faceParams.x, faceParams.y) / atlasSize + texelSize * 0.5;
-			vec2 shadowMax = vec2(faceParams.x + faceParams.z, faceParams.y + faceParams.z) / atlasSize - texelSize * 0.5;
+			// Calculate bias for point light
+			float finalBias = CalculateSlopeBias(worldNormal, normalize(lightToFrag), _ShadowBias);
+			float currentDepth = projCoords.z - finalBias;
 
-			atlasCoords /= atlasSize;
-
-
-
-            // Slope-scale bias: adjust based on surface angle relative to light
-            float cosTheta = clamp(dot(normalize(worldNormal), normalize(lightToFrag)), 0.0, 1.0);
-            float slopeScaleBias = _ShadowBias * tan(acos(cosTheta));
-            slopeScaleBias = clamp(slopeScaleBias, 0.0, _ShadowBias * 2.0);
-            
-            // Combined bias: base + slope
-            float finalBias = _ShadowBias + slopeScaleBias;
-            
-            // Get current depth with improved bias
-            float currentDepth = projCoords.z - finalBias;
-
-
-
-			float shadow = 0.0;
-
-			// Check shadow quality: 0 = Hard, 1 = Soft
-			if (_ShadowQuality < 0.5) {
-				// Hard shadows
-				float closestDepth = texture(_ShadowAtlas, atlasCoords).r;
-				shadow = currentDepth > closestDepth ? 1.0 : 0.0;
-			} else {
-				// Soft shadows - Poisson Disk PCF
-				float filterRadius = 1.5;
-				float randomRotation = InterleavedGradientNoise(gl_FragCoord.xy) * 6.283185;
-				float s = sin(randomRotation);
-				float c = cos(randomRotation);
-				mat2 rotationMatrix = mat2(c, -s, s, c);
-
-				for(int i = 0; i < 8; i++) {
-					vec2 offset = rotationMatrix * poissonDisk[i] * texelSize * filterRadius;
-					vec2 sampleCoords = clamp(atlasCoords + offset, shadowMin, shadowMax);
-					float pcfDepth = texture(_ShadowAtlas, sampleCoords).r;
-					shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
-				}
-				shadow /= 8.0;
-			}
-
-			return shadow * _ShadowStrength;
+			// Sample shadow using common PCF helper
+			return SampleShadowPCF(_ShadowAtlas, atlasCoords, shadowMin, shadowMax,
+			                       currentDepth, _ShadowQuality, _ShadowStrength);
 		}
 
 		// Calculate point light contribution

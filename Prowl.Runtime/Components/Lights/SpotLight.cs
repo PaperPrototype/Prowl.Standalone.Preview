@@ -27,7 +27,6 @@ public class SpotLight : Light
     public double InnerSpotAngle = 30.0; // Inner cone angle in degrees for smooth falloff
 
     private Material? _lightMaterial;
-    private static Mesh? _mesh;
     private Double4x4 _shadowMatrix;
     private Double4 _shadowAtlasParams; // xy = atlas pos, z = atlas size, w = 1.0
 
@@ -128,6 +127,7 @@ public class SpotLight : Light
         }
     }
 
+    private static Mesh? _mesh;
     public override void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, RenderPipeline.CameraSnapshot css)
     {
         // Create cone mesh if needed (shared by all spot lights)

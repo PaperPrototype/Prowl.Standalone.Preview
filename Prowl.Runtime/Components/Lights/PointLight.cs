@@ -25,7 +25,6 @@ public class PointLight : Light
     public double Range = 10.0;
 
     private Material? _lightMaterial;
-    private static Mesh? _mesh;
 
     // Shadow cubemap data - 6 faces stored in a 3x2 grid in the shadow atlas
     private Double4[] _shadowFaceParams = new Double4[6]; // xy = atlas pos, z = face size, w = far plane
@@ -124,6 +123,7 @@ public class PointLight : Light
         _shadowsValid = true;
     }
 
+    private static Mesh? _mesh;
     public override void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, RenderPipeline.CameraSnapshot css)
     {
         // Create sphere mesh if needed (shared by all point lights)

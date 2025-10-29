@@ -64,6 +64,6 @@ public enum DefaultShaderInclude
     PBR,
     Random,
     ShaderVariables,
-    Utilities,
+    Shadow,
     VertexAttributes
 }
