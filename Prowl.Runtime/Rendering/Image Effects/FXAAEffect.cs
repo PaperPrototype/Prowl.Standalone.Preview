@@ -17,7 +17,7 @@ public sealed class FXAAEffect : ImageEffect
 
     private Material _mat;
 
-    public override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    public override void OnRenderEffect(RenderContext context)
     {
         _mat ??= new Material(Shader.LoadDefault(DefaultShader.FXAA));
 
@@ -25,9 +25,9 @@ public sealed class FXAAEffect : ImageEffect
         _mat.SetFloat("_EdgeThresholdMax", EdgeThresholdMax);
         _mat.SetFloat("_EdgeThresholdMin", EdgeThresholdMin);
         _mat.SetFloat("_SubpixelQuality", SubpixelQuality);
-        _mat.SetVector("_Resolution", new Double2(source.Width, source.Height));
+        _mat.SetVector("_Resolution", new Double2(context.Width, context.Height));
 
-        // Apply FXAA
-        Graphics.Blit(source, destination, _mat, 0);
+        // Apply FXAA (in-place)
+        Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 0);
     }
 }

@@ -41,23 +41,20 @@ public sealed class GTAOEffect : ImageEffect
 
     // Private fields
     private Material _mat;
-    private RenderTexture _aoRT;
-    private RenderTexture _blurTempRT;
 
-    public override bool IsOpaqueEffect => true; // Run after deferred composition but before transparents
+    public override RenderStage Stage => RenderStage.AfterLighting; // Run after deferred composition but before transparents
 
-    public override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    public override void OnRenderEffect(RenderContext context)
     {
         // Lazy initialize material
         _mat ??= new Material(Shader.LoadDefault(DefaultShader.GTAO));
 
         // Calculate scaled resolution
-        int width = (int)(source.Width * ResolutionScale);
-        int height = (int)(source.Height * ResolutionScale);
+        int width = (int)(context.Width * ResolutionScale);
+        int height = (int)(context.Height * ResolutionScale);
 
-        // Ensure render textures are created and sized correctly
-        EnsureRenderTexture(ref _aoRT, width, height, TextureImageFormat.Color4b);
-        EnsureRenderTexture(ref _blurTempRT, width, height, TextureImageFormat.Color4b);
+        // Allocate temporary render textures
+        RenderTexture aoRT = context.GetTemporaryRT(width, height, TextureImageFormat.Color4b);
 
         // Pass 0: Calculate GTAO
         _mat.SetInt("_Slices", Slices);
@@ -65,34 +62,27 @@ public sealed class GTAOEffect : ImageEffect
         _mat.SetFloat("_Radius", Radius);
         _mat.SetFloat("_Intensity", Intensity);
         _mat.SetVector("_NoiseScale", new Double2(width / 4.0, height / 4.0)); // Tile noise pattern
-        Graphics.Blit(source, _aoRT, _mat, 0);
+        Graphics.Blit(context.SceneColor, aoRT, _mat, 0);
 
         // Pass 1: Blur Horizontal (if blur is enabled)
         if (BlurRadius > 0.01f)
         {
+            RenderTexture blurTempRT = context.GetTemporaryRT(width, height, TextureImageFormat.Color4b);
+
             _mat.SetVector("_BlurDirection", new Double2(1.0, 0.0));
             _mat.SetFloat("_BlurRadius", BlurRadius);
-            Graphics.Blit(_aoRT, _blurTempRT, _mat, 1);
-        
+            Graphics.Blit(aoRT, blurTempRT, _mat, 1);
+
             // Pass 1: Blur Vertical
             _mat.SetVector("_BlurDirection", new Double2(0.0, 1.0));
             _mat.SetFloat("_BlurRadius", BlurRadius);
-            Graphics.Blit(_blurTempRT, _aoRT, _mat, 1);
+            Graphics.Blit(blurTempRT, aoRT, _mat, 1);
         }
 
-        // Pass 2: Composite - Apply AO to scene
-        _mat.SetTexture("_AOTex", _aoRT.MainTexture);
+        // Pass 2: Composite - Apply AO to scene (in-place)
+        _mat.SetTexture("_AOTex", aoRT.MainTexture);
         _mat.SetFloat("_Intensity", Intensity);
-        Graphics.Blit(source, destination, _mat, 2);
-    }
-
-    private void EnsureRenderTexture(ref RenderTexture rt, int width, int height, TextureImageFormat format)
-    {
-        if (rt.IsNotValid() || rt.Width != width || rt.Height != height || rt.MainTexture.ImageFormat != format)
-        {
-            rt?.Dispose();
-            rt = new RenderTexture(width, height, false, [format]);
-        }
+        Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 2);
     }
 
     public override void OnPostRender(Camera camera)

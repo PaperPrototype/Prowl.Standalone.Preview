@@ -16,48 +16,41 @@ public sealed class KawaseBloomEffect : ImageEffect
     public float Spread = 1f;
 
     private Material _bloomMaterial;
-    private RenderTexture[] _pingPongBuffers = new RenderTexture[2];
 
-    public override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    public override void OnRenderEffect(RenderContext context)
     {
         // Create material if it doesn't exist
         _bloomMaterial ??= new Material(Shader.LoadDefault(DefaultShader.Bloom));
 
-        int width = source.Width / 4;
-        int height = source.Height / 4;
+        int width = context.Width / 4;
+        int height = context.Height / 4;
 
-        // Create ping-pong buffers if they don't exist
-        for (int i = 0; i < 2; i++)
-        {
-            if (_pingPongBuffers[i].IsNotValid() || _pingPongBuffers[i].Width != width || _pingPongBuffers[i].Height != height)
-            {
-                _pingPongBuffers[i]?.Dispose();
-                _pingPongBuffers[i] = new RenderTexture(width, height, false, [destination.MainTexture.ImageFormat]);
-            }
-        }
+        // Create ping-pong buffers
+        RenderTexture pingPongBuffer0 = context.GetTemporaryRT(width, height, context.SceneColor.MainTexture.ImageFormat);
+        RenderTexture pingPongBuffer1 = context.GetTemporaryRT(width, height, context.SceneColor.MainTexture.ImageFormat);
 
         // 1. Extract bright areas (threshold pass)
         _bloomMaterial.SetFloat("_Threshold", Threshold);
-        Graphics.Blit(source, _pingPongBuffers[0], _bloomMaterial, 0);
+        Graphics.Blit(context.SceneColor, pingPongBuffer0, _bloomMaterial, 0);
 
         // 2. Apply Kawase blur ping-pong (multiple iterations with increasing radius)
-        int current = 0;
-        int next = 1;
+        RenderTexture current = pingPongBuffer0;
+        RenderTexture next = pingPongBuffer1;
 
         for (int i = 0; i < Iterations; i++)
         {
             float offset = (i * 0.5f + 0.5f) * Spread;
             _bloomMaterial.SetFloat("_Offset", offset);
-            Graphics.Blit(_pingPongBuffers[current], _pingPongBuffers[next], _bloomMaterial, 1);
+            Graphics.Blit(current, next, _bloomMaterial, 1);
 
             // Swap buffers
             (next, current) = (current, next);
         }
 
-        // 3. Composite the bloom with the original image
-        _bloomMaterial.SetTexture("_BloomTex", _pingPongBuffers[current].MainTexture);
+        // 3. Composite the bloom with the original image (in-place)
+        _bloomMaterial.SetTexture("_BloomTex", current.MainTexture);
         _bloomMaterial.SetFloat("_Intensity", Intensity);
-        Graphics.Blit(source, destination, _bloomMaterial, 2);
+        Graphics.Blit(context.SceneColor, context.SceneColor, _bloomMaterial, 2);
     }
 
     public override void OnPostRender(Camera camera)

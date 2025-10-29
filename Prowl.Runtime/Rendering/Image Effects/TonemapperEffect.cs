@@ -50,14 +50,4 @@ public sealed class TonemapperEffect : ImageEffect
         // Replace the scene color buffer with LDR version
         context.ReplaceSceneColor(ldrBuffer);
     }
-
-    [System.Obsolete("Use OnRenderEffect instead")]
-    public override void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        // Backward compatibility fallback
-        _mat ??= new Material(Shader.LoadDefault(DefaultShader.Tonemapper));
-        _mat.SetFloat("Contrast", Contrast);
-        _mat.SetFloat("Saturation", Saturation);
-        Graphics.Blit(source, destination, _mat, 0);
-    }
 }

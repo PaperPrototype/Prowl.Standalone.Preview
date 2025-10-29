@@ -43,60 +43,48 @@ public sealed class ScreenSpaceReflectionEffect : ImageEffect
 
     // Private fields
     private Material _mat;
-    private RenderTexture _reflectionDataRT;
-    private RenderTexture _resolvedRT;
-    private RenderTexture _blurTempRT;
 
-    public override bool IsOpaqueEffect => true; // Run after deferred composition but before transparents
+    public override RenderStage Stage => RenderStage.AfterLighting; // Run after deferred composition but before transparents
 
-    public override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    public override void OnRenderEffect(RenderContext context)
     {
         // Lazy initialize material
         _mat ??= new Material(Shader.LoadDefault(DefaultShader.SSR));
 
         // Calculate scaled resolution
-        int width = (int)(source.Width * ResolutionScale);
-        int height = (int)(source.Height * ResolutionScale);
+        int width = (int)(context.Width * ResolutionScale);
+        int height = (int)(context.Height * ResolutionScale);
 
-        // Ensure render textures are created and sized correctly
-        EnsureRenderTexture(ref _reflectionDataRT, width, height, TextureImageFormat.Short4);
-        EnsureRenderTexture(ref _resolvedRT, width, height, source.MainTexture.ImageFormat);
-        EnsureRenderTexture(ref _blurTempRT, width, height, source.MainTexture.ImageFormat);
+        // Allocate temporary render textures
+        RenderTexture reflectionDataRT = context.GetTemporaryRT(width, height, TextureImageFormat.Short4);
+        RenderTexture resolvedRT = context.GetTemporaryRT(width, height, context.SceneColor.MainTexture.ImageFormat);
+        RenderTexture blurTempRT = context.GetTemporaryRT(width, height, context.SceneColor.MainTexture.ImageFormat);
 
         // Pass 0: Ray March - Trace rays and output hit UVs + confidence
         _mat.SetFloat("_MaxSteps", MaxSteps);
         _mat.SetFloat("_BinarySearchIterations", BinarySearchIterations);
         _mat.SetFloat("_ScreenEdgeFade", ScreenEdgeFade);
-        Graphics.Blit(source, _reflectionDataRT, _mat, 0);
+        Graphics.Blit(context.SceneColor, reflectionDataRT, _mat, 0);
 
         // Pass 1: Resolve - Sample scene color at hit points
-        _mat.SetTexture("_ReflectionData", _reflectionDataRT.MainTexture);
+        _mat.SetTexture("_ReflectionData", reflectionDataRT.MainTexture);
         _mat.SetFloat("_MipBias", MipBias);
-        Graphics.Blit(source, _resolvedRT, _mat, 1);
+        Graphics.Blit(context.SceneColor, resolvedRT, _mat, 1);
 
         // Pass 2: Blur Horizontal
         _mat.SetVector("_BlurDirection", new Double2(1.0, 0.0));
         _mat.SetFloat("_BlurRadius", BlurRadius);
-        Graphics.Blit(_resolvedRT, _blurTempRT, _mat, 2);
+        Graphics.Blit(resolvedRT, blurTempRT, _mat, 2);
 
         // Pass 3: Blur Vertical
         _mat.SetVector("_BlurDirection", new Double2(0.0, 1.0));
         _mat.SetFloat("_BlurRadius", BlurRadius);
-        Graphics.Blit(_blurTempRT, _resolvedRT, _mat, 2);
+        Graphics.Blit(blurTempRT, resolvedRT, _mat, 2);
 
-        // Pass 4: Composite - Blend reflections with scene
-        _mat.SetTexture("_ReflectionTex", _resolvedRT.MainTexture);
+        // Pass 4: Composite - Blend reflections with scene (in-place)
+        _mat.SetTexture("_ReflectionTex", resolvedRT.MainTexture);
         _mat.SetFloat("_Intensity", Intensity);
-        Graphics.Blit(source, destination, _mat, 3);
-    }
-
-    private void EnsureRenderTexture(ref RenderTexture rt, int width, int height, TextureImageFormat format)
-    {
-        if (rt.IsNotValid() || rt.Width != width || rt.Height != height || rt.MainTexture.ImageFormat != format)
-        {
-            rt?.Dispose();
-            rt = new RenderTexture(width, height, false, [format]);
-        }
+        Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 3);
     }
 
     public override void OnPostRender(Camera camera)

@@ -39,22 +39,7 @@ public abstract class ImageEffect
     /// <param name="context">Provides access to all render targets and rendering state</param>
     public virtual void OnRenderEffect(RenderContext context)
     {
-        // Backward compatibility: call old API if new API not overridden
-        // This allows existing effects to continue working
-        if (context.CurrentStage == RenderStage.PostProcess ||
-            (context.CurrentStage == RenderStage.AfterLighting && IsOpaqueEffect))
-        {
-            OnRenderImage(context.SceneColor, context.SceneColor);
-        }
     }
-
-    /// <summary>
-    /// OLD API (DEPRECATED): Simple source to destination rendering.
-    /// Still supported for backward compatibility but limited to PostProcess/AfterLighting stages.
-    /// New effects should override OnRenderEffect instead for full pipeline access.
-    /// </summary>
-    [Obsolete("Use OnRenderEffect(RenderContext) for full pipeline access")]
-    public virtual void OnRenderImage(RenderTexture source, RenderTexture destination) { }
 
     /// <summary>
     /// Called after all rendering is complete for this camera.
