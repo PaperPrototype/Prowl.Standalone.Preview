@@ -37,6 +37,12 @@ public sealed unsafe class GLVertexArray : GraphicsVertexArray
                     GLDevice.GL.VertexAttribPointer(index, element.Count, (GLEnum)element.Type, element.Normalized, (uint)format.Size, (void*)offset);
                 else
                     GLDevice.GL.VertexAttribIPointer(index, element.Count, (GLEnum)element.Type, (uint)format.Size, (void*)offset);
+
+                // Set divisor for instancing (0 = per-vertex, 1+ = per-instance)
+                if (element.Divisor > 0)
+                {
+                    GLDevice.GL.VertexAttribDivisor(index, (uint)element.Divisor);
+                }
             }
         }
     }
