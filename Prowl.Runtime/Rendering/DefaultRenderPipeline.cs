@@ -284,7 +284,6 @@ public class DefaultRenderPipeline : RenderPipeline
             };
 
             ExecuteImageEffects(lightingContext, effectsByStage[RenderStage.DuringLighting]);
-            lightingContext.ReleaseTemporaryRTs();
         }
 
         // =======================================================
@@ -354,7 +353,6 @@ public class DefaultRenderPipeline : RenderPipeline
             };
 
             ExecuteImageEffects(afterLightingContext, effectsByStage[RenderStage.AfterLighting]);
-            afterLightingContext.ReleaseTemporaryRTs();
         }
 
         // =======================================================
@@ -391,8 +389,6 @@ public class DefaultRenderPipeline : RenderPipeline
                     RenderTexture.ReleaseTemporaryRT(oldRT);
                 }
             }
-
-            postProcessContext.ReleaseTemporaryRTs();
         }
 
         // =======================================================

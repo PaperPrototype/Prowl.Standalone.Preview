@@ -28,20 +28,7 @@ public sealed class RenderContext : IDisposable
     // Current rendering stage
     public RenderStage CurrentStage { get; set; }
 
-    // Temporary RT pool
-    private readonly List<RenderTexture> _temporaryRTs = new();
     private readonly List<RenderTexture> _replacedRTs = new();
-
-    /// <summary>
-    /// Allocates a temporary render texture for use during this frame.
-    /// Will be automatically disposed at the end of the frame.
-    /// </summary>
-    public RenderTexture GetTemporaryRT(int width, int height, TextureImageFormat format)
-    {
-        var rt = new RenderTexture(width, height, false, [format]);
-        _temporaryRTs.Add(rt);
-        return rt;
-    }
 
     /// <summary>
     /// Replaces the scene color buffer with a new one (e.g., for HDR to LDR conversion).
@@ -66,40 +53,8 @@ public sealed class RenderContext : IDisposable
     /// </summary>
     internal List<RenderTexture> GetReplacedRTs() => _replacedRTs;
 
-    /// <summary>
-    /// Allocates a temporary render texture matching the screen resolution.
-    /// </summary>
-    public RenderTexture GetTemporaryRT(TextureImageFormat format)
-    {
-        return GetTemporaryRT(Width, Height, format);
-    }
-
-    /// <summary>
-    /// Allocates a temporary render texture with a resolution scale.
-    /// </summary>
-    public RenderTexture GetTemporaryRT(float scale, TextureImageFormat format)
-    {
-        int width = (int)(Width * scale);
-        int height = (int)(Height * scale);
-        return GetTemporaryRT(width, height, format);
-    }
-
-    /// <summary>
-    /// Releases all temporary render textures allocated during this frame.
-    /// Called automatically by the rendering pipeline.
-    /// </summary>
-    public void ReleaseTemporaryRTs()
-    {
-        foreach (var rt in _temporaryRTs)
-        {
-            rt?.Dispose();
-        }
-        _temporaryRTs.Clear();
-    }
-
     public void Dispose()
     {
-        ReleaseTemporaryRTs();
         // Note: Replaced RTs are NOT disposed here - the pipeline handles those
         _replacedRTs.Clear();
     }

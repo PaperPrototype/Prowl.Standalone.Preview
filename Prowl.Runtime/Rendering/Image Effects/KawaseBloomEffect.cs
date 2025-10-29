@@ -26,8 +26,8 @@ public sealed class KawaseBloomEffect : ImageEffect
         int height = context.Height / 4;
 
         // Create ping-pong buffers
-        RenderTexture pingPongBuffer0 = context.GetTemporaryRT(width, height, context.SceneColor.MainTexture.ImageFormat);
-        RenderTexture pingPongBuffer1 = context.GetTemporaryRT(width, height, context.SceneColor.MainTexture.ImageFormat);
+        RenderTexture pingPongBuffer0 = RenderTexture.GetTemporaryRT(width, height, false, [context.SceneColor.MainTexture.ImageFormat]);
+        RenderTexture pingPongBuffer1 = RenderTexture.GetTemporaryRT(width, height, false, [context.SceneColor.MainTexture.ImageFormat]);
 
         // 1. Extract bright areas (threshold pass)
         _bloomMaterial.SetFloat("_Threshold", Threshold);
@@ -51,6 +51,10 @@ public sealed class KawaseBloomEffect : ImageEffect
         _bloomMaterial.SetTexture("_BloomTex", current.MainTexture);
         _bloomMaterial.SetFloat("_Intensity", Intensity);
         Graphics.Blit(context.SceneColor, context.SceneColor, _bloomMaterial, 2);
+
+        // Release temporary render textures
+        RenderTexture.ReleaseTemporaryRT(pingPongBuffer0);
+        RenderTexture.ReleaseTemporaryRT(pingPongBuffer1);
     }
 
     public override void OnPostRender(Camera camera)

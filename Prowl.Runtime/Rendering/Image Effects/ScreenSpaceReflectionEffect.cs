@@ -56,9 +56,9 @@ public sealed class ScreenSpaceReflectionEffect : ImageEffect
         int height = (int)(context.Height * ResolutionScale);
 
         // Allocate temporary render textures
-        RenderTexture reflectionDataRT = context.GetTemporaryRT(width, height, TextureImageFormat.Short4);
-        RenderTexture resolvedRT = context.GetTemporaryRT(width, height, context.SceneColor.MainTexture.ImageFormat);
-        RenderTexture blurTempRT = context.GetTemporaryRT(width, height, context.SceneColor.MainTexture.ImageFormat);
+        RenderTexture reflectionDataRT = RenderTexture.GetTemporaryRT(width, height, false, [TextureImageFormat.Short4]);
+        RenderTexture resolvedRT = RenderTexture.GetTemporaryRT(width, height, false, [context.SceneColor.MainTexture.ImageFormat]);
+        RenderTexture blurTempRT = RenderTexture.GetTemporaryRT(width, height, false, [context.SceneColor.MainTexture.ImageFormat]);
 
         // Pass 0: Ray March - Trace rays and output hit UVs + confidence
         _mat.SetFloat("_MaxSteps", MaxSteps);
@@ -85,6 +85,11 @@ public sealed class ScreenSpaceReflectionEffect : ImageEffect
         _mat.SetTexture("_ReflectionTex", resolvedRT.MainTexture);
         _mat.SetFloat("_Intensity", Intensity);
         Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 3);
+
+        // Release temporary render textures
+        RenderTexture.ReleaseTemporaryRT(reflectionDataRT);
+        RenderTexture.ReleaseTemporaryRT(resolvedRT);
+        RenderTexture.ReleaseTemporaryRT(blurTempRT);
     }
 
     public override void OnPostRender(Camera camera)

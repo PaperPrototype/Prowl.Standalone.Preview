@@ -54,7 +54,7 @@ public sealed class GTAOEffect : ImageEffect
         int height = (int)(context.Height * ResolutionScale);
 
         // Allocate temporary render textures
-        RenderTexture aoRT = context.GetTemporaryRT(width, height, TextureImageFormat.Color4b);
+        RenderTexture aoRT = RenderTexture.GetTemporaryRT(width, height, false, [TextureImageFormat.Color4b]);
 
         // Pass 0: Calculate GTAO
         _mat.SetInt("_Slices", Slices);
@@ -67,7 +67,7 @@ public sealed class GTAOEffect : ImageEffect
         // Pass 1: Blur Horizontal (if blur is enabled)
         if (BlurRadius > 0.01f)
         {
-            RenderTexture blurTempRT = context.GetTemporaryRT(width, height, TextureImageFormat.Color4b);
+            RenderTexture blurTempRT = RenderTexture.GetTemporaryRT(width, height, false, [TextureImageFormat.Color4b]);
 
             _mat.SetVector("_BlurDirection", new Double2(1.0, 0.0));
             _mat.SetFloat("_BlurRadius", BlurRadius);
@@ -77,12 +77,17 @@ public sealed class GTAOEffect : ImageEffect
             _mat.SetVector("_BlurDirection", new Double2(0.0, 1.0));
             _mat.SetFloat("_BlurRadius", BlurRadius);
             Graphics.Blit(blurTempRT, aoRT, _mat, 1);
+
+            RenderTexture.ReleaseTemporaryRT(blurTempRT);
         }
 
         // Pass 2: Composite - Apply AO to scene (in-place)
         _mat.SetTexture("_AOTex", aoRT.MainTexture);
         _mat.SetFloat("_Intensity", Intensity);
         Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 2);
+
+        // Release temporary render textures
+        RenderTexture.ReleaseTemporaryRT(aoRT);
     }
 
     public override void OnPostRender(Camera camera)

@@ -47,7 +47,7 @@ public sealed class BokehDepthOfFieldEffect : ImageEffect
         ]);
 
         // Create vertical result texture
-        RenderTexture verticalResult = context.GetTemporaryRT(blurWidth, blurHeight, context.SceneColor.MainTexture.ImageFormat);
+        RenderTexture verticalResult = RenderTexture.GetTemporaryRT(blurWidth, blurHeight, false, [context.SceneColor.MainTexture.ImageFormat]);
 
         // Set common shader properties
         _mat.SetFloat("_FocusStrength", FocusStrength);
@@ -76,6 +76,7 @@ public sealed class BokehDepthOfFieldEffect : ImageEffect
 
         // Clean up MRT
         RenderTexture.ReleaseTemporaryRT(horizontalMRT);
+        RenderTexture.ReleaseTemporaryRT(verticalResult);
     }
 
 }
