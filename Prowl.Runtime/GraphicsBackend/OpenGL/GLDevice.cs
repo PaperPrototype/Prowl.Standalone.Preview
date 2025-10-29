@@ -233,27 +233,24 @@ public sealed unsafe class GLDevice : GraphicsDevice
 
     #region Vertex Arrays
 
-    public override GraphicsVertexArray CreateVertexArray(VertexFormat format, GraphicsBuffer vertices, GraphicsBuffer? indices)
+    public override GraphicsVertexArray CreateVertexArray(
+        VertexFormat format,
+        GraphicsBuffer vertices,
+        GraphicsBuffer? indices,
+        VertexFormat? instanceFormat = null,
+        GraphicsBuffer? instanceBuffer = null)
     {
-        return new GLVertexArray(format, vertices, indices);
+        return new GLVertexArray(format, vertices, indices, instanceFormat, instanceBuffer);
     }
 
     public override void BindVertexArray(GraphicsVertexArray? vertexArrayObject)
     {
         uint handle = 0;
 
-        // Handle both GLVertexArray and GLInstancedVertexArray
-        if (vertexArrayObject is GLInstancedVertexArray instancedVAO)
-            handle = instancedVAO.Handle;
-        else if (vertexArrayObject is GLVertexArray vao)
+        if (vertexArrayObject is GLVertexArray vao)
             handle = vao.Handle;
 
         GL.BindVertexArray(handle);
-        //if (vertexArrayObject == null)
-        //{
-        //    GLDevice.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, 0);
-        //    GLDevice.GL.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
-        //}
     }
 
 

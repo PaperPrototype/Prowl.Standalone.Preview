@@ -40,7 +40,7 @@ public sealed class BokehDepthOfFieldEffect : ImageEffect
 
         // Create MRT render texture for horizontal pass (3 color attachments for R, G, B)
         // Use floating point format to store complex number values (can be negative)
-        RenderTexture horizontalMRT = new RenderTexture(blurWidth, blurHeight, false, [
+        RenderTexture horizontalMRT = RenderTexture.GetTemporaryRT(blurWidth, blurHeight, false, [
             TextureImageFormat.Short4,
             TextureImageFormat.Short4,
             TextureImageFormat.Short4
@@ -74,8 +74,8 @@ public sealed class BokehDepthOfFieldEffect : ImageEffect
         _mat.SetVector("_Resolution", new Double2(fullWidth, fullHeight));
         Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 2);
 
-        // Clean up MRT (not managed by context)
-        horizontalMRT.Dispose();
+        // Clean up MRT
+        RenderTexture.ReleaseTemporaryRT(horizontalMRT);
     }
 
 }

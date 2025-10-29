@@ -11,16 +11,38 @@ public sealed unsafe class GLVertexArray : GraphicsVertexArray
 {
     public uint Handle { get; private set; }
 
-    public GLVertexArray(VertexFormat format, GraphicsBuffer vertices, GraphicsBuffer? indices)
+    public GLVertexArray(
+        VertexFormat format,
+        GraphicsBuffer vertices,
+        GraphicsBuffer? indices,
+        VertexFormat? instanceFormat = null,
+        GraphicsBuffer? instanceBuffer = null)
     {
         Handle = GLDevice.GL.GenVertexArray();
+
+        if (Handle == 0)
+        {
+            throw new System.Exception("Failed to create VAO - glGenVertexArray returned 0");
+        }
+
         GLDevice.GL.BindVertexArray(Handle);
 
+        // Bind vertex buffer and set up per-vertex attributes
+        GLDevice.GL.BindBuffer(BufferTargetARB.ArrayBuffer, (vertices as GLBuffer).Handle);
         BindFormat(format);
 
-        GLDevice.GL.BindBuffer(BufferTargetARB.ArrayBuffer, (vertices as GLBuffer).Handle);
+        // Bind instance buffer and set up per-instance attributes (if provided)
+        if (instanceFormat != null && instanceBuffer != null)
+        {
+            GLDevice.GL.BindBuffer(BufferTargetARB.ArrayBuffer, (instanceBuffer as GLBuffer).Handle);
+            BindFormat(instanceFormat);
+        }
+
+        // Bind index buffer if present
         if (indices != null)
             GLDevice.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, (indices as GLBuffer).Handle);
+
+        GLDevice.GL.BindVertexArray(0);
     }
 
     void BindFormat(VertexFormat format)

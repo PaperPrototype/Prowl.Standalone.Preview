@@ -38,7 +38,12 @@ public abstract class GraphicsDevice
 
     #region Vertex Arrays
 
-    public abstract GraphicsVertexArray CreateVertexArray(VertexFormat format, GraphicsBuffer vertices, GraphicsBuffer? indices);
+    public abstract GraphicsVertexArray CreateVertexArray(
+        VertexFormat format,
+        GraphicsBuffer vertices,
+        GraphicsBuffer? indices,
+        VertexFormat? instanceFormat = null,
+        GraphicsBuffer? instanceBuffer = null);
     public abstract void BindVertexArray(GraphicsVertexArray? vertexArrayObject);
 
     #endregion

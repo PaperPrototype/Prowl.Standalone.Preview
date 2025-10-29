@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using Prowl.Runtime.GraphicsBackend;
+using Prowl.Runtime.GraphicsBackend.Primitives;
 using Prowl.Runtime.Rendering.Shaders;
 using Prowl.Runtime.Resources;
 using Prowl.Vector;
@@ -32,19 +33,21 @@ public interface IRenderable
 
 /// <summary>
 /// Extended interface for renderables that use GPU instancing.
-/// Provides multiple instances of the same mesh with different per-instance data.
+/// Systems implementing this interface manage their own instance buffers and VAOs.
 /// </summary>
 public interface IInstancedRenderable : IRenderable
 {
     /// <summary>
-    /// Gets the instance data for all instances to be rendered.
-    /// Each element represents one instance with its transform, color, and custom data.
+    /// Gets the instanced rendering data.
+    /// The system is responsible for creating and managing the instance buffer and VAO.
     /// </summary>
     /// <param name="viewer">Camera viewing data for culling/LOD</param>
     /// <param name="properties">Shared properties for all instances</param>
-    /// <param name="mesh">The mesh to instance</param>
-    /// <param name="instanceData">Array of per-instance data</param>
-    void GetInstanceData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out InstanceData[] instanceData);
+    /// <param name="vao">The VAO configured with mesh + instance buffer</param>
+    /// <param name="instanceCount">Number of instances to draw</param>
+    /// <param name="indexCount">Number of indices per instance</param>
+    /// <param name="useIndex32">Whether indices are 32-bit (true) or 16-bit (false)</param>
+    void GetInstanceData(ViewerData viewer, out PropertyState properties, out GraphicsVertexArray vao, out int instanceCount, out int indexCount, out bool useIndex32);
 }
 
 public enum LightType
@@ -405,37 +408,25 @@ public abstract class RenderPipeline : EngineObject
         }
     }
 
-    private InstancedRenderingHelper _instancedHelper = new();
-
     /// <summary>
     /// Draws an instanced renderable with TRUE GPU instancing.
     /// Uses DrawIndexedInstanced to draw multiple instances in a single draw call.
+    /// Systems are responsible for managing their own instance buffers and VAOs.
     /// </summary>
     private void DrawInstancedRenderable(IInstancedRenderable renderable, string shaderTag, string tagValue, ViewerData viewer, bool hasRenderOrder)
     {
-        // Get instance data
-        renderable.GetInstanceData(viewer, out PropertyState sharedProperties, out Mesh mesh, out InstanceData[] instanceData);
+        // Get instance rendering data (VAO managed by the system)
+        renderable.GetInstanceData(viewer, out PropertyState sharedProperties, out GraphicsVertexArray vao, out int instanceCount, out int indexCount, out bool useIndex32);
 
-        if (mesh == null || mesh.VertexCount <= 0 || instanceData.Length == 0)
+        if (vao == null || instanceCount <= 0 || indexCount <= 0)
             return;
 
         Material material = renderable.GetMaterial();
         if (material.Shader.IsNotValid())
             return;
 
-        // Configure shader keywords
-        material.SetKeyword("HAS_NORMALS", mesh.HasNormals);
-        material.SetKeyword("HAS_TANGENTS", mesh.HasTangents);
-        material.SetKeyword("HAS_UV", mesh.HasUV);
-        material.SetKeyword("HAS_UV2", mesh.HasUV2);
-        material.SetKeyword("HAS_COLORS", mesh.HasColors || mesh.HasColors32);
-        material.SetKeyword("HAS_BONEINDICES", mesh.HasBoneIndices);
-        material.SetKeyword("HAS_BONEWEIGHTS", mesh.HasBoneWeights);
-        material.SetKeyword("SKINNED", mesh.HasBoneIndices && mesh.HasBoneWeights);
+        // Enable GPU instancing keyword
         material.SetKeyword("GPU_INSTANCING", true);
-
-        // Setup instancing (creates instance buffer and VAO)
-        var instancedVAO = _instancedHelper.SetupInstancing(mesh, instanceData);
 
         // Find matching shader passes
         int passIndex = -1;
@@ -475,23 +466,16 @@ public abstract class RenderPipeline : EngineObject
             Graphics.Device.SetState(pass.State);
 
             // Draw with TRUE GPU instancing!
-            if (instancedVAO != null)
+            unsafe
             {
-                unsafe
-                {
-                    Graphics.Device.BindVertexArray(instancedVAO);
-                    Graphics.Device.DrawIndexedInstanced(
-                        mesh.MeshTopology,
-                        (uint)mesh.IndexCount,
-                        (uint)instanceData.Length,
-                        mesh.IndexFormat == IndexFormat.UInt32
-                    );
-                    Graphics.Device.BindVertexArray(null);
-                }
-            }
-            else
-            {
-                Debug.LogError("Failed to create instanced VAO for particle rendering");
+                Graphics.Device.BindVertexArray(vao);
+                Graphics.Device.DrawIndexedInstanced(
+                    Topology.Triangles,
+                    (uint)indexCount,
+                    (uint)instanceCount,
+                    useIndex32
+                );
+                Graphics.Device.BindVertexArray(null);
             }
         }
 

@@ -25,7 +25,7 @@ public sealed class TonemapperEffect : ImageEffect
         _mat.SetFloat("Saturation", Saturation);
 
         // Create new LDR buffer to replace HDR
-        var ldrBuffer = new RenderTexture(
+        var ldrBuffer = RenderTexture.GetTemporaryRT(
             context.Width,
             context.Height,
             true, // Keep depth for transparents

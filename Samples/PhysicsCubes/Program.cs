@@ -30,7 +30,7 @@ public sealed class PhysicsDemo : Game
 
     public override void Initialize()
     {
-        DrawGizmos = true;
+        //DrawGizmos = true;
         scene = new Scene();
 
         // Create directional light
@@ -638,7 +638,8 @@ public sealed class PhysicsDemo : Game
     {
         //scene.DrawGizmos();
 
-        particleSystemGO.Transform.Rotate(Double3.UnitX, 20f * Time.DeltaTime);
+        if (particleSystemGO != null)
+            particleSystemGO.Transform.Rotate(Double3.UnitX, 20f * Time.DeltaTime);
 
         // Camera movement
         Double2 movement = Double2.Zero;
