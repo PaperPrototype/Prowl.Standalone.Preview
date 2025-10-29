@@ -125,8 +125,6 @@ public class DirectionalLight : Light
         // Calculate linear split distances
         double cascadeInterval = ShadowDistance / numCascades;
 
-        // Get shadow resolution per cascade
-        int res = (int)ShadowResolution;
 
         // Light direction vectors
         Double3 forward = -Transform.Forward;
@@ -138,6 +136,13 @@ public class DirectionalLight : Light
         {
             // Calculate this cascade's distance (linear split)
             double cascadeDistance = cascadeInterval * (cascadeIndex + 1);
+
+            // Get shadow resolution per cascade
+            int res = (int)ShadowResolution;
+            // Half resolution for each cascade beyond the first
+            if (cascadeIndex > 0)
+                res /= cascadeIndex + 1;
+
 
             // Reserve space in shadow atlas for this cascade
             Int2? slot = ShadowAtlas.ReserveTiles(res, res, GetLightID() + cascadeIndex);
