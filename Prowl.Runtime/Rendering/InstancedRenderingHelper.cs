@@ -19,6 +19,7 @@ public class InstancedRenderingHelper
     private GraphicsVertexArray _instancedVAO;
     private int _lastInstanceCount;
     private int _bufferCapacity;
+    private Mesh _lastMesh; // Track which mesh this VAO was created for
 
     /// <summary>
     /// Creates or updates the instance buffer and VAO for instanced rendering.
@@ -64,9 +65,18 @@ public class InstancedRenderingHelper
             Graphics.Device.SetBuffer(_instanceBuffer, instanceData, dynamic: true);
         }
 
-        // Create instanced VAO if needed
-        if (_instancedVAO == null)
+        // Create instanced VAO if needed, or if mesh changed
+        if (_instancedVAO == null || _lastMesh != mesh)
         {
+            // Dispose old VAO if mesh changed
+            if (_lastMesh != mesh && _instancedVAO != null)
+            {
+                _instancedVAO.Dispose();
+                _instancedVAO = null;
+            }
+
+            _lastMesh = mesh;
+
             // Get mesh vertex format and buffers
             var meshFormat = Mesh.GetVertexLayout(mesh);
             var vertexBuffer = mesh.VertexBuffer;

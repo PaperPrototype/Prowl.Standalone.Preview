@@ -20,6 +20,7 @@ public enum DefaultShader
     PointLight,
     DeferredCompose,
     Particle,
+    Terrain,
 
     ProceduralSkybox,
     Tonemapper,

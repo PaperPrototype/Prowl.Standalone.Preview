@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
 using Prowl.Runtime;
+using Prowl.Runtime.GraphicsBackend.Primitives;
 using Prowl.Runtime.Rendering;
 using Prowl.Runtime.Resources;
 using Prowl.Runtime.ParticleSystem;
 using Prowl.Runtime.ParticleSystem.Modules;
+using Prowl.Runtime.Terrain;
 using Prowl.Vector;
 
 namespace PhysicsCubes;
@@ -28,7 +30,7 @@ public sealed class PhysicsDemo : Game
 
     public override void Initialize()
     {
-        //DrawGizmos = true;
+        DrawGizmos = true;
         scene = new Scene();
 
         // Create directional light
@@ -101,7 +103,22 @@ public sealed class PhysicsDemo : Game
         // Demo 6: GPU-Instanced Particle System!
         CreateParticleSystemDemo(scene, new Double3(0, 3, 5));
 
+        // Demo 7: GPU-Instanced Terrain with LOD!
+        CreateTerrainDemo(scene, new Double3(-50, -5, -50));
+
         scene.Activate();
+
+        // Print controls
+        Debug.Log("=== Physics Demo Controls ===");
+        Debug.Log("WASD + Q/E: Move camera");
+        Debug.Log("Right Mouse: Rotate camera");
+        Debug.Log("Left Mouse: Shoot cube");
+        Debug.Log("1-4: Change cube mass");
+        Debug.Log("P: Toggle particle system");
+        Debug.Log("I/J/K/L/U/O: Move particle system");
+        Debug.Log("R: Reset scene");
+        Debug.Log("X: Delete last shot cube");
+        Debug.Log("============================");
     }
 
     private void CreateParticleSystemDemo(Scene scene, Double3 position)
@@ -405,6 +422,178 @@ public sealed class PhysicsDemo : Game
         scene.Add(platform);
     }
 
+    private void CreateTerrainDemo(Scene scene, Double3 position)
+    {
+        // Create terrain GameObject
+        GameObject terrainGO = new GameObject("GPU-Instanced Terrain");
+        terrainGO.Transform.Position = position;
+
+        // Generate heightmap and splatmap procedurally
+        Texture2D heightmap = GenerateHeightmap(256, 256);
+        Texture2D splatmap = GenerateSplatmap(256, 256);
+
+        // Create terrain component
+        TerrainComponent terrain = terrainGO.AddComponent<TerrainComponent>();
+
+        // Create material with terrain shader
+        Material terrainMaterial = new Material(Shader.LoadDefault(DefaultShader.Terrain));
+        terrain.Material = terrainMaterial;
+
+        // Assign textures
+        terrain.Heightmap = heightmap;
+        terrain.Splatmap = splatmap;
+
+        // Use default textures for layers
+        terrain.Layer0Albedo = Texture2D.White;   // Base layer - white
+        terrain.Layer1Albedo = Texture2D.Gray;    // Mid layer - gray
+        terrain.Layer2Albedo = Texture2D.Grid;    // High layer - grid pattern
+        terrain.Layer3Albedo = Texture2D.Noise;   // Peak layer - noise
+
+        // Configure terrain settings
+        terrain.TerrainSize = 100.0;              // 100x100 world units
+        terrain.TerrainHeight = 20.0f;            // Max height 20 units
+        terrain.MaxLODLevel = 6;                  // 6 levels of LOD
+        terrain.MeshResolution = 32;              // 32x32 base mesh
+        terrain.TextureTiling = 20.0f;            // Tile textures 20 times
+
+        scene.Add(terrainGO);
+
+        Debug.Log("GPU-Instanced Terrain created! Heightmap sampled in vertex shader with automatic LOD.");
+        Debug.Log($"Terrain positioned at {position}. Use WASD + Mouse to fly camera and view it!");
+    }
+
+    private Texture2D GenerateHeightmap(uint width, uint height)
+    {
+        // Create texture
+        Texture2D heightmap = new Texture2D(width, height, true, TextureImageFormat.Color4b);
+
+        // Generate heightmap data using simple noise
+        byte[] pixels = new byte[width * height * 4]; // RGBA
+
+        for (uint y = 0; y < height; y++)
+        {
+            for (uint x = 0; x < width; x++)
+            {
+                uint index = (y * width + x) * 4;
+
+                // Simple multi-octave noise for terrain
+                float nx = (float)x / width;
+                float ny = (float)y / height;
+
+                // Multiple octaves of noise
+                float heightValue = 0.0f;
+                heightValue += PerlinNoise(nx * 4, ny * 4) * 0.5f;      // Large features
+                heightValue += PerlinNoise(nx * 8, ny * 8) * 0.25f;     // Medium features
+                heightValue += PerlinNoise(nx * 16, ny * 16) * 0.125f;  // Small details
+
+                // Normalize to 0-1
+                heightValue = (heightValue + 1.0f) * 0.5f;
+                heightValue = Math.Clamp(heightValue, 0.0f, 1.0f);
+
+                byte value = (byte)(heightValue * 255);
+
+                // Store as grayscale (R channel used by shader)
+                pixels[index + 0] = value; // R
+                pixels[index + 1] = value; // G
+                pixels[index + 2] = value; // B
+                pixels[index + 3] = 255;   // A
+            }
+        }
+
+        heightmap.SetData(new Memory<byte>(pixels));
+        heightmap.SetWrapModes(TextureWrap.ClampToEdge, TextureWrap.ClampToEdge);
+        heightmap.SetTextureFilters(TextureMin.Linear, TextureMag.Linear);
+
+        return heightmap;
+    }
+
+    private Texture2D GenerateSplatmap(uint width, uint height)
+    {
+        // Create texture
+        Texture2D splatmap = new Texture2D(width, height, true, TextureImageFormat.Color4b);
+
+        // Generate splatmap data
+        byte[] pixels = new byte[width * height * 4]; // RGBA = 4 layers
+
+        for (uint y = 0; y < height; y++)
+        {
+            for (uint x = 0; x < width; x++)
+            {
+                uint index = (y * width + x) * 4;
+
+                float nx = (float)x / width;
+                float ny = (float)y / height;
+
+                // Generate blend weights based on position and noise
+                // Layer 0 (R): Base layer - everywhere but reduced at higher "elevations"
+                float noise = PerlinNoise(nx * 8, ny * 8);
+                float heightNorm = (noise + 1.0f) * 0.5f; // 0-1
+
+                float layer0 = Math.Max(0, 1.0f - heightNorm * 1.5f);        // Low areas
+                float layer1 = 1.0f - Math.Abs(heightNorm - 0.4f) * 2.0f;    // Mid areas
+                float layer2 = 1.0f - Math.Abs(heightNorm - 0.7f) * 2.0f;    // High areas
+                float layer3 = Math.Max(0, (heightNorm - 0.8f) * 5.0f);      // Peaks
+
+                // Normalize weights
+                float sum = layer0 + layer1 + layer2 + layer3;
+                if (sum > 0)
+                {
+                    layer0 /= sum;
+                    layer1 /= sum;
+                    layer2 /= sum;
+                    layer3 /= sum;
+                }
+
+                pixels[index + 0] = (byte)(layer0 * 255); // R = Layer 0
+                pixels[index + 1] = (byte)(layer1 * 255); // G = Layer 1
+                pixels[index + 2] = (byte)(layer2 * 255); // B = Layer 2
+                pixels[index + 3] = (byte)(layer3 * 255); // A = Layer 3
+            }
+        }
+
+        splatmap.SetData(new Memory<byte>(pixels));
+        splatmap.SetWrapModes(TextureWrap.ClampToEdge, TextureWrap.ClampToEdge);
+        splatmap.SetTextureFilters(TextureMin.Linear, TextureMag.Linear);
+
+        return splatmap;
+    }
+
+    // Simple Perlin-like noise function
+    private float PerlinNoise(float x, float y)
+    {
+        // Simple smooth noise using sine waves
+        float n = (float)(Math.Sin(x * 12.9898 + y * 78.233) * 43758.5453);
+        n = n - (float)Math.Floor(n);
+
+        // Smooth interpolation
+        float fx = x - (float)Math.Floor(x);
+        float fy = y - (float)Math.Floor(y);
+
+        float a = Noise2D((int)x, (int)y);
+        float b = Noise2D((int)x + 1, (int)y);
+        float c = Noise2D((int)x, (int)y + 1);
+        float d = Noise2D((int)x + 1, (int)y + 1);
+
+        // Smooth interpolation
+        fx = fx * fx * (3 - 2 * fx);
+        fy = fy * fy * (3 - 2 * fy);
+
+        float i1 = Lerp(a, b, fx);
+        float i2 = Lerp(c, d, fx);
+        return Lerp(i1, i2, fy);
+    }
+
+    private float Noise2D(int x, int y)
+    {
+        int n = x + y * 57;
+        n = (n << 13) ^ n;
+        return (1.0f - ((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0f);
+    }
+
+    private float Lerp(float a, float b, float t)
+    {
+        return a + (b - a) * t;
+    }
 
     Mesh cubeShootMesh = null;
     int shootCounter = 0;
