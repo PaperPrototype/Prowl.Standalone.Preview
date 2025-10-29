@@ -151,27 +151,55 @@ public sealed class RenderTexture : EngineObject, ISerializable
     }
 
     private static Dictionary<RenderTextureKey, List<(RenderTexture, long frameCreated)>> pool = [];
+    private static Dictionary<RenderTextureKey, List<(RenderTexture, long frameAcquired)>> active = [];
     private const int MaxUnusedFrames = 10;
+    private const int MaxActiveFrames = 3; // Warn if held longer than 3 frames
 
     public static RenderTexture GetTemporaryRT(int width, int height, bool hasDepth, TextureImageFormat[] format)
     {
         var key = new RenderTextureKey(width, height, hasDepth, format);
 
+        RenderTexture renderTexture;
         if (pool.TryGetValue(key, out List<(RenderTexture, long frameCreated)>? list) && list.Count > 0)
         {
             int i = list.Count - 1;
-            RenderTexture renderTexture = list[i].Item1;
+            renderTexture = list[i].Item1;
             list.RemoveAt(i);
-            return renderTexture;
+        }
+        else
+        {
+            renderTexture = new RenderTexture(width, height, hasDepth, format);
         }
 
-        return new RenderTexture(width, height, hasDepth, format);
+        // Track in active pool
+        if (!active.TryGetValue(key, out List<(RenderTexture, long frameAcquired)>? activeList))
+        {
+            activeList = [];
+            active[key] = activeList;
+        }
+        activeList.Add((renderTexture, Time.FrameCount));
+
+        return renderTexture;
     }
 
     public static void ReleaseTemporaryRT(RenderTexture renderTexture)
     {
         var key = new RenderTextureKey(renderTexture.Width, renderTexture.Height, renderTexture.hasDepthAttachment, [.. renderTexture.InternalTextures.Select(t => t.ImageFormat)]);
 
+        // Remove from active pool
+        if (active.TryGetValue(key, out List<(RenderTexture, long frameAcquired)>? activeList))
+        {
+            for (int i = activeList.Count - 1; i >= 0; i--)
+            {
+                if (activeList[i].Item1 == renderTexture)
+                {
+                    activeList.RemoveAt(i);
+                    break;
+                }
+            }
+        }
+
+        // Add to pool for reuse
         if (!pool.TryGetValue(key, out List<(RenderTexture, long frameCreated)>? list))
         {
             list = [];
@@ -184,6 +212,25 @@ public sealed class RenderTexture : EngineObject, ISerializable
     public static void UpdatePool()
     {
         var disposableTextures = new List<RenderTexture>();
+
+        // Check for leaked active render textures (held longer than MaxActiveFrames)
+        foreach (KeyValuePair<RenderTextureKey, List<(RenderTexture, long frameAcquired)>> pair in active)
+        {
+            for (int i = pair.Value.Count - 1; i >= 0; i--)
+            {
+                (RenderTexture renderTexture, long frameAcquired) = pair.Value[i];
+                long framesActive = Time.FrameCount - frameAcquired;
+
+                if (framesActive > MaxActiveFrames)
+                {
+                    Debug.LogWarning($"RenderTexture leak detected! Texture ({renderTexture.Width}x{renderTexture.Height}) has been active for {framesActive} frames (max: {MaxActiveFrames}). Auto-disposing to prevent memory leak.");
+                    disposableTextures.Add(renderTexture);
+                    pair.Value.RemoveAt(i);
+                }
+            }
+        }
+
+        // Clean up unused textures in pool
         foreach (KeyValuePair<RenderTextureKey, List<(RenderTexture, long frameCreated)>> pair in pool)
         {
             for (int i = pair.Value.Count - 1; i >= 0; i--)
