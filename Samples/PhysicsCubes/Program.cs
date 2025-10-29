@@ -4,6 +4,8 @@
 using Prowl.Runtime;
 using Prowl.Runtime.Rendering;
 using Prowl.Runtime.Resources;
+using Prowl.Runtime.ParticleSystem;
+using Prowl.Runtime.ParticleSystem.Modules;
 using Prowl.Vector;
 
 namespace PhysicsCubes;
@@ -22,6 +24,7 @@ public sealed class PhysicsDemo : Game
     private Scene? scene;
     private double selectedCubeMass = 1.0;
     private Material? standardMaterial;
+    private GameObject? particleSystemGO;
 
     public override void Initialize()
     {
@@ -72,6 +75,14 @@ public sealed class PhysicsDemo : Game
 
         scene.Add(floor);
 
+        //GameObject templeGO = new("Sun Temple");
+        //templeGO.Transform.Position = new Double3(0, 0, 100);
+        //templeGO.Transform.LocalScale = new Double3(100f);
+        //var m = Model.LoadFromFile("fbxSunTemple\\SunTemple.fbx");
+        //templeGO.AddComponent<ModelRenderer>().Model = m;
+        //templeGO.AddComponent<ModelCollider>().Model = m;
+        //scene.Add(templeGO);
+
         // Demo 1: Chain of connected cubes (BallSocket + DistanceLimit)
         CreateChainDemo(scene, new Double3(-8, 10, 0), new Color(1.0f, 0.7f, 0.2f, 1.0f));
 
@@ -87,7 +98,102 @@ public sealed class PhysicsDemo : Game
         // Demo 5: Powered motor demo
         CreateMotorDemo(scene, new Double3(4, 3, -5), new Color(1.0f, 0.7f, 0.2f, 1.0f));
 
+        // Demo 6: GPU-Instanced Particle System!
+        CreateParticleSystemDemo(scene, new Double3(0, 3, 5));
+
         scene.Activate();
+    }
+
+    private void CreateParticleSystemDemo(Scene scene, Double3 position)
+    {
+        // Create particle system GameObject
+        particleSystemGO = new GameObject("Particle System Demo");
+        particleSystemGO.Transform.Position = position;
+
+        // Add particle system component
+        ParticleSystemComponent particleSystem = particleSystemGO.AddComponent<ParticleSystemComponent>();
+
+        // Create material with particle shader
+        Material particleMaterial = new Material(Shader.LoadDefault(DefaultShader.Particle));
+        particleMaterial.SetTexture("_MainTex", Texture2D.LoadDefault(DefaultTexture.White));
+        particleMaterial.SetColor("_MainColor", new Color(1.0f, 0.8f, 0.4f, 1.0f));
+        particleSystem.Material = particleMaterial;
+
+        // Configure particle system settings
+        particleSystem.MaxParticles = 1000;
+        particleSystem.Duration = 2.0f;
+        particleSystem.Looping = true;
+        particleSystem.PlayOnEnable = true;
+        particleSystem.Prewarm = false;
+        particleSystem.SimulationSpace = SimulationSpace.Local;
+
+        // Configure Initial module (required)
+        particleSystem.Initial.Enabled = true;
+        particleSystem.Initial.StartLifetime = new MinMaxCurve { Mode = MinMaxCurveMode.Random, MinValue = 1.0f, MaxValue = 2.5f };
+        particleSystem.Initial.StartSpeed = new MinMaxCurve { Mode = MinMaxCurveMode.Random, MinValue = 2.0f, MaxValue = 5.0f };
+        particleSystem.Initial.StartSize = new MinMaxCurve { Mode = MinMaxCurveMode.Random, MinValue = 0.1f, MaxValue = 0.3f };
+        particleSystem.Initial.StartRotation = new MinMaxCurve { Mode = MinMaxCurveMode.Random, MinValue = 0.0f, MaxValue = 360.0f };
+        particleSystem.Initial.StartColor = new MinMaxGradient
+        {
+            Mode = MinMaxGradientMode.RandomBetweenTwoColors,
+            MinColor = new Color(1.0f, 0.5f, 0.2f, 1.0f), // Orange
+            MaxColor = new Color(1.0f, 1.0f, 0.3f, 1.0f)  // Yellow
+        };
+
+       // Configure Emission module
+       particleSystem.Emission.Enabled = true;
+       particleSystem.Emission.RateOverTime = new MinMaxCurve(50.0f); // 500 particles per second
+
+       // Configure emission shape (try Sphere, Box, Cone, LineSegment, Circle)
+       particleSystem.Emission.Shape = EmissionShape.Cone;
+       particleSystem.Emission.Radius = 0.0f;
+       particleSystem.Emission.EmitFromShell = true; // Emit from surface only
+       
+       // Configure Size over Lifetime
+       // Size starts at 1.0, grows to 1.5 at middle, then shrinks to 0 at end
+       particleSystem.SizeOverLifetime.Enabled = true;
+       particleSystem.SizeOverLifetime.SizeCurve = new MinMaxCurve
+       {
+           Mode = MinMaxCurveMode.Curve,
+           Curve = new AnimationCurve([new KeyFrame(0.0, 1.0), new KeyFrame(0.5, 1.5), new KeyFrame(1.0, 0.0)])
+       };
+       
+       // Configure Color over Lifetime (fade out)
+       // Fade from full alpha to transparent
+       particleSystem.ColorOverLifetime.Enabled = true;
+       particleSystem.ColorOverLifetime.ColorGradient = new MinMaxGradient
+       {
+           Mode = MinMaxGradientMode.Gradient,
+           Gradient = new Gradient()
+           {
+               ColorKeys = [new (Color.White, 0.0f), new (new Color(1, 0.8f, 0.6f, 1), 0.5f), new (new Color(0.5f, 0.3f, 0.2f, 1), 1.0f)],
+               AlphaKeys = [new (1.0f, 0.0f), new (0.8f, 0.5f), new (0.0f, 1.0f)]
+           }
+       };
+       
+       // Configure Rotation over Lifetime
+       particleSystem.RotationOverLifetime.Enabled = true;
+       particleSystem.RotationOverLifetime.AngularVelocity = new MinMaxCurve
+       {
+           Mode = MinMaxCurveMode.Random,
+           MinValue = -180.0f,
+           MaxValue = 180.0f
+       };
+       
+       // Configure Velocity over Lifetime (simulate wind/drift)
+       particleSystem.VelocityOverLifetime.Enabled = true;
+       particleSystem.VelocityOverLifetime.VelocityX = new MinMaxCurve
+       {
+           Mode = MinMaxCurveMode.Curve,
+           Curve = new AnimationCurve([new KeyFrame(0.0, 0.0), new KeyFrame(1.0, 20.0)])
+       };
+
+        particleSystem.Collision.Enabled = true;
+        particleSystem.Collision.Quality = CollisionQuality.Medium;
+
+        scene.Add(particleSystemGO);
+
+        Debug.Log("GPU-Instanced Particle System created! 5000 max particles with full GPU instancing.");
     }
 
     private void CreateChainDemo(Scene scene, Double3 startPos, Color color)
@@ -343,6 +449,8 @@ public sealed class PhysicsDemo : Game
     {
         //scene.DrawGizmos();
 
+        particleSystemGO.Transform.Rotate(Double3.UnitX, 20f * Time.DeltaTime);
+
         // Camera movement
         Double2 movement = Double2.Zero;
         if (Input.GetKey(KeyCode.W)) movement += Double2.UnitY;
@@ -407,6 +515,42 @@ public sealed class PhysicsDemo : Game
         if (Input.GetMouseButtonDown(0))
         {
             ShootCube();
+        }
+
+        // Toggle particle system with P key
+        if (Input.GetKeyDown(KeyCode.P) && particleSystemGO.IsValid())
+        {
+            var particleSystem = particleSystemGO.GetComponent<ParticleSystemComponent>();
+            if (particleSystem != null)
+            {
+                if (particleSystem.IsPlaying)
+                {
+                    particleSystem.Stop();
+                    Debug.Log("Particle system stopped");
+                }
+                else
+                {
+                    particleSystem.Play();
+                    Debug.Log("Particle system playing");
+                }
+            }
+        }
+
+        // Move particle system with I/J/K/L keys
+        if (particleSystemGO.IsValid())
+        {
+            Double3 particleMovement = Double3.Zero;
+            if (Input.GetKey(KeyCode.I)) particleMovement += Double3.UnitZ;  // Forward
+            if (Input.GetKey(KeyCode.K)) particleMovement -= Double3.UnitZ;  // Back
+            if (Input.GetKey(KeyCode.J)) particleMovement -= Double3.UnitX;  // Left
+            if (Input.GetKey(KeyCode.L)) particleMovement += Double3.UnitX;  // Right
+            if (Input.GetKey(KeyCode.U)) particleMovement += Double3.UnitY;  // Up
+            if (Input.GetKey(KeyCode.O)) particleMovement -= Double3.UnitY;  // Down
+
+            if (particleMovement != Double3.Zero)
+            {
+                particleSystemGO.Transform.Position += particleMovement * 5f * Time.DeltaTime;
+            }
         }
     }
 }
