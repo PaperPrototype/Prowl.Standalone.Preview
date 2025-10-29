@@ -57,10 +57,10 @@ public class TerrainChunk
         IsVisible = false;
     }
 
-    public void DrawGizmos()
+    public void DrawGizmos(Double3 offset)
     {
-        var min = Position;
-        var max = Position + new Double3(Size, 0, Size);
+        var min = offset + Position;
+        var max = offset + Position + new Double3(Size, 0, Size);
         Debug.DrawLine(min, new Double3(max.X, min.Y, min.Z), Color.Green);
         Debug.DrawLine(min, new Double3(min.X, min.Y, max.Z), Color.Green);
         Debug.DrawLine(new Double3(max.X, min.Y, min.Z), max, Color.Green);
@@ -70,7 +70,7 @@ public class TerrainChunk
         {
             foreach (var child in Children)
             {
-                child.DrawGizmos();
+                child.DrawGizmos(offset);
             }
         }
     }

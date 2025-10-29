@@ -47,6 +47,8 @@ Pass "Terrain"
             uniform float _TerrainSize;
             uniform float _TerrainHeight;
 
+            uniform vec3 _TerrainOffset;
+
 			void main()
 			{
 #ifdef GPU_INSTANCING
@@ -70,12 +72,12 @@ Pass "Terrain"
                 vec3 worldPosition = chunkPosition + localPos;
 
                 // Calculate UV for heightmap sampling (in 0-1 terrain space)
-                vec2 terrainUV = worldPosition.xz / _TerrainSize;
+                vec2 terrainUV = (worldPosition.xz - _TerrainOffset.xz) / _TerrainSize;
                 texCoord0 = terrainUV;
 
                 // Sample heightmap for vertex displacement
                 float height = texture(_Heightmap, terrainUV).r;
-                worldPosition.y = height * _TerrainHeight;
+                worldPosition.y = worldPosition.y + (height * _TerrainHeight);
 
                 // Calculate normal by sampling neighboring heights
                 float heightmapSize = float(textureSize(_Heightmap, 0).x);
@@ -213,6 +215,8 @@ Pass "TerrainShadow"
             uniform float _TerrainSize;
             uniform float _TerrainHeight;
 
+            uniform vec3 _TerrainOffset;
+
 			void main()
 			{
 #ifdef GPU_INSTANCING
@@ -225,11 +229,11 @@ Pass "TerrainShadow"
                 vec3 worldPosition = chunkPosition + localPos;
 
                 // Calculate UV for heightmap sampling (in 0-1 terrain space)
-                vec2 terrainUV = worldPosition.xz / _TerrainSize;
+                vec2 terrainUV = (worldPosition.xz - _TerrainOffset.xz) / _TerrainSize;
 
                 // Sample heightmap for vertex displacement
                 float height = texture(_Heightmap, terrainUV).r;
-                worldPosition.y = height * _TerrainHeight;
+                worldPosition.y = worldPosition.y + (height * _TerrainHeight);
 
                 worldPos = worldPosition;
                 gl_Position = PROWL_MATRIX_VP * vec4(worldPosition, 1.0);

@@ -104,7 +104,7 @@ public sealed class PhysicsDemo : Game
         CreateParticleSystemDemo(scene, new Double3(0, 3, 5));
 
         // Demo 7: GPU-Instanced Terrain with LOD!
-        CreateTerrainDemo(scene, new Double3(-50, -5, -50));
+        CreateTerrainDemo(scene, new Double3(-50, -15, -50));
 
         scene.Activate();
 
@@ -618,11 +618,11 @@ public sealed class PhysicsDemo : Game
         BoxCollider cubeCollider = cube.AddComponent<BoxCollider>();
         cubeCollider.Size = new Double3(0.5, 0.5, 0.5);
 
-        var light = cube.AddComponent<PointLight>();
-        light.ShadowQuality = ShadowQuality.Soft;
-        light.Intensity = 32;
-        light.Color = new Color(RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), 1f);
-        light.Transform.Rotation = cameraGO.Transform.Rotation;
+        //var light = cube.AddComponent<PointLight>();
+        //light.ShadowQuality = ShadowQuality.Soft;
+        //light.Intensity = 32;
+        //light.Color = new Color(RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), RNG.Shared.NextDouble(), 1f);
+        //light.Transform.Rotation = cameraGO.Transform.Rotation;
 
         scene.Add(cube);
 
@@ -701,7 +701,7 @@ public sealed class PhysicsDemo : Game
         }
 
         // Shoot cube with left mouse button
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButton(0))
         {
             ShootCube();
         }

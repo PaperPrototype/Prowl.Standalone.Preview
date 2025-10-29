@@ -75,9 +75,9 @@ public class TerrainQuadtree
         }
     }
 
-    public void DrawGizmos()
+    public void DrawGizmos(Double3 offset)
     {
-        Root.DrawGizmos();
+        Root.DrawGizmos(offset);
     }
 
     /// <summary>

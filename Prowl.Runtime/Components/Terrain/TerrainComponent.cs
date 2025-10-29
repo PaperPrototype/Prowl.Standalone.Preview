@@ -33,8 +33,8 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
 
     public double TerrainSize = 1024.0;    // World size of terrain
     public float TerrainHeight = 100.0f;   // Maximum height
-    public int MaxLODLevel = 5;            // Maximum LOD subdivision levels
-    public int MeshResolution = 32;        // Resolution of base mesh (32x32)
+    public int MaxLODLevel = 4;            // Maximum LOD subdivision levels
+    public int MeshResolution = 16;        // Resolution of base mesh (32x32)
     public float TextureTiling = 10.0f;    // Tiling for terrain textures
 
     #endregion
@@ -75,9 +75,9 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
         if (camera == null)
             return;
 
-        Double3 cameraPos = camera.Transform.Position;
+        Double3 cameraPos = camera.Transform.Position - this.Transform.Position;
         // Project camera position onto terrain plane
-        cameraPos.Y = Transform.Position.Y;
+        cameraPos.Y = 0;
 
         // Update quadtree with camera position
         _quadtree.Update(cameraPos);
@@ -109,6 +109,8 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
             _properties.SetFloat("_TerrainHeight", TerrainHeight);
             _properties.SetFloat("_TextureTiling", TextureTiling);
 
+            _properties.SetVector("_TerrainOffset", this.Transform.Position);
+
             GameObject.Scene.PushRenderable(this);
         }
     }
@@ -123,7 +125,7 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
 
     public override void DrawGizmos()
     {
-        _quadtree.DrawGizmos();
+        _quadtree.DrawGizmos(this.Transform.Position);
     }
 
     #endregion
@@ -234,7 +236,7 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
             // Calculate transform for this chunk
             // Position: chunk position in world space (relative to terrain GameObject)
             // Scale: chunk size
-            Float3 position = (Float3)chunk.Position;
+            Float3 position = (Float3)(this.Transform.Position + chunk.Position);
             float scale = (float)chunk.Size;
 
             // Create transform matrix: Translation * Scale
