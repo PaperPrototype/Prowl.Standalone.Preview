@@ -94,9 +94,9 @@ public class DirectionalLight : Light
         lightUp = Double3.Normalize(Double3.Cross(forward, lightRight)); // Recompute to ensure orthogonality
 
         // Project camera position onto light space axes
-        double x = Double3.Dot(cameraPosition, lightRight);
-        double y = Double3.Dot(cameraPosition, lightUp);
-        double z = Double3.Dot(cameraPosition, forward); // KEEP the Z component! god damnit lost so much time to this
+        double x = Double3.Dot(RenderPipeline.CAMERA_RELATIVE ? Double3.Zero : cameraPosition, lightRight);
+        double y = Double3.Dot(RenderPipeline.CAMERA_RELATIVE ? Double3.Zero : cameraPosition, lightUp);
+        double z = Double3.Dot(RenderPipeline.CAMERA_RELATIVE ? Double3.Zero : cameraPosition, forward); // KEEP the Z component! god damnit lost so much time to this
 
         // Snap only X and Y to texel grid in light space
         x = Maths.Round(x / texelSize) * texelSize;
@@ -157,9 +157,6 @@ public class DirectionalLight : Light
 
                 // Calculate shadow matrix for this cascade distance
                 GetShadowMatrix(cameraPosition, res, cascadeDistance, out Double4x4 view, out Double4x4 proj);
-
-                if (RenderPipeline.CAMERA_RELATIVE)
-                    view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
 
                 Frustum frustum = Frustum.FromMatrix(proj * view);
 

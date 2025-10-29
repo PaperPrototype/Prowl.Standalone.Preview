@@ -99,10 +99,7 @@ public class PointLight : Light
 
             // Create view matrix for this face
             (Double3 forward, Double3 up) = faceOrientations[faceIndex];
-            Double4x4 view = Double4x4.CreateLookTo(lightPos, forward, up);
-
-            if (RenderPipeline.CAMERA_RELATIVE)
-                view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
+            Double4x4 view = Double4x4.CreateLookTo(RenderPipeline.CAMERA_RELATIVE ? Double3.Zero : lightPos, forward, up);
 
             Frustum frustum = Frustum.FromMatrix(projection * view);
 

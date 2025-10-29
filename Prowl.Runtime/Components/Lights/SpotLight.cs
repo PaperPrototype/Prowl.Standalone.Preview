@@ -74,7 +74,7 @@ public class SpotLight : Light
         double fov = SpotAngle * 2.0; // Full cone angle
         projection = Double4x4.CreatePerspectiveFov(fov * Maths.Deg2Rad, 1.0, 0.1, Range);
 
-        view = Double4x4.CreateLookTo(position, forward, Transform.Up);
+        view = Double4x4.CreateLookTo(RenderPipeline.CAMERA_RELATIVE ? Double3.Zero : position, forward, Transform.Up);
     }
 
     public override void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
@@ -101,9 +101,6 @@ public class SpotLight : Light
 
             // Calculate shadow matrices
             GetShadowMatrix(out Double4x4 view, out Double4x4 proj);
-
-            if (RenderPipeline.CAMERA_RELATIVE)
-                view.Translation *= new Double4(0, 0, 0, 1); // set all to 0 except W
 
             Frustum frustum = Frustum.FromMatrix(proj * view);
 
