@@ -51,6 +51,111 @@ public static class ShaderParser
         {',', (ctx) => HandleSingleCharToken(ctx, ShaderToken.Comma)},
     };
 
+    private static string StripComments(string input)
+    {
+        StringBuilder result = new StringBuilder(input.Length);
+        int i = 0;
+        bool inString = false;
+        bool escapeNext = false;
+
+        while (i < input.Length)
+        {
+            char c = input[i];
+
+            // Handle string literals
+            if (c == '"' && !escapeNext)
+            {
+                inString = !inString;
+                result.Append(c);
+                i++;
+                continue;
+            }
+
+            // Handle escape sequences
+            if (c == '\\' && !escapeNext)
+            {
+                escapeNext = true;
+                result.Append(c);
+                i++;
+                continue;
+            }
+
+            escapeNext = false;
+
+            // Don't strip comments inside strings
+            if (inString)
+            {
+                result.Append(c);
+                i++;
+                continue;
+            }
+
+            // Check for single-line comment: //
+            if (i + 1 < input.Length && input[i] == '/' && input[i + 1] == '/')
+            {
+                // Skip everything until end of line
+                i += 2;
+                while (i < input.Length && input[i] != '\n' && input[i] != '\r')
+                {
+                    i++;
+                }
+
+                // Preserve the newline
+                if (i < input.Length && input[i] == '\r')
+                {
+                    result.Append('\r');
+                    i++;
+                }
+                if (i < input.Length && input[i] == '\n')
+                {
+                    result.Append('\n');
+                    i++;
+                }
+                continue;
+            }
+
+            // Check for multi-line comment: /* */
+            if (i + 1 < input.Length && input[i] == '/' && input[i + 1] == '*')
+            {
+                // Skip everything until we find */
+                i += 2;
+
+                while (i + 1 < input.Length)
+                {
+                    // Preserve newlines to maintain line numbers
+                    if (input[i] == '\n')
+                    {
+                        result.Append('\n');
+                        i++;
+                        continue;
+                    }
+                    if (input[i] == '\r')
+                    {
+                        result.Append('\r');
+                        i++;
+                        continue;
+                    }
+
+                    // Check for closing */
+                    if (input[i] == '*' && input[i + 1] == '/')
+                    {
+                        i += 2;
+                        break;
+                    }
+
+                    i++;
+                }
+                continue;
+            }
+
+            // Regular character - keep it
+            result.Append(c);
+            i++;
+        }
+
+        return result.ToString();
+    }
+
     private static Tokenizer<ShaderToken> CreateTokenizer(string input)
     {
         return new(
@@ -69,6 +174,9 @@ public static class ShaderParser
     public static bool ParseShader(string sourceFilePath, string input, Func<string, string?>? includeResolver, out Shader? shader)
     {
         shader = null;
+
+        // Strip all comments before tokenization
+        input = StripComments(input);
 
         Tokenizer<ShaderToken> tokenizer = CreateTokenizer(input);
 
@@ -303,46 +411,7 @@ public static class ShaderParser
     private static bool HandleCommentWhitespace(char c, Tokenizer tokenizer)
     {
         // Use explicit whitespace check to avoid culture-dependent behavior
-        if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
-            return true;
-
-        if (c != '/')
-            return false;
-
-        if (tokenizer.InputPosition + 1 >= tokenizer.Input.Length)
-            return false;
-
-        // Look ahead
-        char next = tokenizer.Input.Span[tokenizer.InputPosition + 1];
-
-        if (next == '/')
-        {
-            int line = tokenizer.CurrentLine;
-
-            while (line == tokenizer.CurrentLine)
-                tokenizer.IncrementInputPosition();
-
-            return true;
-        }
-
-        if (next == '*')
-        {
-            while (tokenizer.InputPosition + 2 < tokenizer.Input.Length)
-            {
-                if (tokenizer.Input.Slice(tokenizer.InputPosition, 2).ToString() == "*/")
-                    break;
-
-                tokenizer.IncrementInputPosition();
-            }
-
-            // Skip the last '*/'
-            tokenizer.IncrementInputPosition();
-            tokenizer.IncrementInputPosition();
-
-            return true;
-        }
-
-        return false;
+        return c == ' ' || c == '\t' || c == '\n' || c == '\r';
     }
 
 
