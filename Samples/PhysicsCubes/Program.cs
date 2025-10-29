@@ -48,7 +48,7 @@ public sealed class PhysicsDemo : Game
         camera.Effects =
         [
             new FXAAEffect(),
-            //new BokehDepthOfFieldEffect(),
+            new BokehDepthOfFieldEffect(),
             new KawaseBloomEffect(),
             new TonemapperEffect(),
         ];
