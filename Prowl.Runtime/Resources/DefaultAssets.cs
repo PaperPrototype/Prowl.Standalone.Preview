@@ -25,7 +25,9 @@ public enum DefaultShader
     SSR,
     FXAA,
     Bloom,
-    BokehDoF
+    BokehDoF,
+    GTAO,
+    SSPT
 }
 
 /// <summary>
