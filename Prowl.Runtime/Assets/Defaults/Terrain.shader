@@ -81,12 +81,21 @@ Pass "Terrain"
                 float heightmapSize = float(textureSize(_Heightmap, 0).x);
                 float texelSize = heightmapSize > 0.0 ? (1.0 / heightmapSize) : 0.001;
 
+                // Sample heights at neighboring texels
                 float heightRight = texture(_Heightmap, terrainUV + vec2(texelSize, 0.0)).r * _TerrainHeight;
+                float heightLeft = texture(_Heightmap, terrainUV - vec2(texelSize, 0.0)).r * _TerrainHeight;
                 float heightUp = texture(_Heightmap, terrainUV + vec2(0.0, texelSize)).r * _TerrainHeight;
+                float heightDown = texture(_Heightmap, terrainUV - vec2(0.0, texelSize)).r * _TerrainHeight;
 
-                vec3 tangent = normalize(vec3(chunkScale * texelSize * _TerrainSize, heightRight - worldPosition.y, 0.0));
-                vec3 bitangent = normalize(vec3(0.0, heightUp - worldPosition.y, chunkScale * texelSize * _TerrainSize));
-                worldNormal = normalize(cross(bitangent, tangent));
+                // Calculate world space step distance
+                float worldStep = texelSize * _TerrainSize;
+
+                // Calculate slopes using central differences
+                float slopeX = (heightRight - heightLeft) / (worldStep * 2.0);
+                float slopeZ = (heightUp - heightDown) / (worldStep * 2.0);
+
+                // Normal from slopes: vec3(-dx, 1, -dz) then normalize
+                worldNormal = normalize(vec3(-slopeX, 1.0, -slopeZ));
 
                 worldPos = worldPosition;
                 gl_Position = PROWL_MATRIX_VP * vec4(worldPosition, 1.0);
