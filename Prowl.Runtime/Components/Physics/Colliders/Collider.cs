@@ -1,7 +1,11 @@
 ﻿// This file is part of the Prowl Game Engine
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
+using System;
+using System.ComponentModel;
+
 using Jitter2.Collision.Shapes;
+using Jitter2.LinearMath;
 
 using Prowl.Vector;
 
@@ -145,12 +149,19 @@ public abstract class Collider : MonoBehaviour
         if (_attachedRigidbody3D != null)
         {
             // Set mas to itself to force inertia tensor recalculation
-            _attachedRigidbody3D.Mass = _attachedRigidbody3D.Mass;
+            try
+            {
+                _attachedRigidbody3D.Mass = _attachedRigidbody3D.Mass;
+            }
+            catch (InvalidOperationException)
+            {
+                // This can occur if the Shapes provided are 2D and mass cannot be calculated from them
+                _attachedBody.SetMassInertia(JMatrix.Identity, 1f);
+            }
         }
         else
         {
-            // Static bodies just have 1 as mass, it doesnt really matter i dont think
-            _attachedBody.SetMassInertia(1.0);
+            // Static bodies dont really need mass or inertia
         }
     }
 
