@@ -240,7 +240,15 @@ public sealed unsafe class GLDevice : GraphicsDevice
 
     public override void BindVertexArray(GraphicsVertexArray? vertexArrayObject)
     {
-        GL.BindVertexArray((vertexArrayObject as GLVertexArray)?.Handle ?? 0);
+        uint handle = 0;
+
+        // Handle both GLVertexArray and GLInstancedVertexArray
+        if (vertexArrayObject is GLInstancedVertexArray instancedVAO)
+            handle = instancedVAO.Handle;
+        else if (vertexArrayObject is GLVertexArray vao)
+            handle = vao.Handle;
+
+        GL.BindVertexArray(handle);
         //if (vertexArrayObject == null)
         //{
         //    GLDevice.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, 0);
@@ -439,9 +447,16 @@ public sealed unsafe class GLDevice : GraphicsDevice
 
     public override unsafe void DrawIndexedInstanced(Topology primitiveType, uint indexCount, uint instanceCount, bool index32bit)
     {
-        PrimitiveType mode = TopologyToGL(primitiveType);
+        // Verify a VAO is bound
+        GL.GetInteger(GetPName.VertexArrayBinding, out int currentVAO);
+        if (currentVAO == 0)
+        {
+            throw new System.InvalidOperationException("DrawIndexedInstanced called with no VAO bound! Bind a vertex array first.");
+        }
 
+        PrimitiveType mode = TopologyToGL(primitiveType);
         DrawElementsType format = index32bit ? DrawElementsType.UnsignedInt : DrawElementsType.UnsignedShort;
+
         GL.DrawElementsInstanced(mode, indexCount, format, null, instanceCount);
     }
 

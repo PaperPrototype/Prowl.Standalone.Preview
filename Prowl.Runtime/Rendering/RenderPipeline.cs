@@ -30,6 +30,23 @@ public interface IRenderable
     public void GetCullingData(out bool isRenderable, out AABB bounds);
 }
 
+/// <summary>
+/// Extended interface for renderables that use GPU instancing.
+/// Provides multiple instances of the same mesh with different per-instance data.
+/// </summary>
+public interface IInstancedRenderable : IRenderable
+{
+    /// <summary>
+    /// Gets the instance data for all instances to be rendered.
+    /// Each element represents one instance with its transform, color, and custom data.
+    /// </summary>
+    /// <param name="viewer">Camera viewing data for culling/LOD</param>
+    /// <param name="properties">Shared properties for all instances</param>
+    /// <param name="mesh">The mesh to instance</param>
+    /// <param name="instanceData">Array of per-instance data</param>
+    void GetInstanceData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out InstanceData[] instanceData);
+}
+
 public enum LightType
 {
     Directional,
@@ -237,6 +254,14 @@ public abstract class RenderPipeline : EngineObject
                 continue;
 
             IRenderable renderable = renderables[renderIndex];
+
+            // Handle instanced renderables separately
+            if (renderable is IInstancedRenderable instancedRenderable)
+            {
+                DrawInstancedRenderable(instancedRenderable, shaderTag, tagValue, viewer, hasRenderOrder);
+                continue;
+            }
+
             Material material = renderable.GetMaterial();
             if (material.Shader.IsNotValid()) continue;
 
@@ -378,5 +403,98 @@ public abstract class RenderPipeline : EngineObject
                 }
             }
         }
+    }
+
+    private InstancedRenderingHelper _instancedHelper = new();
+
+    /// <summary>
+    /// Draws an instanced renderable with TRUE GPU instancing.
+    /// Uses DrawIndexedInstanced to draw multiple instances in a single draw call.
+    /// </summary>
+    private void DrawInstancedRenderable(IInstancedRenderable renderable, string shaderTag, string tagValue, ViewerData viewer, bool hasRenderOrder)
+    {
+        // Get instance data
+        renderable.GetInstanceData(viewer, out PropertyState sharedProperties, out Mesh mesh, out InstanceData[] instanceData);
+
+        if (mesh == null || mesh.VertexCount <= 0 || instanceData.Length == 0)
+            return;
+
+        Material material = renderable.GetMaterial();
+        if (material.Shader.IsNotValid())
+            return;
+
+        // Configure shader keywords
+        material.SetKeyword("HAS_NORMALS", mesh.HasNormals);
+        material.SetKeyword("HAS_TANGENTS", mesh.HasTangents);
+        material.SetKeyword("HAS_UV", mesh.HasUV);
+        material.SetKeyword("HAS_UV2", mesh.HasUV2);
+        material.SetKeyword("HAS_COLORS", mesh.HasColors || mesh.HasColors32);
+        material.SetKeyword("HAS_BONEINDICES", mesh.HasBoneIndices);
+        material.SetKeyword("HAS_BONEWEIGHTS", mesh.HasBoneWeights);
+        material.SetKeyword("SKINNED", mesh.HasBoneIndices && mesh.HasBoneWeights);
+        material.SetKeyword("GPU_INSTANCING", true);
+
+        // Setup instancing (creates instance buffer and VAO)
+        var instancedVAO = _instancedHelper.SetupInstancing(mesh, instanceData);
+
+        // Find matching shader passes
+        int passIndex = -1;
+        foreach (Shaders.ShaderPass pass in material.Shader.Passes)
+        {
+            passIndex++;
+
+            if (hasRenderOrder && !pass.HasTag(shaderTag, tagValue))
+                continue;
+
+            // Get shader variant
+            if (!pass.TryGetVariantProgram(material._localKeywords, out GraphicsProgram? variantNullable) || variantNullable == null)
+                continue;
+
+            GraphicsProgram variant = variantNullable;
+
+            // Bind GlobalUniforms buffer
+            GraphicsBuffer? globalBuffer = GlobalUniforms.GetBuffer();
+            if (globalBuffer != null)
+            {
+                Graphics.Device.BindUniformBuffer(variant, "GlobalUniforms", globalBuffer, 0);
+            }
+
+            // Apply global properties
+            GraphicsProgram.UniformCache cache = variant.uniformCache;
+            int texSlot = 0;
+            PropertyState.ApplyGlobals(variant, cache, ref texSlot);
+
+            // Apply material uniforms
+            PropertyState.ApplyMaterialUniforms(material._properties, variant, ref texSlot);
+
+            // Apply shared instance properties
+            int instanceTexSlot = texSlot;
+            PropertyState.ApplyInstanceUniforms(sharedProperties, variant, ref instanceTexSlot);
+
+            // Set render state
+            Graphics.Device.SetState(pass.State);
+
+            // Draw with TRUE GPU instancing!
+            if (instancedVAO != null)
+            {
+                unsafe
+                {
+                    Graphics.Device.BindVertexArray(instancedVAO);
+                    Graphics.Device.DrawIndexedInstanced(
+                        mesh.MeshTopology,
+                        (uint)mesh.IndexCount,
+                        (uint)instanceData.Length,
+                        mesh.IndexFormat == IndexFormat.UInt32
+                    );
+                    Graphics.Device.BindVertexArray(null);
+                }
+            }
+            else
+            {
+                Debug.LogError("Failed to create instanced VAO for particle rendering");
+            }
+        }
+
+        material.SetKeyword("GPU_INSTANCING", false);
     }
 }

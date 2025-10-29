@@ -156,6 +156,18 @@ public static class Graphics
         }
     }
 
+
+    /// <summary>
+    /// Helper method to draw instanced mesh and automatically push it to the render queue.
+    /// </summary>
+    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Material mat, Rendering.InstanceData[] instanceData, int layer = 0)
+    {
+        if (mesh == null || mat == null || instanceData.Length == 0) return;
+
+        var renderable = new Rendering.InstancedMeshRenderable(mesh, mat, instanceData, layer);
+        scene.PushRenderable(renderable);
+    }
+
     public static void Initialize()
     {
         Device = new GLDevice();
