@@ -57,6 +57,7 @@ Pass "Compose"
 		uniform vec4 _AmbientColor;
 		uniform vec4 _AmbientSkyColor;
 		uniform vec4 _AmbientGroundColor;
+		uniform float _AmbientStrength;
 
 		// Ambient Lighting
 		vec3 CalculateAmbient(vec3 worldNormal)
@@ -101,7 +102,10 @@ Pass "Compose"
 			vec3 lightAccumulation = texture(_LightAccumulation, TexCoords).rgb;
 
 			float shadingMode = gbufferB.a;
-			vec3 emission = gbufferD.rgb;
+
+			// Extract albedo and ambient occlusion
+			vec3 albedo = gbufferA.rgb;
+			float ao = gbufferA.a;
 
 			vec3 color;
 
@@ -109,11 +113,13 @@ Pass "Compose"
 			// 0 = Unlit, 1 = Lit
 			if (shadingMode != 1.0) {
 				// Unlit mode - use albedo + emission from GBuffer
-				vec3 albedo = gbufferA.rgb;
+			    vec3 emission = gbufferD.rgb;
 				color = albedo + emission;
 			} else {
-				// Lit mode - combine light accumulation with emissive
-				color = lightAccumulation + emission;
+				// Lit mode - combine ambient + light accumulation + emissive
+                vec3 worldNormal = normalize((inverse(transpose(PROWL_MATRIX_V)) * vec4(gbufferB.rgb * 2.0 - 1.0, 0.0)).xyz);
+				vec3 ambient = CalculateAmbient(worldNormal) * albedo * ao * _AmbientStrength;
+				color = ambient + lightAccumulation;
 			}
 
 			// Apply fog

@@ -325,6 +325,7 @@ public class DefaultRenderPipeline : RenderPipeline
         s_deferredCompose.SetColor("_AmbientColor", ambient.Color);
         s_deferredCompose.SetColor("_AmbientSkyColor", ambient.SkyColor);
         s_deferredCompose.SetColor("_AmbientGroundColor", ambient.GroundColor);
+        s_deferredCompose.SetFloat("_AmbientStrength", (float)ambient.Strength);
 
         // Perform composition
         Graphics.Blit(lightAccumulation, composedOutput, s_deferredCompose, 0, false, false);

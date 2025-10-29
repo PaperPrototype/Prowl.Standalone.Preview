@@ -70,6 +70,8 @@ public class Scene : EngineObject, ISerializationCallbackReceiver
 
         public AmbientMode Mode = AmbientMode.Uniform;
 
+        public double Strength = 1f;
+
         // Uniform ambient
         public Double4 Color = new(0.2f, 0.2f, 0.2f, 1.0f);
 
@@ -84,7 +86,6 @@ public class Scene : EngineObject, ISerializationCallbackReceiver
         }
     }
 
-    // Add this to your Scene class
     public AmbientLightParams Ambient = new();
 
     /// <summary> The number of registered objects. </summary>
