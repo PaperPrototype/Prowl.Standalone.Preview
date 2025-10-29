@@ -321,61 +321,10 @@ Pass "DoFCombine"
             float coc = calculateCoC(depth, focusPoint);
 
             // Smooth blend based on CoC
-            float maxBlurPixels = _MaxBlurRadius * 0.001 * _Resolution.y;
+            float maxBlurPixels = _MaxBlurRadius * 0.005 * _Resolution.y;
             float blendFactor = smoothstep(0.5, maxBlurPixels * 0.5, coc);
 
             OutputColor = mix(originalColor, blurredColor, blendFactor);
-        }
-    }
-
-    ENDGLSL
-}
-
-// Pass 3: Downsample
-Pass "Downsample"
-{
-    Tags { "RenderOrder" = "Opaque" }
-    Blend Override
-    Cull None
-    ZTest Off
-    ZWrite Off
-
-    GLSLPROGRAM
-
-    Vertex
-    {
-        layout (location = 0) in vec3 vertexPosition;
-        layout (location = 1) in vec2 vertexTexCoord;
-
-        out vec2 TexCoords;
-
-        void main()
-        {
-            TexCoords = vertexTexCoord;
-            gl_Position = vec4(vertexPosition, 1.0);
-        }
-    }
-
-    Fragment
-    {
-        layout(location = 0) out vec4 OutputColor;
-
-        in vec2 TexCoords;
-
-        uniform sampler2D _MainTex;
-        uniform vec2 _Resolution;
-
-        void main()
-        {
-            // Simple box filter downsample
-            vec2 texelSize = 1.0 / textureSize(_MainTex, 0);
-
-            vec4 c1 = texture(_MainTex, TexCoords + texelSize * vec2(-0.5, -0.5));
-            vec4 c2 = texture(_MainTex, TexCoords + texelSize * vec2( 0.5, -0.5));
-            vec4 c3 = texture(_MainTex, TexCoords + texelSize * vec2(-0.5,  0.5));
-            vec4 c4 = texture(_MainTex, TexCoords + texelSize * vec2( 0.5,  0.5));
-
-            OutputColor = (c1 + c2 + c3 + c4) * 0.25;
         }
     }
 
