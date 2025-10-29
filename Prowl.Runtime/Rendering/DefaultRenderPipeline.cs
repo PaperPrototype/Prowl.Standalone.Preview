@@ -171,9 +171,9 @@ public class DefaultRenderPipeline : RenderPipeline
         // BufferD: Custom Data per Shading Mode (e.g., Emissive for Lit mode)
         RenderTexture gBuffer = RenderTexture.GetTemporaryRT((int)css.PixelWidth, (int)css.PixelHeight, true, [
             TextureImageFormat.Short4, // BufferA - Albedo + Alpha
-            TextureImageFormat.Short4, // BufferB - Normal + ShadingMode
-            TextureImageFormat.Short4, // BufferC - Roughness, Metalness, Specular, AO
-            TextureImageFormat.Short4, // BufferD - Custom Data (Emissive, etc.)
+            TextureImageFormat.Color4b, // BufferB - Normal + ShadingMode
+            TextureImageFormat.Color4b, // BufferC - Roughness, Metalness, Specular, AO
+            TextureImageFormat.Color4b, // BufferD - Custom Data (Emissive, etc.)
             ]);
 
         // Bind GBuffer as the target
