@@ -69,6 +69,20 @@ public class AnimationCurve : ISerializable
         SmoothTangents(CurveTangent.Smooth);
     }
 
+    /// <summary>
+    /// Constructs a curve.
+    /// </summary>
+    public AnimationCurve(IEnumerable<KeyFrame> keyFrames)
+    {
+        Keys = new CurveKeyCollection();
+        foreach (var key in keyFrames)
+        {
+            Keys.Add(key);
+        }
+        // Add Default keys
+        SmoothTangents(CurveTangent.Smooth);
+    }
+
     #endregion
 
     #region Public Methods
