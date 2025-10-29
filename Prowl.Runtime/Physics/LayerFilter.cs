@@ -78,6 +78,7 @@ public class LayerFilter : IBroadPhaseFilter
             return canCollide && !isIgnored;
         }
 
-        return false;
+        // If not both RigidBodyShapes, let other filters handle it (e.g., terrain collision)
+        return true;
     }
 }

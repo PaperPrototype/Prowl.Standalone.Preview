@@ -27,6 +27,11 @@ public class PhysicsWorld
     /// </summary>
     private Dictionary<int, Jitter2.Dynamics.RigidBody> _staticRigidbodiesByLayer = new();
 
+    /// <summary>
+    /// Composite filter that chains multiple broad phase filters together.
+    /// </summary>
+    private CompositeBroadPhaseFilter _compositeBroadPhaseFilter;
+
     public Double3 Gravity = new(0, -9.81f, 0);
     public int SolverIterations = 8;
     public int RelaxIterations = 4;
@@ -50,7 +55,12 @@ public class PhysicsWorld
         World = new World();
 
         World.DynamicTree.Filter = World.DefaultDynamicTreeFilter;
-        World.BroadPhaseFilter = new LayerFilter();
+
+        // Set up composite broad phase filter
+        _compositeBroadPhaseFilter = new CompositeBroadPhaseFilter();
+        _compositeBroadPhaseFilter.AddFilter(new LayerFilter());
+        World.BroadPhaseFilter = _compositeBroadPhaseFilter;
+
         World.NarrowPhaseFilter = new TriangleEdgeCollisionFilter();
 
         // Hook up physics step events
@@ -990,6 +1000,48 @@ public class PhysicsWorld
     {
         var hits = new List<ShapeCastHit>();
         return OverlapCone(position, radius, height, orientation, hits, layerMask) > 0;
+    }
+
+    #endregion
+
+    #region Terrain Collision
+
+    /// <summary>
+    /// Registers a terrain collider with the physics world.
+    /// </summary>
+    /// <param name="heightmapProxy">The terrain heightmap proxy for raycasting.</param>
+    /// <param name="collisionFilter">The terrain collision filter for broad phase collision detection.</param>
+    public void RegisterTerrain(TerrainHeightmapProxy heightmapProxy, TerrainCollisionFilter collisionFilter)
+    {
+        if (heightmapProxy == null || collisionFilter == null)
+            return;
+
+        // Add the heightmap proxy to the dynamic tree for raycasting
+        World.DynamicTree.AddProxy(heightmapProxy, false);
+
+        // Add the terrain collision filter to the composite filter
+        // Terrain filters should be processed before the layer filter
+        _compositeBroadPhaseFilter.AddFilter(collisionFilter);
+    }
+
+    /// <summary>
+    /// Unregisters a terrain collider from the physics world.
+    /// </summary>
+    /// <param name="heightmapProxy">The terrain heightmap proxy to remove.</param>
+    /// <param name="collisionFilter">The terrain collision filter to remove.</param>
+    public void UnregisterTerrain(TerrainHeightmapProxy heightmapProxy, TerrainCollisionFilter collisionFilter)
+    {
+        if (heightmapProxy == null || collisionFilter == null)
+            return;
+
+        // Remove the heightmap proxy from the dynamic tree
+        if (heightmapProxy.SetIndex != -1)
+        {
+            World.DynamicTree.RemoveProxy(heightmapProxy);
+        }
+
+        // Remove the terrain collision filter from the composite filter
+        _compositeBroadPhaseFilter.RemoveFilter(collisionFilter);
     }
 
     #endregion

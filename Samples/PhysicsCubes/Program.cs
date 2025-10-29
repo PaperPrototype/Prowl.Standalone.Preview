@@ -434,6 +434,7 @@ public sealed class PhysicsDemo : Game
 
         // Create terrain component
         TerrainComponent terrain = terrainGO.AddComponent<TerrainComponent>();
+        terrainGO.AddComponent<TerrainCollider>();
 
         // Create material with terrain shader
         Material terrainMaterial = new Material(Shader.LoadDefault(DefaultShader.Terrain));
