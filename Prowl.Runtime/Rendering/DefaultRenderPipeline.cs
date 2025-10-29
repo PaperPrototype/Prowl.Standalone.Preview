@@ -103,23 +103,45 @@ public class DefaultRenderPipeline : RenderPipeline
         base.Render(camera, in data);
     }
 
-    private (List<ImageEffect> all, List<ImageEffect> opaque, List<ImageEffect> final) GatherImageEffects(Camera camera)
+    private Dictionary<RenderStage, List<ImageEffect>> GatherImageEffects(Camera camera)
     {
-        var all = new List<ImageEffect>();
-        var opaqueEffects = new List<ImageEffect>();
-        var finalEffects = new List<ImageEffect>();
+        var effectsByStage = new Dictionary<RenderStage, List<ImageEffect>>
+        {
+            { RenderStage.BeforeGBuffer, new List<ImageEffect>() },
+            { RenderStage.AfterGBuffer, new List<ImageEffect>() },
+            { RenderStage.DuringLighting, new List<ImageEffect>() },
+            { RenderStage.AfterLighting, new List<ImageEffect>() },
+            { RenderStage.PostProcess, new List<ImageEffect>() }
+        };
 
         foreach (ImageEffect effect in camera.Effects)
         {
-            all.Add(effect);
+            // Get the stage, with backward compatibility for IsOpaqueEffect
+            RenderStage stage = effect.Stage;
 
-            if (effect.IsOpaqueEffect)
-                opaqueEffects.Add(effect);
-            else
-                finalEffects.Add(effect);
+            #pragma warning disable CS0618 // Type or member is obsolete
+            if (effect.IsOpaqueEffect && stage == RenderStage.PostProcess)
+            {
+                // Backward compatibility: IsOpaqueEffect means AfterLighting
+                stage = RenderStage.AfterLighting;
+            }
+            #pragma warning restore CS0618
+
+            effectsByStage[stage].Add(effect);
         }
 
-        return (all, opaqueEffects, finalEffects);
+        return effectsByStage;
+    }
+
+    private void ExecuteImageEffects(RenderContext context, List<ImageEffect> effects)
+    {
+        if (effects == null || effects.Count == 0)
+            return;
+
+        foreach (var effect in effects)
+        {
+            effect.OnRenderEffect(context);
+        }
     }
 
     #endregion
@@ -131,13 +153,17 @@ public class DefaultRenderPipeline : RenderPipeline
         // =======================================================
         // 0. Setup variables, and prepare the camera
         bool isHDR = camera.HDR;
-        (List<ImageEffect> all, List<ImageEffect> opaqueEffects, List<ImageEffect> finalEffects) = GatherImageEffects(camera);
+        var effectsByStage = GatherImageEffects(camera);
+        var allEffects = new List<ImageEffect>();
+        foreach (var effects in effectsByStage.Values)
+            allEffects.AddRange(effects);
+
         IReadOnlyList<IRenderableLight> lights = camera.GameObject.Scene.Lights;
         RenderTexture target = camera.UpdateRenderData();
 
         // =======================================================
         // 1. Pre Cull
-        foreach (ImageEffect effect in all)
+        foreach (ImageEffect effect in allEffects)
             effect.OnPreCull(camera);
 
         // =======================================================
@@ -152,7 +178,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
         // =======================================================
         // 4. Pre Render
-        foreach (ImageEffect effect in all)
+        foreach (ImageEffect effect in allEffects)
             effect.OnPreRender(camera);
 
         // =======================================================
@@ -243,6 +269,25 @@ public class DefaultRenderPipeline : RenderPipeline
         }
 
         // =======================================================
+        // 7.5. Apply DuringLighting effects (e.g., SSPT, GTAO that need light accumulation)
+        if (effectsByStage[RenderStage.DuringLighting].Count > 0)
+        {
+            var lightingContext = new RenderContext
+            {
+                GBuffer = gBuffer,
+                LightAccumulation = lightAccumulation,
+                SceneColor = null, // Not available yet
+                Camera = camera,
+                Width = (int)css.PixelWidth,
+                Height = (int)css.PixelHeight,
+                CurrentStage = RenderStage.DuringLighting
+            };
+
+            ExecuteImageEffects(lightingContext, effectsByStage[RenderStage.DuringLighting]);
+            lightingContext.ReleaseTemporaryRTs();
+        }
+
+        // =======================================================
         // 8. Deferred Composition Pass - Combine light accumulation with GBuffer
         // Create final composition output
         RenderTexture composedOutput = RenderTexture.GetTemporaryRT((int)camera.PixelWidth, (int)camera.PixelHeight, true, [
@@ -293,18 +338,61 @@ public class DefaultRenderPipeline : RenderPipeline
         Graphics.Device.BindFramebuffer(composedOutput.frameBuffer);
 
         // =======================================================
-        // 9. Apply opaque post-processing effects
-        if (opaqueEffects.Count > 0)
-            DrawImageEffects(composedOutput, opaqueEffects, ref isHDR);
+        // 9. Apply AfterLighting effects (opaque post-processing)
+        if (effectsByStage[RenderStage.AfterLighting].Count > 0)
+        {
+            var afterLightingContext = new RenderContext
+            {
+                GBuffer = gBuffer,
+                LightAccumulation = lightAccumulation,
+                SceneColor = composedOutput,
+                Camera = camera,
+                Width = (int)css.PixelWidth,
+                Height = (int)css.PixelHeight,
+                CurrentStage = RenderStage.AfterLighting
+            };
+
+            ExecuteImageEffects(afterLightingContext, effectsByStage[RenderStage.AfterLighting]);
+            afterLightingContext.ReleaseTemporaryRTs();
+        }
 
         // =======================================================
         // 10. Transparent geometry (Forward rendered on top of composed result)
         DrawRenderables(renderables, "RenderOrder", "Transparent", new ViewerData(css), culledRenderableIndices, false);
 
         // =======================================================
-        // 11. Apply final post-processing effects
-        if (finalEffects.Count > 0)
-            DrawImageEffects(composedOutput, finalEffects, ref isHDR);
+        // 11. Apply PostProcess effects (final post-processing)
+        if (effectsByStage[RenderStage.PostProcess].Count > 0)
+        {
+            var postProcessContext = new RenderContext
+            {
+                GBuffer = gBuffer,
+                LightAccumulation = lightAccumulation,
+                SceneColor = composedOutput,
+                Camera = camera,
+                Width = (int)css.PixelWidth,
+                Height = (int)css.PixelHeight,
+                CurrentStage = RenderStage.PostProcess
+            };
+
+            ExecuteImageEffects(postProcessContext, effectsByStage[RenderStage.PostProcess]);
+
+            // Effects may have replaced the scene color buffer (e.g., HDR to LDR)
+            var replacedRTs = postProcessContext.GetReplacedRTs();
+            if (replacedRTs.Count > 0)
+            {
+                // Update our reference to the new buffer
+                composedOutput = postProcessContext.SceneColor;
+
+                // Clean up old buffers
+                foreach (var oldRT in replacedRTs)
+                {
+                    RenderTexture.ReleaseTemporaryRT(oldRT);
+                }
+            }
+
+            postProcessContext.ReleaseTemporaryRTs();
+        }
 
         // =======================================================
         // 12. Render Gizmos
@@ -316,7 +404,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
         // =======================================================
         // 14. Post Render
-        foreach (ImageEffect effect in all)
+        foreach (ImageEffect effect in allEffects)
             effect.OnPostRender(camera);
 
         // =======================================================

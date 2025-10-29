@@ -40,7 +40,6 @@ Pass "ScreenSpacePathTrace"
         uniform int _SamplesPerPixel;
         uniform int _RaySteps;
         uniform float _RayLength;
-        uniform float _Thickness;
         uniform float _Intensity;
         uniform int _FrameIndex;
 
@@ -48,105 +47,96 @@ Pass "ScreenSpacePathTrace"
 
         layout(location = 0) out vec4 giOutput;
 
-        // Project view space position to screen space
-        vec3 ViewToScreenSpace(vec3 viewPos) {
+        // Project view space position to screen space (UV + depth)
+        vec3 projectToScreenSpace(vec3 viewPos) {
             vec4 clipPos = PROWL_MATRIX_P * vec4(viewPos, 1.0);
             clipPos.xyz /= clipPos.w;
-            return clipPos.xyz * 0.5 + 0.5;
+            return vec3(clipPos.xy * 0.5 + 0.5, clipPos.z);
         }
 
-        // Screen-space ray marching for path tracing
-        vec3 TraceScreenSpaceRay(vec3 viewPos, vec3 viewDir, float dither) {
-            // Don't trace rays pointing away from camera or behind it
-            if (viewDir.z > max0(-viewPos.z))
+        // Screen-space ray marching (SSR-style)
+        vec3 TraceScreenSpaceRay(vec3 startScreen, vec3 worldDir, inout NoiseGenerator noiseGen) {
+            // Convert start screen to view space
+            vec3 startView = getViewPos(startScreen.xy, startScreen.z);
+
+            // Convert world direction to view space
+            vec3 viewDir = mat3(PROWL_MATRIX_V) * worldDir;
+
+            // Calculate end point in view space and project to screen
+            vec3 endView = startView + viewDir * 10000.0;
+            vec3 endScreen = projectToScreenSpace(endView);
+
+            // Calculate screen space ray delta
+            vec3 rayDelta = endScreen - startScreen;
+
+            // Avoid degenerate rays
+            if (length(rayDelta.xy) < 0.0001)
                 return vec3(-1.0);
 
-            // Calculate end position in screen space
-            vec3 rayEnd = ViewToScreenSpace(viewPos + viewDir * _RayLength);
-            vec3 rayStart = ViewToScreenSpace(viewPos);
-            vec3 rayDir = normalize(rayEnd - rayStart);
-
-            // Calculate step size to stay within screen bounds
-            float stepLength = minOf((step(0.0, rayDir) - rayStart) / rayDir) * rcp(float(_RaySteps));
-            vec3 rayStep = rayDir * stepLength;
-
-            // Start position with dither
-            vec3 rayPos = rayStart + rayStep * dither;
-
-            // Convert to texel coordinates for faster iteration
+            // Calculate step size to ensure we sample at least once per pixel
             vec2 screenSize = _ScreenParams.xy;
-            vec2 rayPosTexel = rayPos.xy * screenSize;
-            vec2 rayStepTexel = rayStep.xy * screenSize;
+            float screenSteps = max(abs(rayDelta.x) * screenSize.x, abs(rayDelta.y) * screenSize.y);
+            float stepCount = min(screenSteps, float(_RaySteps));
+            vec3 rayStep = rayDelta / max(stepCount, 1.0);
 
-            for (int i = 0; i < _RaySteps; ++i) {
-                // Check if ray is within screen bounds
-                if (rayPos.x < 0.0 || rayPos.x > 1.0 || rayPos.y < 0.0 || rayPos.y > 1.0)
-                    break;
+            // Start with jitter
+            vec3 currentScreen = startScreen + rayStep + 0.001 * randNextF(noiseGen);
 
-                // Sample depth at current position
-                float sampleDepth = texture(_CameraDepthTexture, rayPos.xy).r;
+            for (float i = 0.0; i < stepCount; i += 1.0) {
+                // Check bounds
+                if (currentScreen.x < 0.0 || currentScreen.x > 1.0 ||
+                    currentScreen.y < 0.0 || currentScreen.y > 1.0)
+                    return vec3(-1.0);
 
-                // Check for intersection
-                if (sampleDepth < rayPos.z) {
-                        return vec3(rayPos.xy, sampleDepth);
-                    //// Convert depths to view space for thickness check
-                    //float sampleDepthView = ScreenToViewDepth(sampleDepth);
-                    //float traceDepthView = ScreenToViewDepth(rayPos.z);
-                    //
-                    //// Check if intersection is within thickness threshold
-                    //float depthDiff = traceDepthView - sampleDepthView;
-                    //if (depthDiff > _Thickness * abs(traceDepthView)) {
-                    //    // Hit! Return the hit position
-                    //    return vec3(rayPos.xy, sampleDepth);
-                    //}
+                // Sample scene depth
+                float sceneDepth = texture(_CameraDepthTexture, currentScreen.xy).r;
+
+                // Check intersection (ray depth is behind scene depth)
+                if (currentScreen.z >= sceneDepth) {
+                    return vec3(currentScreen.xy, sceneDepth);
                 }
 
-                // Step along ray
-                rayPos += rayStep;
+                currentScreen += rayStep;
             }
 
             // No hit
             return vec3(-1.0);
         }
 
-        // Calculate screen-space path traced global illumination
-        vec3 CalculateSSPT(vec3 screenPos, vec3 viewPos, vec3 viewNormal) {
-            // Initialize noise generator for this pixel
-            uvec2 pixelCoord = uvec2(TexCoords * _ScreenParams.xy);
-            NoiseGenerator noiseGen = initNoiseGenerator(pixelCoord, uint(_FrameIndex));
+        // Calculate screen-space path traced global illumination (single bounce)
+        vec3 CalculateSSPT(vec3 screenPos, vec3 viewPos, vec3 worldNormal) {
+            // Initialize noise generator for this pixel with temporal variation
+            NoiseGenerator noiseGen = createNoiseGenerator(gl_FragCoord, uint(_FrameIndex));
 
             vec3 giSum = vec3(0.0);
-            int validSamples = 0;
 
             // Cast multiple rays per pixel
             for (int spp = 0; spp < _SamplesPerPixel; ++spp) {
-                // Sample random direction in cosine-weighted hemisphere
-                vec3 rayDir = SampleCosineHemisphere(viewNormal, nextVec2(noiseGen));
-                float dither = nextFloat(noiseGen);
+                // Sample random direction in cosine-weighted hemisphere (world space)
+                vec3 rayDir = SampleCosineHemisphere(worldNormal, randNext2F(noiseGen));
 
-                // Offset start position slightly along normal to avoid self-intersection
-                vec3 rayStart = viewPos + viewNormal * 0.01;
+                // Trace ray (SSR-style: screen space start, world space direction)
+                vec3 hitPos = TraceScreenSpaceRay(screenPos, rayDir, noiseGen);
 
-                // Trace ray
-                vec3 hitPos = TraceScreenSpaceRay(rayStart, rayDir, dither);
-
-                // If we hit something, sample the radiance
+                // If ray hits something, sample the accumulated lighting
                 if (hitPos.x >= 0.0) {
-                    vec3 hitRadiance = texture(_MainTex, hitPos.xy).rgb;
+                    vec4 hitNormalData = texture(_GBufferB, hitPos.xy);
 
-                    // Weight by cosine term (already handled by cosine hemisphere sampling)
-                    float NdotL = max0(dot(viewNormal, rayDir));
-                    giSum += hitRadiance * NdotL;
-                    validSamples++;
+                    // Skip unlit surfaces (skybox, emissives, etc)
+                    if (hitNormalData.a > 0.0) {
+                        // Sample accumulated lighting at hit point
+                        vec3 hitLighting = texture(_MainTex, hitPos.xy).rgb;
+
+                        // Modulate by hit surface albedo for energy conservation
+                        vec3 hitAlbedo = texture(_GBufferA, hitPos.xy).rgb;
+
+                        giSum += hitLighting * hitAlbedo;
+                    }
                 }
             }
 
-            // Average the samples
-            if (validSamples > 0) {
-                return giSum / float(validSamples);
-            }
-
-            return vec3(0.0);
+            // Average over all samples
+            return giSum / float(_SamplesPerPixel);
         }
 
         void main()
@@ -162,7 +152,10 @@ Pass "ScreenSpacePathTrace"
             // Get view space position and normal
             vec3 viewPos = getViewPos(TexCoords, depth);
             vec4 normalData = texture(_GBufferB, TexCoords);
-            vec3 viewNormal = normalize(normalData.xyz * 2.0 - 1.0);
+
+            // Decode normal from [0,1] to [-1,1] and transform from view space to world space
+            vec3 viewNormal = normalData.xyz * 2.0 - 1.0;
+            vec3 worldNormal = normalize(mat3(PROWL_MATRIX_I_V) * viewNormal);
 
             // Check if this is a valid surface (not unlit)
             if (normalData.a <= 0.0) {
@@ -170,9 +163,9 @@ Pass "ScreenSpacePathTrace"
                 return;
             }
 
-            // Calculate global illumination
+            // Calculate global illumination (world space)
             vec3 screenPos = vec3(TexCoords, depth);
-            vec3 gi = CalculateSSPT(screenPos, viewPos, viewNormal);
+            vec3 gi = CalculateSSPT(screenPos, viewPos, worldNormal);
 
             // Energy conservation: scale by albedo
             vec3 albedo = texture(_GBufferA, TexCoords).rgb;

@@ -12,37 +12,29 @@ namespace Prowl.Runtime.Rendering;
 
 /// <summary>
 /// Screen-Space Path Tracing (SSPT) effect for real-time global illumination.
-/// Traces rays in screen space to approximate indirect lighting bounces.
+/// Traces rays in screen space to sample indirect lighting from the light accumulation buffer.
+/// Works directly with lighting data for physically accurate GI.
 /// </summary>
 public sealed class SSPTEffect : ImageEffect
 {
     // Quality Settings
 
     /// <summary>Number of ray samples per pixel. Higher = better quality but much slower.</summary>
-    public int SamplesPerPixel = 4; // [1, 2, 3, 4, 6, 8]
+    public int SamplesPerPixel = 1; // [1, 2, 3, 4, 6, 8]
+
+    /// <summary>Maximum number of bounces per ray. Higher = more accurate multi-bounce GI but slower.</summary>
+    public int MaxBounces = 4; // [1, 2, 3, 4]
 
     /// <summary>Maximum number of steps per ray. Higher = better quality but slower.</summary>
-    public int RaySteps = 32; // [8, 12, 16, 20, 24, 32]
+    public int RaySteps = 64; // [8, 12, 16, 20, 24, 32]
 
     // Appearance Settings
 
     /// <summary>Maximum ray length in view space units. Larger = GI from more distant objects.</summary>
     public float RayLength = 10.0f;
 
-    /// <summary>Surface thickness for ray intersection. Larger = more forgiving but less accurate.</summary>
-    public float Thickness = 0.2f;
-
     /// <summary>Overall intensity of the global illumination effect.</summary>
-    public float Intensity = 1.0f;
-
-    /// <summary>Enable temporal accumulation to reduce noise (requires stable camera).</summary>
-    public bool UseTemporalAccumulation = true;
-
-    /// <summary>Temporal blend factor. Higher = more stable but more ghosting. Range: 0-1.</summary>
-    public float TemporalBlend = 0.8f;
-
-    /// <summary>Blur radius for denoising. Higher = smoother but less detailed.</summary>
-    public float BlurRadius = 1.0f;
+    public float Intensity = 2.0f;
 
     /// <summary>Resolution scale for GI calculation. 0.5 = half resolution (better performance).</summary>
     public float ResolutionScale = 1.0f;
@@ -50,75 +42,59 @@ public sealed class SSPTEffect : ImageEffect
     // Private fields
     private Material _mat;
     private RenderTexture _giRT;
-    private RenderTexture _historyRT;
-    private RenderTexture _accumulatedRT;
-    private RenderTexture _blurTempRT;
+    private RenderTexture _lightCopyRT;
     private uint _frameIndex = 0;
 
-    public override bool IsOpaqueEffect => true; // Run after deferred composition
+    /// <summary>
+    /// SSPT runs during lighting to add indirect illumination to the light accumulation buffer.
+    /// </summary>
+    public override RenderStage Stage => RenderStage.DuringLighting;
 
-    public override void OnRenderImage(RenderTexture source, RenderTexture destination)
+    public override void OnRenderEffect(RenderContext context)
     {
         // Lazy initialize material
         _mat ??= new Material(Shader.LoadDefault(DefaultShader.SSPT));
 
         // Calculate scaled resolution
-        int width = (int)(source.Width * ResolutionScale);
-        int height = (int)(source.Height * ResolutionScale);
+        int width = (int)(context.Width * ResolutionScale);
+        int height = (int)(context.Height * ResolutionScale);
 
-        // Ensure render textures are created and sized correctly
+        // Create light copy for reading (we read from this, write to original)
+        if (_lightCopyRT.IsNotValid() || _lightCopyRT.Width != context.Width || _lightCopyRT.Height != context.Height)
+        {
+            _lightCopyRT?.Dispose();
+            _lightCopyRT = new RenderTexture(context.Width, context.Height, false,
+                [context.LightAccumulation.MainTexture.ImageFormat]);
+        }
+
+        // Ensure render texture is created
         EnsureRenderTexture(ref _giRT, width, height, TextureImageFormat.Float4);
-        EnsureRenderTexture(ref _historyRT, width, height, TextureImageFormat.Float4);
-        EnsureRenderTexture(ref _accumulatedRT, width, height, TextureImageFormat.Float4);
-        EnsureRenderTexture(ref _blurTempRT, width, height, TextureImageFormat.Float4);
 
-        // Pass 0: Screen-Space Path Tracing
+        // Set common shader parameters
+        _mat.SetTexture("_CameraDepthTexture", context.GBuffer.InternalDepth);
+        _mat.SetTexture("_GBufferB", context.GBuffer.InternalTextures[1]);
+        _mat.SetTexture("_GBufferA", context.GBuffer.InternalTextures[0]);
         _mat.SetInt("_SamplesPerPixel", SamplesPerPixel);
         _mat.SetInt("_RaySteps", RaySteps);
         _mat.SetFloat("_RayLength", RayLength);
-        _mat.SetFloat("_Thickness", Thickness);
         _mat.SetFloat("_Intensity", Intensity);
         _mat.SetInt("_FrameIndex", (int)_frameIndex);
-        Graphics.Blit(source, _giRT, _mat, 0);
 
-        // Pass 1: Temporal Accumulation (if enabled)
-        RenderTexture giSource = _giRT;
-        if (UseTemporalAccumulation && _frameIndex > 0)
+        // Multi-bounce: Run SSPT pass multiple times, each bounce accumulates on the lighting buffer
+        for (int bounce = 0; bounce < MaxBounces; bounce++)
         {
-            _mat.SetTexture("_CurrentGI", _giRT.MainTexture);
-            _mat.SetTexture("_HistoryGI", _historyRT.MainTexture);
-            _mat.SetFloat("_TemporalBlend", TemporalBlend);
-            Graphics.Blit(_giRT, _accumulatedRT, _mat, 1);
-            giSource = _accumulatedRT;
+            // Copy current light accumulation state
+            Graphics.Blit(context.LightAccumulation, _lightCopyRT);
 
-            // Copy to history for next frame
-            Graphics.Blit(_accumulatedRT, _historyRT);
+            // Run SSPT pass: trace rays and sample lighting from current accumulation
+            _mat.SetTexture("_MainTex", _lightCopyRT.MainTexture);
+            Graphics.Blit(_lightCopyRT, _giRT, _mat, 0);
+
+            // Add GI contribution back to light accumulation
+            _mat.SetTexture("_MainTex", _lightCopyRT.MainTexture); // Original lighting
+            _mat.SetTexture("_GITex", _giRT.MainTexture); // New GI bounce
+            Graphics.Blit(_lightCopyRT, context.LightAccumulation, _mat, 3); // Pass 3: Composite (additive)
         }
-        else if (UseTemporalAccumulation && _frameIndex == 0)
-        {
-            // First frame - just copy to history
-            Graphics.Blit(_giRT, _historyRT);
-        }
-
-        // Pass 2: Blur Horizontal (if blur is enabled)
-        RenderTexture blurredGI = giSource;
-        if (BlurRadius > 0.01f)
-        {
-            _mat.SetVector("_BlurDirection", new Double2(1.0, 0.0));
-            _mat.SetFloat("_BlurRadius", BlurRadius);
-            Graphics.Blit(giSource, _blurTempRT, _mat, 2);
-
-            // Pass 2: Blur Vertical
-            _mat.SetVector("_BlurDirection", new Double2(0.0, 1.0));
-            _mat.SetFloat("_BlurRadius", BlurRadius);
-            Graphics.Blit(_blurTempRT, _accumulatedRT, _mat, 2);
-            blurredGI = _accumulatedRT;
-        }
-
-        // Pass 3: Composite - Add GI to scene
-        _mat.SetTexture("_GITex", blurredGI.MainTexture);
-        _mat.SetFloat("_Intensity", Intensity);
-        Graphics.Blit(source, destination, _mat, 3);
 
         _frameIndex++;
     }
@@ -134,7 +110,6 @@ public sealed class SSPTEffect : ImageEffect
 
     public override void OnPostRender(Camera camera)
     {
-        // Reset frame index on camera movement or settings change
-        // This would ideally detect camera motion to reset temporal accumulation
+        // Reset frame index on camera movement for clean temporal accumulation
     }
 }

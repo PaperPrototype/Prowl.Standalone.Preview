@@ -14,13 +14,61 @@ namespace Prowl.Runtime;
 
 public abstract class ImageEffect
 {
+    /// <summary>
+    /// Defines at which stage of the rendering pipeline this effect should run.
+    /// Default is PostProcess for backward compatibility.
+    /// </summary>
+    public virtual RenderStage Stage => RenderStage.PostProcess;
+
+    /// <summary>
+    /// For backward compatibility: effects that run during opaque rendering (AfterLighting stage).
+    /// New effects should use Stage property instead.
+    /// </summary>
+    [Obsolete("Use Stage property instead. Set Stage = RenderStage.AfterLighting")]
     public virtual bool IsOpaqueEffect { get; } = false;
+
+    /// <summary>
+    /// Whether this effect transforms HDR to LDR. Used for tonemapping effects.
+    /// </summary>
     public virtual bool TransformsToLDR { get; } = false;
 
+    /// <summary>
+    /// NEW API: Called during rendering with full access to render targets.
+    /// Override this for effects that need access to GBuffers, light accumulation, etc.
+    /// </summary>
+    /// <param name="context">Provides access to all render targets and rendering state</param>
+    public virtual void OnRenderEffect(RenderContext context)
+    {
+        // Backward compatibility: call old API if new API not overridden
+        // This allows existing effects to continue working
+        if (context.CurrentStage == RenderStage.PostProcess ||
+            (context.CurrentStage == RenderStage.AfterLighting && IsOpaqueEffect))
+        {
+            OnRenderImage(context.SceneColor, context.SceneColor);
+        }
+    }
+
+    /// <summary>
+    /// OLD API (DEPRECATED): Simple source to destination rendering.
+    /// Still supported for backward compatibility but limited to PostProcess/AfterLighting stages.
+    /// New effects should override OnRenderEffect instead for full pipeline access.
+    /// </summary>
+    [Obsolete("Use OnRenderEffect(RenderContext) for full pipeline access")]
     public virtual void OnRenderImage(RenderTexture source, RenderTexture destination) { }
 
+    /// <summary>
+    /// Called after all rendering is complete for this camera.
+    /// </summary>
     public virtual void OnPostRender(Camera camera) { }
+
+    /// <summary>
+    /// Called before culling for this camera.
+    /// </summary>
     public virtual void OnPreCull(Camera camera) { }
+
+    /// <summary>
+    /// Called before rendering starts for this camera.
+    /// </summary>
     public virtual void OnPreRender(Camera camera) { }
 }
 

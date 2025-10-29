@@ -89,6 +89,12 @@ public static class Graphics
         mat.SetTexture("_MainTex", source.MainTexture);
         Blit(target, mat, pass, clearDepth, clearColor, color);
     }
+    public static void Blit(Texture2D source, RenderTexture target, Material? mat = null, int pass = 0, bool clearDepth = false, bool clearColor = false, Color color = default)
+    {
+        mat ??= BlitMaterial;
+        mat.SetTexture("_MainTex", source);
+        Blit(target, mat, pass, clearDepth, clearColor, color);
+    }
     public static void Blit(RenderTexture target, Material? mat = null, int pass = 0, bool clearDepth = false, bool clearColor = false, Color color = default)
     {
         mat ??= BlitMaterial;

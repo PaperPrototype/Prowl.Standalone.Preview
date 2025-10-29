@@ -1,6 +1,7 @@
 ﻿// This file is part of the Prowl Game Engine
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
+using Prowl.Runtime.GraphicsBackend.Primitives;
 using Prowl.Runtime.Resources;
 
 using Material = Prowl.Runtime.Resources.Material;
@@ -17,8 +18,43 @@ public sealed class TonemapperEffect : ImageEffect
 
     Material _mat;
 
+    public override void OnRenderEffect(RenderContext context)
+    {
+        _mat ??= new Material(Shader.LoadDefault(DefaultShader.Tonemapper));
+        _mat.SetFloat("Contrast", Contrast);
+        _mat.SetFloat("Saturation", Saturation);
+
+        // Create new LDR buffer to replace HDR
+        var ldrBuffer = new RenderTexture(
+            context.Width,
+            context.Height,
+            true, // Keep depth for transparents
+            [TextureImageFormat.Color4b] // LDR format
+        );
+
+        // Copy depth from current buffer if it has one
+        if (context.SceneColor.InternalDepth != null)
+        {
+            Graphics.Device.BindFramebuffer(context.SceneColor.frameBuffer, FBOTarget.Read);
+            Graphics.Device.BindFramebuffer(ldrBuffer.frameBuffer, FBOTarget.Draw);
+            Graphics.Device.BlitFramebuffer(
+                0, 0, context.Width, context.Height,
+                0, 0, context.Width, context.Height,
+                ClearFlags.Depth, BlitFilter.Nearest
+            );
+        }
+
+        // Tonemap HDR to LDR
+        Graphics.Blit(context.SceneColor, ldrBuffer, _mat, 0);
+
+        // Replace the scene color buffer with LDR version
+        context.ReplaceSceneColor(ldrBuffer);
+    }
+
+    [System.Obsolete("Use OnRenderEffect instead")]
     public override void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
+        // Backward compatibility fallback
         _mat ??= new Material(Shader.LoadDefault(DefaultShader.Tonemapper));
         _mat.SetFloat("Contrast", Contrast);
         _mat.SetFloat("Saturation", Saturation);

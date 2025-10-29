@@ -141,54 +141,52 @@ float luminance(vec3 color) {
 // ----------------------------------------------------------------------------
 // Random Number Generation
 
+uint triple32(uint x) {
+	// https://nullprogram.com/blog/2018/07/31/
+	x ^= x >> 17;
+	x *= 0xed5ad4bbu;
+	x ^= x >> 11;
+	x *= 0xac4c1b51u;
+	x ^= x >> 15;
+	x *= 0x31848babu;
+	x ^= x >> 14;
+	return uint(x);
+}
+
 struct NoiseGenerator {
 	uint currentNum;
 };
 
-float nextFloat(inout NoiseGenerator gen) {
-	const uint A = 1664525u;
-	const uint C = 1013904223u;
-	gen.currentNum = (A * gen.currentNum + C);
-	return float(gen.currentNum >> 8) * rcp(16777216.0);
-}
-
-vec2 nextVec2(inout NoiseGenerator gen) {
-	return vec2(nextFloat(gen), nextFloat(gen));
-}
-
-uint interleave_32bit(uvec2 v) {
-	uint x = v.x & 0x0000ffffu;
-	uint y = v.y & 0x0000ffffu;
-
-	x = (x | (x << 8)) & 0x00FF00FFu;
-	x = (x | (x << 4)) & 0x0F0F0F0Fu;
-	x = (x | (x << 2)) & 0x33333333u;
-	x = (x | (x << 1)) & 0x55555555u;
-
-	y = (y | (y << 8)) & 0x00FF00FFu;
-	y = (y | (y << 4)) & 0x0F0F0F0Fu;
-	y = (y | (y << 2)) & 0x33333333u;
-	y = (y | (y << 1)) & 0x55555555u;
-
-	return x | (y << 1);
-}
-
-uvec2 blockCipherTEA(uint v0, uint v1) {
-	uint sum = 0u;
-	const uint delta = 0x9e3779b9u;
-	const uint k[4] = uint[4](0xa341316cu, 0xc8013ea4u, 0xad90777du, 0x7e95761eu);
-	for (uint i = 0u; i < 16u; ++i) {
-		sum += delta;
-		v0 += ((v1 << 4) + k[0]) ^ (v1 + sum) ^ ((v1 >> 5) + k[1]);
-		v1 += ((v0 << 4) + k[2]) ^ (v0 + sum) ^ ((v0 >> 5) + k[3]);
-	}
-	return uvec2(v0, v1);
-}
-
-NoiseGenerator initNoiseGenerator(uvec2 texelIndex, uint frameIndex) {
-	uint seed = blockCipherTEA(interleave_32bit(texelIndex), frameIndex).x;
+NoiseGenerator createNoiseGenerator(vec4 glFragCoord) {
+    // Create seed from pixel coordinates
+    uint x = uint(glFragCoord.x);
+    uint y = uint(glFragCoord.y);
+    uint seed = triple32(x + y * uint(_ScreenParams.x));
 	return NoiseGenerator(seed);
 }
+
+NoiseGenerator createNoiseGenerator(vec4 glFragCoord, uint frameIndex) {
+    // Create seed from pixel coordinates + frame index for temporal variation
+    uint x = uint(glFragCoord.x);
+    uint y = uint(glFragCoord.y);
+    uint seed = triple32(x + y * uint(_ScreenParams.x) + frameIndex * 1973u);
+	return NoiseGenerator(seed);
+}
+
+uint randNext(inout NoiseGenerator gen)
+{
+    gen.currentNum = triple32(gen.currentNum);
+    return gen.currentNum;
+}
+
+uvec2 randNext2(inout NoiseGenerator gen) { return uvec2(randNext(gen), randNext(gen)); }
+uvec3 randNext3(inout NoiseGenerator gen) { return uvec3(randNext2(gen), randNext(gen)); }
+uvec4 randNext4(inout NoiseGenerator gen) { return uvec4(randNext3(gen), randNext(gen)); }
+
+float randNextF(inout NoiseGenerator gen) { return float(randNext(gen)) / float(0xffffffffu); }
+vec2 randNext2F(inout NoiseGenerator gen) { return vec2(randNext2(gen)) / float(0xffffffffu); }
+vec3 randNext3F(inout NoiseGenerator gen) { return vec3(randNext3(gen)) / float(0xffffffffu); }
+vec4 randNext4F(inout NoiseGenerator gen) { return vec4(randNext4(gen)) / float(0xffffffffu); } 
 
 // Simple hash-based random for per-pixel variation
 float hash1(vec2 p) {
@@ -224,6 +222,48 @@ vec3 SampleCosineHemisphere(vec3 normal, vec2 xy) {
 float ScreenToViewDepth(float depth) {
 	float z = depth * 2.0 - 1.0; // Back to NDC
 	return -PROWL_MATRIX_P[3].z / (PROWL_MATRIX_P[2].z + z);
+}
+
+// ----------------------------------------------------------------------------
+// Reprojection Utilities
+
+// Reproject current screen position to previous frame using motion
+vec3 Reproject(vec2 screenUV, float depth, mat4 prevViewProj) {
+	// Get current view space position
+	vec3 viewPos = getViewPos(screenUV, depth);
+
+	// Transform to world space
+	vec4 worldPos = PROWL_MATRIX_I_V * vec4(viewPos, 1.0);
+
+	// Transform to previous frame's clip space
+	vec4 prevClip = prevViewProj * worldPos;
+
+	// Perspective divide
+	vec3 prevNDC = prevClip.xyz / prevClip.w;
+
+	// Convert to screen space [0,1]
+	vec3 prevScreen = prevNDC * 0.5 + 0.5;
+
+	return prevScreen;
+}
+
+// Check if reprojection is valid (no disocclusion)
+bool IsReprojectionValid(vec2 prevUV, float currentDepth, float prevDepth, vec3 currentNormal, vec3 prevNormal) {
+	// Out of screen
+	if (prevUV.x < 0.0 || prevUV.x > 1.0 || prevUV.y < 0.0 || prevUV.y > 1.0)
+		return false;
+
+	// Depth discontinuity check
+	float depthDiff = abs(currentDepth - prevDepth);
+	if (depthDiff > 0.01)
+		return false;
+
+	// Normal discontinuity check
+	float normalDot = dot(currentNormal, prevNormal);
+	if (normalDot < 0.9)
+		return false;
+
+	return true;
 }
 
 // ----------------------------------------------------------------------------
