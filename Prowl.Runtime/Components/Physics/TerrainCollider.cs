@@ -30,7 +30,7 @@ public class TerrainCollider : MonoBehaviour, ITerrainHeightProvider
     /// Number of height samples per world unit.
     /// Higher values provide more accurate collision at the cost of memory and performance.
     /// </summary>
-    public int HeightmapResolution = 512;
+    public int HeightmapResolution = 128;
 
     #region ITerrainHeightProvider Implementation
 

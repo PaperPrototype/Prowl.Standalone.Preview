@@ -429,8 +429,8 @@ public sealed class PhysicsDemo : Game
         terrainGO.Transform.Position = position;
 
         // Generate heightmap and splatmap procedurally
-        Texture2D heightmap = GenerateHeightmap(256, 256);
-        Texture2D splatmap = GenerateSplatmap(256, 256);
+        Texture2D heightmap = GenerateHeightmap(128, 128);
+        Texture2D splatmap = GenerateSplatmap(128, 128);
 
         // Create terrain component
         TerrainComponent terrain = terrainGO.AddComponent<TerrainComponent>();
