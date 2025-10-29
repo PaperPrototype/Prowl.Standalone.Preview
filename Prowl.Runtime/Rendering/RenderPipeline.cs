@@ -365,8 +365,9 @@ public abstract class RenderPipeline : EngineObject
                 PropertyState.ApplyInstanceUniforms(properties, variant, ref instanceTexSlot);
 
                 // Directly bind per-object transform uniforms after all other uniforms to gaurantee they are set correctly
-                Graphics.Device.SetUniformMatrix(variant, "prowl_ObjectToWorld", false, (Float4x4)model);
-                Graphics.Device.SetUniformMatrix(variant, "prowl_WorldToObject", false, (Float4x4)model.Invert());
+                var fModel = (Float4x4)model;
+                Graphics.Device.SetUniformMatrix(variant, "prowl_ObjectToWorld", false, fModel);
+                Graphics.Device.SetUniformMatrix(variant, "prowl_WorldToObject", false, fModel.Invert());
 
                 // Execute draw call (mesh VAO already uploaded, just bind and draw)
                 unsafe
