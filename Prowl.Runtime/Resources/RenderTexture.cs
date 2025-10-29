@@ -57,7 +57,7 @@ public sealed class RenderTexture : EngineObject, ISerializable
 
         if (hasDepthAttachment)
         {
-            InternalDepth = new Texture2D((uint)Width, (uint)Height, false, TextureImageFormat.Depth32f);
+            InternalDepth = new Texture2D((uint)Width, (uint)Height, false, TextureImageFormat.Depth24f);
             attachments[numTextures] = new GraphicsFrameBuffer.Attachment { Texture = InternalDepth.Handle, IsDepth = true };
         }
 

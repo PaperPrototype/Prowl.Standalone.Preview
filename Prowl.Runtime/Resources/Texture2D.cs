@@ -141,9 +141,9 @@ public sealed class Texture2D : Texture, ISerializable
             case TextureImageFormat.Int4:
             case TextureImageFormat.Float4:
                 return size * 4 * 4;
-            case TextureImageFormat.Depth16:
+            case TextureImageFormat.Depth16f:
                 return size * 2;
-            case TextureImageFormat.Depth24:
+            case TextureImageFormat.Depth24f:
                 return size * 3;
             case TextureImageFormat.Depth32f:
                 return size * 4;

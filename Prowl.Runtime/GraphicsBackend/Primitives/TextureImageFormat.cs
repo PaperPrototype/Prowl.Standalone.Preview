@@ -16,8 +16,8 @@ public enum TextureImageFormat
     Float2,
     Float3,
     Float4,
-    Depth16,
-    Depth24,
+    Depth16f,
+    Depth24f,
     Depth32f,
 
     Int,
