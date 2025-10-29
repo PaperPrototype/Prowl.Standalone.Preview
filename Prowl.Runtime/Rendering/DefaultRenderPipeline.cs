@@ -17,7 +17,9 @@ using Mesh = Prowl.Runtime.Resources.Mesh;
 using Shader = Prowl.Runtime.Resources.Shader;
 
 // TODO:
-// 1. Image Effects need a Dispose method to clean up their resources, Camera needs to call it too
+// 1. Image Effects need a refactor
+// 2. Optomize GBuffer usage and formats
+// 3. Other effects also need improvements to Formats and memory usage
 
 namespace Prowl.Runtime.Rendering;
 
@@ -168,10 +170,10 @@ public class DefaultRenderPipeline : RenderPipeline
         // BufferC: R = Roughness, G = Metalness, B = Specular, A = AO
         // BufferD: Custom Data per Shading Mode (e.g., Emissive for Lit mode)
         RenderTexture gBuffer = RenderTexture.GetTemporaryRT((int)css.PixelWidth, (int)css.PixelHeight, true, [
-            TextureImageFormat.Float4, // BufferA - Albedo + Alpha
-            TextureImageFormat.Float4, // BufferB - Normal + ShadingMode
-            TextureImageFormat.Float4, // BufferC - Roughness, Metalness, Specular, AO
-            TextureImageFormat.Float4, // BufferD - Custom Data (Emissive, etc.)
+            TextureImageFormat.Short4, // BufferA - Albedo + Alpha
+            TextureImageFormat.Short4, // BufferB - Normal + ShadingMode
+            TextureImageFormat.Short4, // BufferC - Roughness, Metalness, Specular, AO
+            TextureImageFormat.Short4, // BufferD - Custom Data (Emissive, etc.)
             ]);
 
         // Bind GBuffer as the target
@@ -217,7 +219,7 @@ public class DefaultRenderPipeline : RenderPipeline
         // 7. Deferred Lighting Pass - Render each light's contribution
         // Create light accumulation buffer
         RenderTexture lightAccumulation = RenderTexture.GetTemporaryRT((int)camera.PixelWidth, (int)camera.PixelHeight, false, [
-            isHDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b, // Accumulated lighting
+            isHDR ? TextureImageFormat.Short4 : TextureImageFormat.Color4b, // Accumulated lighting
             ]);
 
         // Set GBuffer textures as global textures for shaders
@@ -244,7 +246,7 @@ public class DefaultRenderPipeline : RenderPipeline
         // 8. Deferred Composition Pass - Combine light accumulation with GBuffer
         // Create final composition output
         RenderTexture composedOutput = RenderTexture.GetTemporaryRT((int)camera.PixelWidth, (int)camera.PixelHeight, true, [
-            isHDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b,
+            isHDR ? TextureImageFormat.Short4 : TextureImageFormat.Color4b,
             ]);
 
         // Set GBuffer and light textures for compose shader
@@ -404,7 +406,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
         // Determine if we need to start in LDR mode
         bool firstEffectIsLDR = effects.Count > 0 && effects[0].TransformsToLDR;
-        TextureImageFormat destFormat = isHDR && !firstEffectIsLDR ? TextureImageFormat.Float4 : TextureImageFormat.Color4b;
+        TextureImageFormat destFormat = isHDR && !firstEffectIsLDR ? TextureImageFormat.Short4 : TextureImageFormat.Color4b;
 
         // Create destination buffer
         RenderTexture destBuffer = RenderTexture.GetTemporaryRT(

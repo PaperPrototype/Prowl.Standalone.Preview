@@ -59,7 +59,7 @@ public sealed class ScreenSpaceReflectionEffect : ImageEffect
         int height = (int)(source.Height * ResolutionScale);
 
         // Ensure render textures are created and sized correctly
-        EnsureRenderTexture(ref _reflectionDataRT, width, height, TextureImageFormat.Float4);
+        EnsureRenderTexture(ref _reflectionDataRT, width, height, TextureImageFormat.Short4);
         EnsureRenderTexture(ref _resolvedRT, width, height, source.MainTexture.ImageFormat);
         EnsureRenderTexture(ref _blurTempRT, width, height, source.MainTexture.ImageFormat);
 

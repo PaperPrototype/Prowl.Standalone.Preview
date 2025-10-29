@@ -48,9 +48,9 @@ public sealed class BokehDepthOfFieldEffect : ImageEffect
 
             // Use floating point format to store complex number values (can be negative)
             _horizontalMRT = new RenderTexture(blurWidth, blurHeight, false, [
-                TextureImageFormat.Float4,
-                TextureImageFormat.Float4,
-                TextureImageFormat.Float4
+                TextureImageFormat.Short4,
+                TextureImageFormat.Short4,
+                TextureImageFormat.Short4
             ]);
         }
 
