@@ -27,6 +27,7 @@ public sealed class PhysicsDemo : Game
     private double selectedCubeMass = 1.0;
     private Material? standardMaterial;
     private GameObject? particleSystemGO;
+    private GameObject? refractiveCube;
 
     public override void Initialize()
     {
@@ -106,6 +107,9 @@ public sealed class PhysicsDemo : Game
         // Demo 7: GPU-Instanced Terrain with LOD!
         CreateTerrainDemo(scene, new Double3(-50, -15, -50));
 
+        // Demo 8: GrabPass Refraction Demo!
+        CreateRefractionDemo(scene, new Double3(0, 5, 0));
+
         scene.Activate();
 
         // Print controls
@@ -116,6 +120,7 @@ public sealed class PhysicsDemo : Game
         Debug.Log("1-4: Change cube mass");
         Debug.Log("P: Toggle particle system");
         Debug.Log("I/J/K/L/U/O: Move particle system");
+        Debug.Log("T: Toggle refractive cube");
         Debug.Log("R: Reset scene");
         Debug.Log("X: Delete last shot cube");
         Debug.Log("============================");
@@ -137,7 +142,7 @@ public sealed class PhysicsDemo : Game
         particleSystem.Material = particleMaterial;
 
         // Configure particle system settings
-        particleSystem.MaxParticles = 1000;
+        particleSystem.MaxParticles = 20000;
         particleSystem.Duration = 2.0f;
         particleSystem.Looping = true;
         particleSystem.PlayOnEnable = true;
@@ -159,7 +164,7 @@ public sealed class PhysicsDemo : Game
 
        // Configure Emission module
        particleSystem.Emission.Enabled = true;
-       particleSystem.Emission.RateOverTime = new MinMaxCurve(50.0f); // 500 particles per second
+       particleSystem.Emission.RateOverTime = new MinMaxCurve(10000.0f); // 500 particles per second
 
        // Configure emission shape (try Sphere, Box, Cone, LineSegment, Circle)
        particleSystem.Emission.Shape = EmissionShape.Cone;
@@ -422,6 +427,30 @@ public sealed class PhysicsDemo : Game
         scene.Add(platform);
     }
 
+    private void CreateRefractionDemo(Scene scene, Double3 position)
+    {
+        // Create a large transparent cube with refraction effect
+        refractiveCube = new GameObject("Refractive Cube");
+        refractiveCube.Transform.Position = position;
+        refractiveCube.Transform.LocalScale = new Double3(2, 5, 5);
+
+        MeshRenderer cubeRenderer = refractiveCube.AddComponent<MeshRenderer>();
+        cubeRenderer.Mesh = Mesh.CreateCube(new Double3(1, 1, 1));
+
+        // Create material with the new Refraction shader (uses GrabPass)
+        Material refractionMaterial = new Material(Shader.LoadDefault(DefaultShader.Refraction));
+        refractionMaterial.SetFloat("_RefractionStrength", 0.05f);
+        refractionMaterial.SetFloat("_NoiseScale", 2.0f);
+        refractionMaterial.SetColor("_Tint", new Color(0.7f, 0.9f, 1.0f, 1.0f)); // Blue-ish tint
+
+        cubeRenderer.Material = refractionMaterial;
+
+        scene.Add(refractiveCube);
+
+        Debug.Log("Refractive Cube created! Uses GrabPass to capture and distort the scene behind it.");
+        Debug.Log("Press 'T' to toggle the refractive cube on/off.");
+    }
+
     private void CreateTerrainDemo(Scene scene, Double3 position)
     {
         // Create terrain GameObject
@@ -640,7 +669,7 @@ public sealed class PhysicsDemo : Game
         //scene.DrawGizmos();
 
         if (particleSystemGO != null)
-            particleSystemGO.Transform.Rotate(Double3.UnitX, 20f * Time.DeltaTime);
+            particleSystemGO.Transform.Rotate(Double3.UnitY, 20f * Time.DeltaTime);
 
         // Camera movement
         Double2 movement = Double2.Zero;
@@ -725,6 +754,13 @@ public sealed class PhysicsDemo : Game
                     Debug.Log("Particle system playing");
                 }
             }
+        }
+
+        // Toggle refractive cube with T key
+        if (Input.GetKeyDown(KeyCode.T) && refractiveCube.IsValid())
+        {
+            refractiveCube.Enabled = !refractiveCube.Enabled;
+            Debug.Log($"Refractive cube {(refractiveCube.Enabled ? "enabled" : "disabled")}");
         }
 
         // Move particle system with I/J/K/L keys
