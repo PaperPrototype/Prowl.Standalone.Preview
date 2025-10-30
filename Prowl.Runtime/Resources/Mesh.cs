@@ -201,6 +201,11 @@ public class Mesh : EngineObject, ISerializable
     GraphicsBuffer vertexBuffer;
     GraphicsBuffer indexBuffer;
 
+    // Instanced rendering - cached VAO and buffer (created lazily on first instanced draw)
+    GraphicsVertexArray? instancedVAO;
+    GraphicsBuffer? instanceBuffer;
+    int instanceBufferCapacity = 0;
+
     // Track last uploaded state for buffer reuse optimization
     private int lastVertexCount = 0;
     private int lastIndexCount = 0;
@@ -339,6 +344,70 @@ public class Mesh : EngineObject, ISerializable
         }
 
         Graphics.Device.BindVertexArray(null);
+    }
+
+    /// <summary>
+    /// Gets or creates the instanced rendering VAO and buffer for this mesh.
+    /// The instance format is fixed: mat4 (4x vec4) + color (vec4) + customData (vec4).
+    /// The VAO is created lazily on first instanced draw and reused thereafter.
+    /// </summary>
+    /// <param name="instanceData">The instance data to upload</param>
+    /// <param name="instanceCount">Number of instances</param>
+    /// <returns>The instanced VAO</returns>
+    public GraphicsVertexArray GetOrCreateInstanceVAO(Rendering.InstanceData[] instanceData, int instanceCount)
+    {
+        // Ensure base mesh is uploaded first
+        Upload();
+
+        // Define fixed instance format (same for all instanced draws)
+        var instanceFormat = new VertexFormat(new[]
+        {
+            new Element((VertexSemantic)8, VertexType.Float, 4, divisor: 1),  // ModelRow0
+            new Element((VertexSemantic)9, VertexType.Float, 4, divisor: 1),  // ModelRow1
+            new Element((VertexSemantic)10, VertexType.Float, 4, divisor: 1), // ModelRow2
+            new Element((VertexSemantic)11, VertexType.Float, 4, divisor: 1), // ModelRow3
+            new Element((VertexSemantic)12, VertexType.Float, 4, divisor: 1), // Color (RGBA)
+            new Element((VertexSemantic)13, VertexType.Float, 4, divisor: 1), // CustomData
+        });
+
+        // Create or resize instance buffer if needed
+        if (instanceBuffer == null || instanceCount > instanceBufferCapacity)
+        {
+            // Allocate with 50% extra capacity to reduce reallocations
+            instanceBufferCapacity = (int)(instanceCount * 1.5f);
+
+            // Dispose old buffer
+            instanceBuffer?.Dispose();
+
+            // Create new buffer with capacity
+            var bufferData = new Rendering.InstanceData[instanceBufferCapacity];
+            Array.Copy(instanceData, 0, bufferData, 0, instanceCount);
+            instanceBuffer = Graphics.Device.CreateBuffer(BufferType.VertexBuffer, bufferData, dynamic: true);
+
+            // Dispose old VAO since we need to recreate it with new buffer
+            instancedVAO?.Dispose();
+            instancedVAO = null;
+        }
+        else
+        {
+            // Reuse buffer, just update data
+            Graphics.Device.SetBuffer(instanceBuffer, instanceData, dynamic: true);
+        }
+
+        // Create VAO if needed (first time or after buffer resize)
+        if (instancedVAO == null)
+        {
+            var meshFormat = GetVertexLayout(this);
+            instancedVAO = Graphics.Device.CreateVertexArray(
+                meshFormat,
+                vertexBuffer,
+                indexBuffer,
+                instanceFormat,
+                instanceBuffer
+            );
+        }
+
+        return instancedVAO;
     }
 
     private bool VertexLayoutMatches(VertexFormat a, VertexFormat b)
@@ -1013,6 +1082,13 @@ public class Mesh : EngineObject, ISerializable
         vertexBuffer = null;
         indexBuffer?.Dispose();
         indexBuffer = null;
+
+        // Clean up instanced rendering resources
+        instancedVAO?.Dispose();
+        instancedVAO = null;
+        instanceBuffer?.Dispose();
+        instanceBuffer = null;
+        instanceBufferCapacity = 0;
     }
 
     private T ReadVertexData<T>(T value)

@@ -6,13 +6,13 @@ using Prowl.Runtime.GraphicsBackend.Primitives;
 using Prowl.Runtime.Resources;
 using Prowl.Vector;
 using Prowl.Vector.Geometry;
-using static Prowl.Runtime.GraphicsBackend.VertexFormat;
 
 namespace Prowl.Runtime.Rendering;
 
 /// <summary>
 /// A simple instanced renderable for drawing multiple instances of a mesh.
 /// Useful for drawing many copies of the same object efficiently (trees, grass, particles, etc.)
+/// Uses the mesh's cached instance VAO for optimal performance.
 /// </summary>
 public class InstancedMeshRenderable : IInstancedRenderable
 {
@@ -21,11 +21,7 @@ public class InstancedMeshRenderable : IInstancedRenderable
     private readonly int _layerIndex;
     private readonly PropertyState _sharedProperties;
     private readonly AABB _bounds;
-
-    // Manual instancing management
-    private readonly GraphicsBuffer _instanceBuffer;
-    private readonly GraphicsVertexArray _instancedVAO;
-    private readonly int _instanceCount;
+    private readonly InstanceData[] _instanceData;
 
     public InstancedMeshRenderable(
         Mesh mesh,
@@ -37,43 +33,9 @@ public class InstancedMeshRenderable : IInstancedRenderable
     {
         _mesh = mesh;
         _material = material;
-        _instanceCount = instanceData.Length;
+        _instanceData = instanceData;
         _layerIndex = layerIndex;
         _sharedProperties = sharedProperties ?? new PropertyState();
-
-        // Create instance buffer and VAO
-        if (instanceData.Length > 0 && mesh != null)
-        {
-            // Upload mesh
-            mesh.Upload();
-
-            // Create instance buffer
-            _instanceBuffer = Graphics.Device.CreateBuffer(BufferType.VertexBuffer, instanceData, dynamic: false);
-
-            // Get mesh vertex format
-            var meshFormat = Mesh.GetVertexLayout(mesh);
-
-            // Define instance data format
-            var instanceFormat = new VertexFormat(
-            [
-                // mat4 takes 4 attribute slots (one per row)
-                new((VertexSemantic)8, VertexType.Float, 4, divisor: 1),  // ModelRow0
-                new((VertexSemantic)9, VertexType.Float, 4, divisor: 1),  // ModelRow1
-                new((VertexSemantic)10, VertexType.Float, 4, divisor: 1), // ModelRow2
-                new((VertexSemantic)11, VertexType.Float, 4, divisor: 1), // ModelRow3
-                new((VertexSemantic)12, VertexType.Float, 4, divisor: 1), // Color (RGBA)
-                new((VertexSemantic)13, VertexType.Float, 4, divisor: 1), // CustomData
-            ]);
-
-            // Create instanced VAO
-            _instancedVAO = Graphics.Device.CreateVertexArray(
-                meshFormat,
-                mesh.VertexBuffer,
-                mesh.IndexBuffer,
-                instanceFormat,
-                _instanceBuffer
-            );
-        }
 
         // Calculate bounds if not provided
         if (bounds.HasValue)
@@ -124,15 +86,18 @@ public class InstancedMeshRenderable : IInstancedRenderable
 
     public void GetCullingData(out bool isRenderable, out AABB bounds)
     {
-        isRenderable = _instanceCount > 0 && _mesh != null && _material != null && _instancedVAO != null;
+        isRenderable = _instanceData.Length > 0 && _mesh != null && _material != null;
         bounds = _bounds;
     }
 
     public void GetInstanceData(ViewerData viewer, out PropertyState properties, out GraphicsVertexArray vao, out int instanceCount, out int indexCount, out bool useIndex32)
     {
         properties = _sharedProperties;
-        vao = _instancedVAO;
-        instanceCount = _instanceCount;
+
+        // Use mesh's cached instance VAO (creates it on first use, reuses thereafter)
+        vao = _mesh.GetOrCreateInstanceVAO(_instanceData, _instanceData.Length);
+
+        instanceCount = _instanceData.Length;
         indexCount = _mesh != null ? _mesh.IndexCount : 0;
         useIndex32 = _mesh != null && _mesh.IndexFormat == IndexFormat.UInt32;
     }
