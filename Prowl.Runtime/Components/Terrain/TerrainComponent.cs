@@ -3,14 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
-using Prowl.Runtime.GraphicsBackend;
-using Prowl.Runtime.GraphicsBackend.Primitives;
 using Prowl.Runtime.Rendering;
 using Prowl.Runtime.Resources;
 using Prowl.Vector;
 using Prowl.Vector.Geometry;
-using static Prowl.Runtime.GraphicsBackend.VertexFormat;
+
+using Silk.NET.Vulkan;
 
 namespace Prowl.Runtime.Terrain;
 
@@ -19,7 +19,7 @@ namespace Prowl.Runtime.Terrain;
 /// Renders terrain using a single 32x32 mesh instanced many times.
 /// Heightmap is sampled in the vertex shader for displacement.
 /// </summary>
-public class TerrainComponent : MonoBehaviour, IInstancedRenderable
+public class TerrainComponent : MonoBehaviour
 {
     #region Configuration
 
@@ -46,13 +46,8 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
 
     private TerrainQuadtree _quadtree;
     private Mesh _baseMesh;
-    private InstanceData[] _instanceDataCache = Array.Empty<InstanceData>();
+    private Float4x4[] _transforms = Array.Empty<Float4x4>();
     private PropertyState _properties = new();
-
-    // Manual instancing management
-    private GraphicsBuffer _instanceBuffer;
-    private GraphicsVertexArray _instancedVAO;
-    private int _bufferCapacity;
 
     #endregion
 
@@ -92,8 +87,8 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
         // Generate instance data for visible chunks
         UpdateInstanceData();
 
-        // Push to render queue
-        if (_instanceDataCache.Length > 0 && Material.IsValid())
+        // Render terrain using Graphics.DrawMeshInstanced
+        if (_transforms.Length > 0 && Material.IsValid() && _baseMesh != null)
         {
             _properties.Clear();
             _properties.SetInt("_ObjectID", InstanceID);
@@ -118,7 +113,15 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
 
             _properties.SetVector("_TerrainOffset", this.Transform.Position);
 
-            GameObject.Scene.PushRenderable(this);
+            // Draw instanced terrain with properties (automatically batched for >1023 chunks)
+            Graphics.DrawMeshInstanced(
+                GameObject.Scene,
+                _baseMesh,
+                _transforms,
+                Material,
+                GameObject.LayerIndex,
+                _properties
+            );
         }
     }
 
@@ -127,110 +130,11 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
         base.OnDisable();
         _baseMesh?.Dispose();
         _baseMesh = null;
-        _instanceBuffer?.Dispose();
-        _instanceBuffer = null;
-        _instancedVAO?.Dispose();
-        _instancedVAO = null;
     }
 
     public override void DrawGizmos()
     {
         _quadtree.DrawGizmos(this.Transform.Position);
-    }
-
-    #endregion
-
-    #region IInstancedRenderable
-
-    public Material GetMaterial() => Material;
-    public int GetLayer() => GameObject.LayerIndex;
-
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model)
-    {
-        // Fallback for non-instanced rendering (shouldn't be called for IInstancedRenderable)
-        properties = _properties;
-        drawData = _baseMesh;
-        model = Transform.LocalToWorldMatrix;
-    }
-
-    public void GetCullingData(out bool isRenderable, out AABB bounds)
-    {
-        isRenderable = _instanceDataCache.Length > 0 && Material.IsValid() && _baseMesh != null;
-
-        // Terrain bounds
-        bounds = new AABB(new Double3(double.MinValue), new Double3(double.MaxValue));
-    }
-
-    public void GetInstanceData(ViewerData viewer, out PropertyState properties, out GraphicsVertexArray vao, out int instanceCount, out int indexCount, out bool useIndex32)
-    {
-        // Update VAO if needed
-        UpdateInstancedVAO();
-
-        properties = _properties;
-        vao = _instancedVAO;
-        instanceCount = _instanceDataCache.Length;
-        indexCount = _baseMesh != null ? _baseMesh.IndexCount : 0;
-        useIndex32 = _baseMesh != null && _baseMesh.IndexFormat == IndexFormat.UInt32;
-    }
-
-    private void UpdateInstancedVAO()
-    {
-        if (_baseMesh == null || _instanceDataCache.Length == 0)
-            return;
-
-        // Create or update instance buffer with capacity management
-        if (_instanceBuffer == null || _instanceDataCache.Length > _bufferCapacity)
-        {
-            // Need to create/resize buffer - allocate with 50% extra capacity for growth
-            _bufferCapacity = (int)(_instanceDataCache.Length * 1.5f);
-
-            // Create array with capacity (pad with empty data)
-            var bufferData = new InstanceData[_bufferCapacity];
-            System.Array.Copy(_instanceDataCache, 0, bufferData, 0, _instanceDataCache.Length);
-
-            _instanceBuffer?.Dispose();
-            _instanceBuffer = Graphics.Device.CreateBuffer(BufferType.VertexBuffer, bufferData, dynamic: true);
-
-            // Dispose old VAO since we need to recreate it with new buffer
-            _instancedVAO?.Dispose();
-            _instancedVAO = null;
-        }
-        else
-        {
-            // Update existing buffer
-            Graphics.Device.SetBuffer(_instanceBuffer, _instanceDataCache, dynamic: true);
-        }
-
-        // Create instanced VAO if needed
-        if (_instancedVAO == null)
-        {
-            // Ensure mesh is uploaded
-            _baseMesh.Upload();
-
-            // Get mesh vertex format
-            var meshFormat = Mesh.GetVertexLayout(_baseMesh);
-
-            // Define instance data format
-            var instanceFormat = new VertexFormat(
-            [
-                // mat4 takes 4 attribute slots (one per row)
-                new((VertexSemantic)8, VertexType.Float, 4, divisor: 1),  // ModelRow0
-                new((VertexSemantic)9, VertexType.Float, 4, divisor: 1),  // ModelRow1
-                new((VertexSemantic)10, VertexType.Float, 4, divisor: 1), // ModelRow2
-                new((VertexSemantic)11, VertexType.Float, 4, divisor: 1), // ModelRow3
-                new((VertexSemantic)12, VertexType.Float, 4, divisor: 1), // Color (RGBA)
-                new((VertexSemantic)13, VertexType.Float, 4, divisor: 1), // CustomData
-            ]);
-
-            // Create instanced VAO with both vertex and instance buffers
-            _instancedVAO = Graphics.Device.CreateVertexArray(
-                meshFormat,
-                _baseMesh.VertexBuffer,
-                _baseMesh.IndexBuffer,
-                instanceFormat,
-                _instanceBuffer
-            );
-        }
     }
 
     #endregion
@@ -299,9 +203,9 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
     {
         var visibleChunks = _quadtree.GetVisibleChunks();
 
-        if (_instanceDataCache.Length != visibleChunks.Count)
+        if (_transforms.Length != visibleChunks.Count)
         {
-            _instanceDataCache = new InstanceData[visibleChunks.Count];
+            _transforms = new Float4x4[visibleChunks.Count];
         }
 
         for (int i = 0; i < visibleChunks.Count; i++)
@@ -318,10 +222,7 @@ public class TerrainComponent : MonoBehaviour, IInstancedRenderable
             // The position is already in world space relative to terrain origin
             Float4x4 transform = Float4x4.CreateTranslation(position) * Float4x4.CreateScale(scale, 1.0f, scale);
 
-            // CustomData: X = LOD level, Y/Z/W unused for now
-            Float4 customData = new Float4(chunk.LODLevel, 0, 0, 0);
-
-            _instanceDataCache[i] = new InstanceData(transform, new Float4(1, 1, 1, 1), customData);
+            _transforms[i] = transform;
         }
     }
 

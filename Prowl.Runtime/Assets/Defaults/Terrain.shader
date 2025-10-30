@@ -31,7 +31,6 @@ Pass "Terrain"
 			out vec2 texCoord0;
             out vec3 worldPos;
             out vec3 worldNormal;
-            out float lodLevel;
 
 #ifdef GPU_INSTANCING
             // Instance attributes (semantic 8-13)
@@ -63,9 +62,6 @@ Pass "Terrain"
                 // Extract chunk position and scale
                 vec3 chunkPosition = instanceModelRow3.xyz;
                 float chunkScale = length(instanceModelRow0.xyz);
-
-                // Get LOD level from custom data
-                lodLevel = instanceCustomData.x;
 
                 // Vertex position is in 0-1 range, scale to chunk size
                 vec3 localPos = vertexPosition * chunkScale;
@@ -107,7 +103,6 @@ Pass "Terrain"
                 texCoord0 = vertexTexCoord0;
                 worldPos = (PROWL_MATRIX_M * vec4(vertexPosition, 1.0)).xyz;
                 worldNormal = normalize((PROWL_MATRIX_M * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-                lodLevel = 0.0;
 #endif
 			}
 		}
@@ -129,7 +124,6 @@ Pass "Terrain"
 			in vec2 texCoord0;
             in vec3 worldPos;
             in vec3 worldNormal;
-            in float lodLevel;
 
 			uniform sampler2D _Splatmap;
             uniform sampler2D _Layer0;
@@ -208,7 +202,6 @@ Pass "TerrainShadow"
             layout(location = 10) in vec4 instanceModelRow2;
             layout(location = 11) in vec4 instanceModelRow3;
             layout(location = 12) in vec4 instanceColor;
-            layout(location = 13) in vec4 instanceCustomData;
 #endif
 
             uniform sampler2D _Heightmap;

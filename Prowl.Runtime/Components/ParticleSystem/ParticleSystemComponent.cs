@@ -6,11 +6,8 @@ using System.Collections.Generic;
 using Prowl.Runtime.Rendering;
 using Prowl.Runtime.Resources;
 using Prowl.Runtime.ParticleSystem.Modules;
-using Prowl.Runtime.GraphicsBackend;
-using Prowl.Runtime.GraphicsBackend.Primitives;
 using Prowl.Vector;
 using Prowl.Vector.Geometry;
-using static Prowl.Runtime.GraphicsBackend.VertexFormat;
 
 namespace Prowl.Runtime.ParticleSystem;
 
@@ -18,7 +15,7 @@ namespace Prowl.Runtime.ParticleSystem;
 /// A GPU-instanced particle system component.
 /// Particles are rendered using instanced rendering for optimal performance.
 /// </summary>
-public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
+public class ParticleSystemComponent : MonoBehaviour
 {
     #region Configuration
 
@@ -53,15 +50,11 @@ public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
     private bool _isPlaying = false;
     private PropertyState _properties = new();
 
-    // GPU instancing data
+    // GPU instancing data - separate arrays for clean API
     private Mesh _quadMesh;
-    private InstanceData[] _instanceDataCache = Array.Empty<InstanceData>();
-    private bool _instanceDataDirty = true;
-
-    // Manual instancing management
-    private GraphicsBuffer _instanceBuffer;
-    private GraphicsVertexArray _instancedVAO;
-    private int _bufferCapacity;
+    private Float4x4[] _transforms = Array.Empty<Float4x4>();
+    private Float4[] _colors = Array.Empty<Float4>();
+    private Float4[] _customData = Array.Empty<Float4>();
 
     #endregion
 
@@ -142,14 +135,27 @@ public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
             Collision.UpdateCollisions(_particles, GameObject.Scene?.Physics, deltaTime, Transform, SimulationSpace);
         }
 
-        _instanceDataDirty = true;
-
-        // Push to render queue
-        if (_particles.Count > 0 && Material.IsValid())
+        // Render particles using Graphics.DrawMeshInstanced
+        if (_particles.Count > 0 && Material.IsValid() && _quadMesh != null)
         {
+            // Update instance data from particles
+            UpdateInstanceData();
+
+            // Setup per-object properties
             _properties.Clear();
             _properties.SetInt("_ObjectID", InstanceID);
-            GameObject.Scene.PushRenderable(this);
+
+            // Draw instanced particles with separate arrays (automatically batched for >1023 particles)
+            Graphics.DrawMeshInstanced(
+                GameObject.Scene,
+                _quadMesh,
+                _transforms,
+                Material,
+                _colors,
+                _customData,
+                GameObject.LayerIndex,
+                _properties
+            );
         }
     }
 
@@ -161,10 +167,6 @@ public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
         // Clean up resources
         _quadMesh?.Dispose();
         _quadMesh = null;
-        _instanceBuffer?.Dispose();
-        _instanceBuffer = null;
-        _instancedVAO?.Dispose();
-        _instancedVAO = null;
     }
 
     #endregion
@@ -188,7 +190,6 @@ public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
         _isPlaying = false;
         _time = 0;
         _particles.Clear();
-        _instanceDataDirty = true;
     }
 
     public void Pause()
@@ -199,7 +200,6 @@ public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
     public void Clear()
     {
         _particles.Clear();
-        _instanceDataDirty = true;
     }
 
     public bool IsPlaying => _isPlaying;
@@ -321,147 +321,10 @@ public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
 
             elapsed += deltaTime;
         }
-
-        _instanceDataDirty = true;
     }
 
     #endregion
 
-    #region Rendering (IInstancedRenderable)
-
-    public Material GetMaterial() => Material;
-    public int GetLayer() => GameObject.LayerIndex;
-
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model)
-    {
-        // Fallback for non-instanced rendering (shouldn't be called for IInstancedRenderable)
-        properties = _properties;
-        drawData = _quadMesh;
-        model = Transform.LocalToWorldMatrix;
-    }
-
-    public void GetCullingData(out bool isRenderable, out AABB bounds)
-    {
-        isRenderable = _particles.Count > 0 && Material.IsValid() && _quadMesh != null;
-
-        if (_particles.Count > 0)
-        {
-            // Calculate bounds from all particles
-            Float3 min = new Float3(float.MaxValue);
-            Float3 max = new Float3(float.MinValue);
-
-            foreach (var particle in _particles)
-            {
-                Float3 pos = particle.Position;
-                float size = particle.Size;
-
-                // Transform to world space if in local space
-                if (SimulationSpace == SimulationSpace.Local)
-                {
-                    var worldPos = Transform.LocalToWorldMatrix * new Double4((Double3)pos, 1.0);
-                    pos = new Float3((float)worldPos.X, (float)worldPos.Y, (float)worldPos.Z);
-                }
-
-                min = new Float3(
-                    Math.Min(min.X, pos.X - size),
-                    Math.Min(min.Y, pos.Y - size),
-                    Math.Min(min.Z, pos.Z - size)
-                );
-
-                max = new Float3(
-                    Math.Max(max.X, pos.X + size),
-                    Math.Max(max.Y, pos.Y + size),
-                    Math.Max(max.Z, pos.Z + size)
-                );
-            }
-
-            bounds = new AABB((Double3)min, (Double3)max);
-        }
-        else
-        {
-            bounds = new AABB(Double3.Zero, Double3.Zero);
-        }
-    }
-
-    public void GetInstanceData(ViewerData viewer, out PropertyState properties, out GraphicsVertexArray vao, out int instanceCount, out int indexCount, out bool useIndex32)
-    {
-        // Update instance data cache if needed
-        if (_instanceDataDirty || _instanceDataCache.Length != _particles.Count)
-        {
-            UpdateInstanceData();
-        }
-
-        // Update VAO if needed
-        UpdateInstancedVAO();
-
-        properties = _properties;
-        vao = _instancedVAO;
-        instanceCount = _instanceDataCache.Length;
-        indexCount = _quadMesh != null ? _quadMesh.IndexCount : 0;
-        useIndex32 = _quadMesh != null && _quadMesh.IndexFormat == IndexFormat.UInt32;
-    }
-
-    private void UpdateInstancedVAO()
-    {
-        if (_quadMesh == null || _instanceDataCache.Length == 0)
-            return;
-
-        // Create or update instance buffer with capacity management
-        if (_instanceBuffer == null || _instanceDataCache.Length > _bufferCapacity)
-        {
-            // Need to create/resize buffer - allocate with 50% extra capacity for growth
-            _bufferCapacity = (int)(_instanceDataCache.Length * 1.5f);
-
-            // Create array with capacity (pad with empty data)
-            var bufferData = new InstanceData[_bufferCapacity];
-            System.Array.Copy(_instanceDataCache, 0, bufferData, 0, _instanceDataCache.Length);
-
-            _instanceBuffer?.Dispose();
-            _instanceBuffer = Graphics.Device.CreateBuffer(BufferType.VertexBuffer, bufferData, dynamic: true);
-
-            // Dispose old VAO since we need to recreate it with new buffer
-            _instancedVAO?.Dispose();
-            _instancedVAO = null;
-        }
-        else
-        {
-            // Update existing buffer
-            Graphics.Device.SetBuffer(_instanceBuffer, _instanceDataCache, dynamic: true);
-        }
-
-        // Create instanced VAO if needed
-        if (_instancedVAO == null)
-        {
-            // Ensure mesh is uploaded
-            _quadMesh.Upload();
-
-            // Get mesh vertex format
-            var meshFormat = Mesh.GetVertexLayout(_quadMesh);
-
-            // Define instance data format
-            var instanceFormat = new VertexFormat(
-            [
-                // mat4 takes 4 attribute slots (one per row)
-                new((VertexSemantic)8, VertexType.Float, 4, divisor: 1),  // ModelRow0
-                new((VertexSemantic)9, VertexType.Float, 4, divisor: 1),  // ModelRow1
-                new((VertexSemantic)10, VertexType.Float, 4, divisor: 1), // ModelRow2
-                new((VertexSemantic)11, VertexType.Float, 4, divisor: 1), // ModelRow3
-                new((VertexSemantic)12, VertexType.Float, 4, divisor: 1), // Color (RGBA)
-                new((VertexSemantic)13, VertexType.Float, 4, divisor: 1), // CustomData
-            ]);
-
-            // Create instanced VAO with both vertex and instance buffers
-            _instancedVAO = Graphics.Device.CreateVertexArray(
-                meshFormat,
-                _quadMesh.VertexBuffer,
-                _quadMesh.IndexBuffer,
-                instanceFormat,
-                _instanceBuffer
-            );
-        }
-    }
-
-    #endregion
 
     #region GPU Instancing
 
@@ -497,13 +360,15 @@ public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
 
     private void UpdateInstanceData()
     {
-        // Resize cache if needed
-        if (_instanceDataCache.Length != _particles.Count)
+        // Resize arrays if needed
+        if (_transforms.Length != _particles.Count)
         {
-            _instanceDataCache = new InstanceData[_particles.Count];
+            _transforms = new Float4x4[_particles.Count];
+            _colors = new Float4[_particles.Count];
+            _customData = new Float4[_particles.Count];
         }
 
-        // Fill instance data from particles
+        // Fill separate arrays from particles
         for (int i = 0; i < _particles.Count; i++)
         {
             var particle = _particles[i];
@@ -535,21 +400,17 @@ public class ParticleSystemComponent : MonoBehaviour, IInstancedRenderable
             );
 
             Float4x4 scale = Float4x4.CreateScale(size);
-            Float4x4 transform = translation * rotationMat * scale;
+            _transforms[i] = translation * rotationMat * scale;
 
             // Get UV tile info if UV module is enabled
             Float4 uvTileInfo = UV.Enabled ? UV.GetUVTileInfo(particle) : new Float4(0, 0, 1, 1);
 
-            // Store in instance data (convert Color to Float4)
-            // CustomData: X=normalized lifetime, Y=UV offsetX, Z=UV offsetY, W=UV scale
-            _instanceDataCache[i] = new InstanceData(
-                transform,
-                InstanceData.ColorToFloat4(particle.Color),
-                new Float4(particle.NormalizedLifetime, uvTileInfo.X, uvTileInfo.Y, uvTileInfo.Z) // Lifetime + UV info
-            );
-        }
+            // Store color and custom data
+            _colors[i] = InstanceData.ColorToFloat4(particle.Color);
 
-        _instanceDataDirty = false;
+            // CustomData: X=normalized lifetime, Y=UV offsetX, Z=UV offsetY, W=UV scale
+            _customData[i] = new Float4(particle.NormalizedLifetime, uvTileInfo.X, uvTileInfo.Y, uvTileInfo.Z);
+        }
     }
 
     #endregion
