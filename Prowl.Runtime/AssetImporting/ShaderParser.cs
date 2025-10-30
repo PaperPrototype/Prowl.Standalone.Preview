@@ -304,7 +304,7 @@ public static class ShaderParser
                 return false;
             }
 
-            passes[i] = new ShaderPass(parsedPass.Name, parsedPass.Tags, parsedPass.State, vertexShader, fragmentShader, fallback);
+            passes[i] = new ShaderPass(parsedPass.Name, parsedPass.Tags, parsedPass.TagSortOffsets, parsedPass.State, vertexShader, fragmentShader, fallback, parsedPass.GrabTextureName ?? "");
         }
 
         shader = new Shader(name, [.. properties ?? []], passes);
@@ -545,7 +545,9 @@ public static class ShaderParser
             {
                 case "Tags":
                     EnsureUndef(pass.Tags, "'Tags' in pass");
-                    pass.Tags = ParseTags(tokenizer);
+                    (pass.Tags, pass.TagSortOffsets) = ParseTags(tokenizer);
+                    break;
+
                 case "GrabTexture":
                     EnsureUndef(pass.GrabTextureName, "'GrabTexture' in pass");
                     ExpectToken("grabtexture", tokenizer, ShaderToken.Identifier);
@@ -603,10 +605,10 @@ public static class ShaderParser
         return pass;
     }
 
-
-    private static Dictionary<string, string> ParseTags(Tokenizer<ShaderToken> tokenizer)
+    private static (Dictionary<string, string>, Dictionary<string, int>) ParseTags(Tokenizer<ShaderToken> tokenizer)
     {
         var tags = new Dictionary<string, string>();
+        var tagSortOffsets = new Dictionary<string, int>();
         ExpectToken("tags", tokenizer, ShaderToken.OpenCurlBrace);
 
         //while (_tokenizer.MoveNext() && _tokenizer.TokenType != TokenType.CloseBrace)
@@ -618,7 +620,28 @@ public static class ShaderParser
             ExpectToken("tags", tokenizer, ShaderToken.Equals);
             ExpectToken("tags", tokenizer, ShaderToken.Identifier);
 
-            string value = tokenizer.ParseQuotedStringValue();
+            string rawValue = tokenizer.ParseQuotedStringValue();
+
+            // Parse sort offset from value (e.g., "Transparent+1000" -> "Transparent", offset=1000)
+            string value = rawValue;
+            int sortOffset = 0;
+
+            // Look for + or - followed by a number
+            int plusIndex = rawValue.LastIndexOf('+');
+            int minusIndex = rawValue.LastIndexOf('-');
+            int offsetIndex = Math.Max(plusIndex, minusIndex);
+
+            if (offsetIndex > 0) // Must be after at least one character
+            {
+                string offsetStr = rawValue.Substring(offsetIndex);
+                if (int.TryParse(offsetStr, out sortOffset))
+                {
+                    // Successfully parsed offset, extract base value
+                    value = rawValue.Substring(0, offsetIndex);
+                    tagSortOffsets[key] = sortOffset;
+                }
+            }
+
             tags[key] = value;
 
             // Next token should either be a comma or a closing brace
@@ -634,7 +657,7 @@ public static class ShaderParser
             throw new ParseException("tags", $"{ShaderToken.Comma} or {ShaderToken.CloseCurlBrace}", tokenizer.TokenType);
         }
 
-        return tags;
+        return (tags, tagSortOffsets);
     }
 
     private static void ParseBlendState(Tokenizer<ShaderToken> tokenizer, ref RasterizerState state)
@@ -838,6 +861,7 @@ public static class ShaderParser
         public string Name = "";
 
         public Dictionary<string, string>? Tags = null;
+        public Dictionary<string, int>? TagSortOffsets = null;
         public RasterizerState State = new();
 
         public int ProgramStartLine;

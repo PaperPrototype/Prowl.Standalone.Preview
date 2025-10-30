@@ -327,6 +327,7 @@ public abstract class RenderPipeline : EngineObject
         public Mesh Mesh;              // Shared mesh for all objects in this batch
         public int PassIndex;          // Shader pass index
         public ulong MaterialHash;     // Hash of material uniforms (for sorting/grouping)
+        public int SortKey;            // Sort order based on tag value + offset
         public List<int> RenderableIndices;  // Indices of objects in this batch
     }
 
@@ -343,6 +344,7 @@ public abstract class RenderPipeline : EngineObject
     public void DrawRenderables(IReadOnlyList<IRenderable> renderables, string shaderTag, string tagValue, ViewerData viewer, HashSet<int> culledRenderableIndices, bool updatePreviousMatrices)
     {
         bool hasRenderOrder = !string.IsNullOrWhiteSpace(shaderTag);
+        bool hasSortOffsets = false;
 
         // ========== PHASE 1: Build Batches ==========
         // Group renderables by (material hash, shader pass, mesh) for efficient rendering
@@ -384,6 +386,7 @@ public abstract class RenderPipeline : EngineObject
                 if (hasRenderOrder && !pass.HasTag(shaderTag, tagValue))
                     continue;
 
+
                 // Found matching pass - add to appropriate batch
                 // Batch key: (material hash, pass index, mesh) ensures each pass gets its own batch
                 var batchKey = (materialHash, passIndex, mesh);
@@ -394,6 +397,10 @@ public abstract class RenderPipeline : EngineObject
                 }
                 else
                 {
+                    // Compute sort key for this pass
+                    int sortKey = hasRenderOrder ? passIndex + pass.GetTagSortOffset(shaderTag) : passIndex;
+                    hasSortOffsets |= sortKey != passIndex;
+
                     // Create new batch for this unique material+pass+mesh combination
                     RenderBatch newBatch = new()
                     {
@@ -401,6 +408,7 @@ public abstract class RenderPipeline : EngineObject
                         Mesh = mesh,
                         PassIndex = passIndex,
                         MaterialHash = materialHash,
+                        SortKey = sortKey,
                         RenderableIndices = new() { renderIndex }
                     };
                     batchLookup[batchKey] = batches.Count;
@@ -410,6 +418,12 @@ public abstract class RenderPipeline : EngineObject
                 // Continue to next pass - materials can have multiple passes with the same tag
                 // They will execute in order they appear in the shader file (Pass 0 → Pass 1 → Pass 2, etc.)
             }
+        }
+
+        // Sort batches by their sort key (respects tag offsets like "Transparent+1000")
+        if (hasSortOffsets)
+        {
+            batches.Sort((a, b) => a.SortKey.CompareTo(b.SortKey));
         }
 
         // ========== PHASE 2: Draw Batches ==========

@@ -15,6 +15,7 @@ public sealed class ShaderPass
     [SerializeField] private string _name;
 
     [SerializeField] private Dictionary<string, string> _tags;
+    [SerializeField] private Dictionary<string, int> _tagSortOffsets;
     [SerializeField] private RasterizerState _rasterizerState;
 
     [SerializeField] private string _vertexSource;
@@ -38,6 +39,11 @@ public sealed class ShaderPass
     public IEnumerable<KeyValuePair<string, string>> Tags => _tags;
 
     /// <summary>
+    /// The sort offsets for tags (e.g., "Transparent+1000" has offset 1000)
+    /// </summary>
+    public IReadOnlyDictionary<string, int> TagSortOffsets => _tagSortOffsets;
+
+    /// <summary>
     /// The blending options to use when rendering this <see cref="ShaderPass"/>
     /// </summary>
     public RasterizerState State => _rasterizerState;
@@ -57,11 +63,12 @@ public sealed class ShaderPass
 
     private ShaderPass() { }
 
-    public ShaderPass(string name, Dictionary<string, string>? tags, RasterizerState state, string vertexSource, string fragmentSource, string fallbackAsset)
+    public ShaderPass(string name, Dictionary<string, string>? tags, Dictionary<string, int>? tagSortOffsets, RasterizerState state, string vertexSource, string fragmentSource, string fallbackAsset, string grabTextureName = "")
     {
         _name = name;
 
         _tags = tags ?? [];
+        _tagSortOffsets = tagSortOffsets ?? [];
         _rasterizerState = state;
 
         _vertexSource = vertexSource;
@@ -145,5 +152,13 @@ public sealed class ShaderPass
             return tagValue == null || value == tagValue;
 
         return false;
+    }
+
+    /// <summary>
+    /// Gets the sort offset for a given tag, or 0 if no offset is specified
+    /// </summary>
+    public int GetTagSortOffset(string tag)
+    {
+        return _tagSortOffsets.TryGetValue(tag, out int offset) ? offset : 0;
     }
 }
