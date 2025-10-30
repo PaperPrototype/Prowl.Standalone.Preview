@@ -93,6 +93,8 @@ namespace Prowl.Runtime.Resources
             if(!System.IO.File.Exists(filePath))
                 throw new System.IO.FileNotFoundException("Can't create AudioClip because the file does not exist: " + filePath);
 
+            this.AssetPath = filePath;
+
             this.filePath = filePath;
             this.name = filePath;
             this.streamFromDisk = streamFromDisk;
