@@ -142,7 +142,7 @@ public sealed class PhysicsDemo : Game
         particleSystem.Material = particleMaterial;
 
         // Configure particle system settings
-        particleSystem.MaxParticles = 20000;
+        particleSystem.MaxParticles = 1000;
         particleSystem.Duration = 2.0f;
         particleSystem.Looping = true;
         particleSystem.PlayOnEnable = true;
@@ -164,7 +164,7 @@ public sealed class PhysicsDemo : Game
 
        // Configure Emission module
        particleSystem.Emission.Enabled = true;
-       particleSystem.Emission.RateOverTime = new MinMaxCurve(10000.0f); // 500 particles per second
+       particleSystem.Emission.RateOverTime = new MinMaxCurve(10.0f); // 500 particles per second
 
        // Configure emission shape (try Sphere, Box, Cone, LineSegment, Circle)
        particleSystem.Emission.Shape = EmissionShape.Cone;

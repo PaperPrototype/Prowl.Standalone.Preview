@@ -514,6 +514,7 @@ public partial class PropertyState
             }
         }
 
+        List<string> toRemove = [];
         foreach (KeyValuePair<string, Texture2D> item in mpb._textures)
         {
             Texture2D tex = item.Value;
@@ -523,6 +524,16 @@ public partial class PropertyState
                 Graphics.Device.SetUniformTexture(shader, item.Key, texSlot, tex.Handle);
                 texSlot++;
             }
+            else
+            {
+                toRemove.Add(item.Key);
+            }
+        }
+
+        // Clean up invalid textures
+        foreach (string key in toRemove)
+        {
+            mpb._textures.Remove(key);
         }
     }
 
@@ -610,6 +621,7 @@ public partial class PropertyState
             }
         }
 
+        List<string> toRemove = [];
         foreach (KeyValuePair<string, Texture2D> item in s_globalTextures)
         {
             Texture2D tex = item.Value;
@@ -619,6 +631,16 @@ public partial class PropertyState
                 Graphics.Device.SetUniformTexture(shader, item.Key, texSlot, tex.Handle);
                 texSlot++;
             }
+            else
+            {
+                toRemove.Add(item.Key);
+            }
+        }
+
+        // Clean up invalid textures
+        foreach (string key in toRemove)
+        {
+            s_globalTextures.Remove(key);
         }
     }
 }

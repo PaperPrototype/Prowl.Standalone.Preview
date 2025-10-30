@@ -433,6 +433,7 @@ public abstract class RenderPipeline : EngineObject
             Material material = batch.Material;
             Mesh mesh = batch.Mesh;
             int passIndex = batch.PassIndex;
+            RenderTexture grabRT = null;
 
             // Configure shader keywords based on mesh attributes (normals, UVs, skinning, etc.)
             // Since all objects in the batch share the same mesh, this is done once per batch
@@ -466,7 +467,7 @@ public abstract class RenderPipeline : EngineObject
                     int fbHeight = (int)currentFB.Height;
 
                     // Create temporary RT for grabbed texture
-                    RenderTexture grabRT = RenderTexture.GetTemporaryRT(fbWidth, fbHeight, false, [TextureImageFormat.Color4b]);
+                    grabRT = RenderTexture.GetTemporaryRT(fbWidth, fbHeight, false, [TextureImageFormat.Color4b]);
 
                     // Setup blit: currentFB (read) -> grabRT (draw)
                     Graphics.Device.BindFramebuffer(currentFB, FBOTarget.Read);
@@ -549,6 +550,14 @@ public abstract class RenderPipeline : EngineObject
                     Graphics.Device.DrawIndexed(mesh.MeshTopology, (uint)mesh.IndexCount, mesh.IndexFormat == IndexFormat.UInt32, null);
                     Graphics.Device.BindVertexArray(null);
                 }
+            }
+
+            // Release grab texture RT if used
+            if (grabRT != null)
+            {
+                PropertyState.SetGlobalTexture(pass.GrabTextureName, null);
+                RenderTexture.ReleaseTemporaryRT(grabRT);
+                grabRT = null;
             }
         }
     }
