@@ -113,6 +113,8 @@ public class TerrainComponent : MonoBehaviour
 
             _properties.SetVector("_TerrainOffset", this.Transform.Position);
 
+            var bounds = new AABB(this.Transform.Position + new Double3(0, -TerrainHeight * 2.0, 0), this.Transform.Position + new Double3(TerrainSize, TerrainHeight * 2.0, TerrainSize));
+
             // Draw instanced terrain with properties (automatically batched for >1023 chunks)
             Graphics.DrawMeshInstanced(
                 GameObject.Scene,
@@ -120,7 +122,8 @@ public class TerrainComponent : MonoBehaviour
                 _transforms,
                 Material,
                 GameObject.LayerIndex,
-                _properties
+                _properties,
+                bounds
             );
         }
     }

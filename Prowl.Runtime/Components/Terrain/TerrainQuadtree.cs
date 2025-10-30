@@ -43,7 +43,7 @@ public class TerrainQuadtree
         Double3 chunkCenter = chunk.Position + new Double3(chunk.Size * 0.5, 0, chunk.Size * 0.5);
         double distanceToCamera = Double3.Distance(cameraPosition, chunkCenter);
 
-        var size = chunk.Size * 2.0;
+        var size = chunk.Size * 1.5;
 
         // Simple subdivision rule: subdivide if camera is closer than chunk size
         if (distanceToCamera < size && chunk.LODLevel < MaxLODLevel)

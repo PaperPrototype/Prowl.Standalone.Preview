@@ -453,8 +453,8 @@ public sealed class PhysicsDemo : Game
         // Configure terrain settings
         terrain.TerrainSize = 100.0;              // 100x100 world units
         terrain.TerrainHeight = 20.0f;            // Max height 20 units
-        terrain.MaxLODLevel = 6;                  // 6 levels of LOD
-        terrain.MeshResolution = 32;              // 32x32 base mesh
+        terrain.MaxLODLevel = 4;                  // 6 levels of LOD
+        terrain.MeshResolution = 16;              // 32x32 base mesh
         terrain.TextureTiling = 20.0f;            // Tile textures 20 times
 
         scene.Add(terrainGO);
