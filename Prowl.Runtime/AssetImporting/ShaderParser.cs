@@ -546,6 +546,10 @@ public static class ShaderParser
                 case "Tags":
                     EnsureUndef(pass.Tags, "'Tags' in pass");
                     pass.Tags = ParseTags(tokenizer);
+                case "GrabTexture":
+                    EnsureUndef(pass.GrabTextureName, "'GrabTexture' in pass");
+                    ExpectToken("grabtexture", tokenizer, ShaderToken.Identifier);
+                    pass.GrabTextureName = tokenizer.ParseQuotedStringValue();
                     break;
 
                 case "Blend":
@@ -839,6 +843,8 @@ public static class ShaderParser
         public int ProgramStartLine;
         public int ProgramLines;
         public string? Program;
+
+        public string? GrabTextureName = null;
     }
 
     public struct EntryPoint(ShaderStages stages, string name)

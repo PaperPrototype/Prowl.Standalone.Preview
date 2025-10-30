@@ -438,6 +438,38 @@ public abstract class RenderPipeline : EngineObject
 
             GraphicsProgram variant = variantNullable;
 
+            // Handle GrabTexture if this pass requests it
+            // NOTE: GrabTexture captures whatever is currently bound, so this works for any render target
+            if (pass.HasGrabTexture)
+            {
+                // Get the currently bound framebuffer so we can restore it
+                GraphicsFrameBuffer? currentFB = Graphics.Device.GetCurrentFramebuffer(FBOTarget.Draw);
+
+                if (currentFB != null)
+                {
+                    // Get framebuffer dimensions from the current render target
+                    int fbWidth = (int)currentFB.Width;
+                    int fbHeight = (int)currentFB.Height;
+
+                    // Create temporary RT for grabbed texture
+                    RenderTexture grabRT = RenderTexture.GetTemporaryRT(fbWidth, fbHeight, false, [TextureImageFormat.Color4b]);
+
+                    // Setup blit: currentFB (read) -> grabRT (draw)
+                    Graphics.Device.BindFramebuffer(currentFB, FBOTarget.Read);
+                    Graphics.Device.BindFramebuffer(grabRT.frameBuffer, FBOTarget.Draw);
+                    Graphics.Device.BlitFramebuffer(0, 0, fbWidth, fbHeight, 0, 0, fbWidth, fbHeight, ClearFlags.Color, BlitFilter.Nearest);
+
+                    // Restore the original framebuffer (for both read and draw)
+                    Graphics.Device.BindFramebuffer(currentFB, FBOTarget.Framebuffer);
+
+                    // Set as global texture for this and subsequent passes
+                    PropertyState.SetGlobalTexture(pass.GrabTextureName, grabRT.MainTexture);
+
+                    // TODO: Need to track and release this RT at end of frame
+                    // For now, relying on RenderTexture pool cleanup
+                }
+            }
+
             // Bind GlobalUniforms buffer (contains camera matrices, time, lighting data, etc.)
             // This is done per-batch because each shader variant is a separate GPU program object,
             // and uniform buffer bindings are per-program in OpenGL.

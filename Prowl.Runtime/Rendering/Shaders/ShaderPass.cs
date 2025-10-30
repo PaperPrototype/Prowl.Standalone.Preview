@@ -21,6 +21,8 @@ public sealed class ShaderPass
     [SerializeField] private string _fragmentSource;
     [SerializeField] private string _fallbackAsset;
 
+    [SerializeField] private string _grabTextureName; // If not empty, captures screen before rendering
+
     [SerializeIgnore]
     private Dictionary<string, GraphicsProgram> _variants;
 
@@ -40,6 +42,16 @@ public sealed class ShaderPass
     /// </summary>
     public RasterizerState State => _rasterizerState;
 
+    /// <summary>
+    /// The name of the texture uniform to bind the grabbed texture to. Empty if this pass doesn't grab.
+    /// </summary>
+    public string GrabTextureName => _grabTextureName;
+
+    /// <summary>
+    /// Whether this pass captures the screen before rendering
+    /// </summary>
+    public bool HasGrabTexture => !string.IsNullOrEmpty(_grabTextureName);
+
     public IEnumerable<KeyValuePair<string, GraphicsProgram>> Variants => _variants;
 
 
@@ -55,6 +67,8 @@ public sealed class ShaderPass
         _vertexSource = vertexSource;
         _fragmentSource = fragmentSource;
         _fallbackAsset = fallbackAsset;
+
+        _grabTextureName = grabTextureName;
 
         _variants = [];
     }

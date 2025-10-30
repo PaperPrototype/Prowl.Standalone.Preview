@@ -21,6 +21,7 @@ public enum DefaultShader
     DeferredCompose,
     Particle,
     Terrain,
+    Refraction,
 
     ProceduralSkybox,
     Tonemapper,
