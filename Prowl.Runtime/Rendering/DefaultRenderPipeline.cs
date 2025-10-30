@@ -327,7 +327,7 @@ public class DefaultRenderPipeline : RenderPipeline
         s_deferredCompose.SetFloat("_AmbientStrength", (float)ambient.Strength);
 
         // Perform composition
-        Graphics.Blit(lightAccumulation, composedOutput, s_deferredCompose, 0, false, false);
+        Blit(lightAccumulation, composedOutput, s_deferredCompose, 0, false, false);
 
         // Copy depth from GBuffer to composed output for transparent rendering
         Graphics.Device.BindFramebuffer(gBuffer.frameBuffer, FBOTarget.Read);
@@ -397,7 +397,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
         // =======================================================
         // 13. Blit Result to target, If target is null Blit will go to the Screen/Window
-        Graphics.Blit(composedOutput, target, null, 0, false, false);
+        Blit(composedOutput, target, null, 0, false, false);
 
         // =======================================================
         // 14. Post Render
@@ -442,7 +442,7 @@ public class DefaultRenderPipeline : RenderPipeline
             s_skybox.SetVector("_SunDir", sun.GetLightDirection());
         }
 
-        Graphics.DrawMeshNow(s_skyDome, s_skybox);
+        DrawMeshNow(s_skyDome, s_skybox);
     }
 
     private void RenderGizmos(CameraSnapshot css)
@@ -454,8 +454,8 @@ public class DefaultRenderPipeline : RenderPipeline
         {
             // The vertices have already been transformed by the gizmo system to be camera relative (if needed) so we just need to draw them
             s_gizmo.SetMatrix("prowl_MatVP", vp);
-            if (wire.IsValid()) Graphics.DrawMeshNow(wire, s_gizmo);
-            if (solid.IsValid()) Graphics.DrawMeshNow(solid, s_gizmo);
+            if (wire.IsValid()) DrawMeshNow(wire, s_gizmo);
+            if (solid.IsValid()) DrawMeshNow(solid, s_gizmo);
         }
 
         //List<GizmoBuilder.IconDrawCall> icons = Debug.GetGizmoIcons();

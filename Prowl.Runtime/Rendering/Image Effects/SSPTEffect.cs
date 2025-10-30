@@ -84,16 +84,16 @@ public sealed class SSPTEffect : ImageEffect
         for (int bounce = 0; bounce < MaxBounces; bounce++)
         {
             // Copy current light accumulation state
-            Graphics.Blit(context.LightAccumulation, _lightCopyRT);
+            RenderPipeline.Blit(context.LightAccumulation, _lightCopyRT);
 
             // Run SSPT pass: trace rays and sample lighting from current accumulation
             _mat.SetTexture("_MainTex", _lightCopyRT.MainTexture);
-            Graphics.Blit(_lightCopyRT, _giRT, _mat, 0);
+            RenderPipeline.Blit(_lightCopyRT, _giRT, _mat, 0);
 
             // Add GI contribution back to light accumulation
             _mat.SetTexture("_MainTex", _lightCopyRT.MainTexture); // Original lighting
             _mat.SetTexture("_GITex", _giRT.MainTexture); // New GI bounce
-            Graphics.Blit(_lightCopyRT, context.LightAccumulation, _mat, 3); // Pass 3: Composite (additive)
+            RenderPipeline.Blit(_lightCopyRT, context.LightAccumulation, _mat, 3); // Pass 3: Composite (additive)
         }
 
         _frameIndex++;

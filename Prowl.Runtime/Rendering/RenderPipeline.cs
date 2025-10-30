@@ -211,6 +211,112 @@ public abstract class RenderPipeline : EngineObject
         GlobalUniforms.Upload();
     }
 
+    #region Immediate Rendering (DrawMeshNow & Blit)
+
+    /// <summary>
+    /// Immediately draws a mesh without queuing. Used internally by the render pipeline.
+    /// For queued rendering, use Graphics.DrawMesh() instead.
+    /// </summary>
+    public static void DrawMeshNow(Mesh mesh, Material mat, int passIndex = 0)
+    {
+        if (mesh.VertexCount <= 0) return;
+
+        // Mesh data can vary between meshes, so we need to let the shader know which attributes are in use
+        mat.SetKeyword("HAS_NORMALS", mesh.HasNormals);
+        mat.SetKeyword("HAS_TANGENTS", mesh.HasTangents);
+        mat.SetKeyword("HAS_UV", mesh.HasUV);
+        mat.SetKeyword("HAS_UV2", mesh.HasUV2);
+        mat.SetKeyword("HAS_COLORS", mesh.HasColors || mesh.HasColors32);
+        mat.SetKeyword("HAS_BONEINDICES", mesh.HasBoneIndices);
+        mat.SetKeyword("HAS_BONEWEIGHTS", mesh.HasBoneWeights);
+        mat.SetKeyword("SKINNED", mesh.HasBoneIndices && mesh.HasBoneWeights);
+
+        Shaders.ShaderPass pass = mat.Shader.GetPass(passIndex);
+
+        if (!pass.TryGetVariantProgram(mat._localKeywords, out GraphicsProgram? variant))
+            throw new System.Exception($"Failed to set shader pass {pass.Name}. No variant found for the current keyword state.");
+
+        Graphics.Device.SetState(pass.State);
+
+        PropertyState.Apply(mat._properties, variant);
+
+        mesh.Upload();
+
+        unsafe
+        {
+            Graphics.Device.BindVertexArray(mesh.VertexArrayObject);
+            Graphics.Device.DrawIndexed(mesh.MeshTopology, (uint)mesh.IndexCount, mesh.IndexFormat == IndexFormat.UInt32, null);
+            Graphics.Device.BindVertexArray(null);
+        }
+    }
+
+    private static Shader? s_blitShader;
+    private static Material? s_blitMaterial;
+    public static Material BlitMaterial
+    {
+        get
+        {
+            if (s_blitShader.IsNotValid())
+                s_blitShader = Shader.LoadDefault(DefaultShader.Blit);
+
+            if (s_blitMaterial.IsNotValid())
+                s_blitMaterial = new Material(s_blitShader);
+
+            return s_blitMaterial;
+        }
+    }
+
+    public static void Blit(Texture2D source, Material? mat = null, int pass = 0)
+    {
+        mat ??= BlitMaterial;
+        mat.SetTexture("_MainTex", source);
+        Blit(mat, pass);
+    }
+
+    public static void Blit(RenderTexture source, RenderTexture target, Material? mat = null, int pass = 0, bool clearDepth = false, bool clearColor = false, Color color = default)
+    {
+        mat ??= BlitMaterial;
+        mat.SetTexture("_MainTex", source.MainTexture);
+        Blit(target, mat, pass, clearDepth, clearColor, color);
+    }
+
+    public static void Blit(Texture2D source, RenderTexture target, Material? mat = null, int pass = 0, bool clearDepth = false, bool clearColor = false, Color color = default)
+    {
+        mat ??= BlitMaterial;
+        mat.SetTexture("_MainTex", source);
+        Blit(target, mat, pass, clearDepth, clearColor, color);
+    }
+
+    public static void Blit(RenderTexture target, Material? mat = null, int pass = 0, bool clearDepth = false, bool clearColor = false, Color color = default)
+    {
+        mat ??= BlitMaterial;
+        if (target.IsValid())
+        {
+            Graphics.Device.BindFramebuffer(target.frameBuffer);
+        }
+        else
+        {
+            Graphics.Device.UnbindFramebuffer();
+            Graphics.Device.Viewport(0, 0, (uint)Window.InternalWindow.FramebufferSize.X, (uint)Window.InternalWindow.FramebufferSize.Y);
+        }
+        if (clearDepth || clearColor)
+        {
+            ClearFlags clear = 0;
+            if (clearDepth) clear |= ClearFlags.Depth;
+            if (clearColor) clear |= ClearFlags.Color;
+            Graphics.Device.Clear((float)color.R, (float)color.G, (float)color.B, (float)color.A, clear | ClearFlags.Stencil);
+        }
+        Blit(mat, pass);
+    }
+
+    public static void Blit(Material? mat = null, int pass = 0)
+    {
+        mat ??= BlitMaterial;
+        DrawMeshNow(Mesh.GetFullscreenQuad(), mat, pass);
+    }
+
+    #endregion
+
     /// <summary>
     /// Represents a render batch: a group of objects sharing the same material, mesh, and shader pass.
     /// Batching reduces GPU state changes by binding material uniforms once for all objects in the batch.

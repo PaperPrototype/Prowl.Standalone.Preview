@@ -178,6 +178,6 @@ public class PointLight : Light
         Graphics.Device.BindFramebuffer(destination.frameBuffer);
 
         // Draw sphere mesh
-        Graphics.DrawMeshNow(_mesh, _lightMaterial, 0);
+        RenderPipeline.DrawMeshNow(_mesh, _lightMaterial, 0);
     }
 }

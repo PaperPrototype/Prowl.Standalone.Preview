@@ -28,6 +28,6 @@ public sealed class FXAAEffect : ImageEffect
         _mat.SetVector("_Resolution", new Double2(context.Width, context.Height));
 
         // Apply FXAA (in-place)
-        Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 0);
+        RenderPipeline.Blit(context.SceneColor, context.SceneColor, _mat, 0);
     }
 }

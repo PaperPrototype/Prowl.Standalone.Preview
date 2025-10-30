@@ -216,6 +216,6 @@ public class DirectionalLight : Light
         }
 
         // Draw fullscreen quad with the directional light shader
-        Graphics.Blit(gBuffer, destination, _lightMaterial, 0, false, false);
+        RenderPipeline.Blit(gBuffer, destination, _lightMaterial, 0, false, false);
     }
 }

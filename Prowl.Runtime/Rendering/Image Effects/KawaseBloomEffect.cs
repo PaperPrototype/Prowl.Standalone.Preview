@@ -31,7 +31,7 @@ public sealed class KawaseBloomEffect : ImageEffect
 
         // 1. Extract bright areas (threshold pass)
         _bloomMaterial.SetFloat("_Threshold", Threshold);
-        Graphics.Blit(context.SceneColor, pingPongBuffer0, _bloomMaterial, 0);
+        RenderPipeline.Blit(context.SceneColor, pingPongBuffer0, _bloomMaterial, 0);
 
         // 2. Apply Kawase blur ping-pong (multiple iterations with increasing radius)
         RenderTexture current = pingPongBuffer0;
@@ -41,7 +41,7 @@ public sealed class KawaseBloomEffect : ImageEffect
         {
             float offset = (i * 0.5f + 0.5f) * Spread;
             _bloomMaterial.SetFloat("_Offset", offset);
-            Graphics.Blit(current, next, _bloomMaterial, 1);
+            RenderPipeline.Blit(current, next, _bloomMaterial, 1);
 
             // Swap buffers
             (next, current) = (current, next);
@@ -50,7 +50,7 @@ public sealed class KawaseBloomEffect : ImageEffect
         // 3. Composite the bloom with the original image (in-place)
         _bloomMaterial.SetTexture("_BloomTex", current.MainTexture);
         _bloomMaterial.SetFloat("_Intensity", Intensity);
-        Graphics.Blit(context.SceneColor, context.SceneColor, _bloomMaterial, 2);
+        RenderPipeline.Blit(context.SceneColor, context.SceneColor, _bloomMaterial, 2);
 
         // Release temporary render textures
         RenderTexture.ReleaseTemporaryRT(pingPongBuffer0);

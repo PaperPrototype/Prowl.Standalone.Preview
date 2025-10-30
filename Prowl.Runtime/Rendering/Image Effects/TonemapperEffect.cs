@@ -45,7 +45,7 @@ public sealed class TonemapperEffect : ImageEffect
         }
 
         // Tonemap HDR to LDR
-        Graphics.Blit(context.SceneColor, ldrBuffer, _mat, 0);
+        RenderPipeline.Blit(context.SceneColor, ldrBuffer, _mat, 0);
 
         // Replace the scene color buffer with LDR version
         context.ReplaceSceneColor(ldrBuffer);

@@ -64,27 +64,27 @@ public sealed class ScreenSpaceReflectionEffect : ImageEffect
         _mat.SetFloat("_MaxSteps", MaxSteps);
         _mat.SetFloat("_BinarySearchIterations", BinarySearchIterations);
         _mat.SetFloat("_ScreenEdgeFade", ScreenEdgeFade);
-        Graphics.Blit(context.SceneColor, reflectionDataRT, _mat, 0);
+        RenderPipeline.Blit(context.SceneColor, reflectionDataRT, _mat, 0);
 
         // Pass 1: Resolve - Sample scene color at hit points
         _mat.SetTexture("_ReflectionData", reflectionDataRT.MainTexture);
         _mat.SetFloat("_MipBias", MipBias);
-        Graphics.Blit(context.SceneColor, resolvedRT, _mat, 1);
+        RenderPipeline.Blit(context.SceneColor, resolvedRT, _mat, 1);
 
         // Pass 2: Blur Horizontal
         _mat.SetVector("_BlurDirection", new Double2(1.0, 0.0));
         _mat.SetFloat("_BlurRadius", BlurRadius);
-        Graphics.Blit(resolvedRT, blurTempRT, _mat, 2);
+        RenderPipeline.Blit(resolvedRT, blurTempRT, _mat, 2);
 
         // Pass 3: Blur Vertical
         _mat.SetVector("_BlurDirection", new Double2(0.0, 1.0));
         _mat.SetFloat("_BlurRadius", BlurRadius);
-        Graphics.Blit(blurTempRT, resolvedRT, _mat, 2);
+        RenderPipeline.Blit(blurTempRT, resolvedRT, _mat, 2);
 
         // Pass 4: Composite - Blend reflections with scene (in-place)
         _mat.SetTexture("_ReflectionTex", resolvedRT.MainTexture);
         _mat.SetFloat("_Intensity", Intensity);
-        Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 3);
+        RenderPipeline.Blit(context.SceneColor, context.SceneColor, _mat, 3);
 
         // Release temporary render textures
         RenderTexture.ReleaseTemporaryRT(reflectionDataRT);

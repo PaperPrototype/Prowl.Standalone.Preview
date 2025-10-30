@@ -185,6 +185,6 @@ public class SpotLight : Light
         Graphics.Device.BindFramebuffer(destination.frameBuffer);
 
         // Draw cone mesh instead of fullscreen quad
-        Graphics.DrawMeshNow(_mesh, _lightMaterial, 0);
+        RenderPipeline.DrawMeshNow(_mesh, _lightMaterial, 0);
     }
 }

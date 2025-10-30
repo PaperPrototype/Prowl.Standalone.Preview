@@ -62,7 +62,7 @@ public sealed class GTAOEffect : ImageEffect
         _mat.SetFloat("_Radius", Radius);
         _mat.SetFloat("_Intensity", Intensity);
         _mat.SetVector("_NoiseScale", new Double2(width / 4.0, height / 4.0)); // Tile noise pattern
-        Graphics.Blit(context.SceneColor, aoRT, _mat, 0);
+        RenderPipeline.Blit(context.SceneColor, aoRT, _mat, 0);
 
         // Pass 1: Blur Horizontal (if blur is enabled)
         if (BlurRadius > 0.01f)
@@ -71,12 +71,12 @@ public sealed class GTAOEffect : ImageEffect
 
             _mat.SetVector("_BlurDirection", new Double2(1.0, 0.0));
             _mat.SetFloat("_BlurRadius", BlurRadius);
-            Graphics.Blit(aoRT, blurTempRT, _mat, 1);
+            RenderPipeline.Blit(aoRT, blurTempRT, _mat, 1);
 
             // Pass 1: Blur Vertical
             _mat.SetVector("_BlurDirection", new Double2(0.0, 1.0));
             _mat.SetFloat("_BlurRadius", BlurRadius);
-            Graphics.Blit(blurTempRT, aoRT, _mat, 1);
+            RenderPipeline.Blit(blurTempRT, aoRT, _mat, 1);
 
             RenderTexture.ReleaseTemporaryRT(blurTempRT);
         }
@@ -84,7 +84,7 @@ public sealed class GTAOEffect : ImageEffect
         // Pass 2: Composite - Apply AO to scene (in-place)
         _mat.SetTexture("_AOTex", aoRT.MainTexture);
         _mat.SetFloat("_Intensity", Intensity);
-        Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 2);
+        RenderPipeline.Blit(context.SceneColor, context.SceneColor, _mat, 2);
 
         // Release temporary render textures
         RenderTexture.ReleaseTemporaryRT(aoRT);

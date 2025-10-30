@@ -60,19 +60,19 @@ public sealed class BokehDepthOfFieldEffect : ImageEffect
 
         // Pass 0: Horizontal MRT - outputs to 3 render targets (R, G, B channels)
         _mat.SetTexture("_MainTex", context.SceneColor.MainTexture);
-        Graphics.Blit(horizontalMRT, _mat, 0);
+        RenderPipeline.Blit(horizontalMRT, _mat, 0);
 
         // Pass 1: Vertical Composite - reads from 3 horizontal textures and combines
         _mat.SetTexture("_HorizR", horizontalMRT.InternalTextures[0]);
         _mat.SetTexture("_HorizG", horizontalMRT.InternalTextures[1]);
         _mat.SetTexture("_HorizB", horizontalMRT.InternalTextures[2]);
-        Graphics.Blit(verticalResult, _mat, 1);
+        RenderPipeline.Blit(verticalResult, _mat, 1);
 
         // Pass 2: Final Combine - blend with original image based on CoC (at full resolution, in-place)
         _mat.SetTexture("_MainTex", context.SceneColor.MainTexture);
         _mat.SetTexture("_BlurredTex", verticalResult.MainTexture);
         _mat.SetVector("_Resolution", new Double2(fullWidth, fullHeight));
-        Graphics.Blit(context.SceneColor, context.SceneColor, _mat, 2);
+        RenderPipeline.Blit(context.SceneColor, context.SceneColor, _mat, 2);
 
         // Clean up MRT
         RenderTexture.ReleaseTemporaryRT(horizontalMRT);
