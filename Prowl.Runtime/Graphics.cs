@@ -313,18 +313,6 @@ public static class Graphics
         }
     }
 
-    /// <summary>
-    /// Legacy method - kept for compatibility with existing code.
-    /// Prefer using the Float4x4[] overload for cleaner API.
-    /// </summary>
-    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Material mat, Rendering.InstanceData[] instanceData, int layer = 0, PropertyState? properties = null, AABB? bounds = null)
-    {
-        if (mesh == null || mat == null || instanceData.Length == 0) return;
-
-        var renderable = new Rendering.InstancedMeshRenderable(mesh, mat, instanceData, layer, properties, bounds);
-        scene.PushRenderable(renderable);
-    }
-
     public static void Initialize()
     {
         Device = new GLDevice();
