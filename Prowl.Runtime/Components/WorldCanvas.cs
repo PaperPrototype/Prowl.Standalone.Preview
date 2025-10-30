@@ -245,18 +245,12 @@ public class WorldCanvas : MonoBehaviour, IRenderable
 
     public int GetLayer() => GameObject.LayerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model, out int instanceCount)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model, out InstanceData[]? instanceData)
     {
         properties = _properties;
         drawData = _quadMesh ?? Mesh.GetFullscreenQuad();
         model = Transform.LocalToWorldMatrix;
-        instanceCount = 1; // Single instance rendering
-    }
-
-    public void GetInstancedVAO(ViewerData viewer, out GraphicsVertexArray vao)
-    {
-        // Not used for single-instance rendering
-        vao = null;
+        instanceData = null; // Single instance rendering
     }
 
     public void GetCullingData(out bool isRenderable, out AABB bounds)

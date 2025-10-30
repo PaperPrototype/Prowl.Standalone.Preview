@@ -36,17 +36,9 @@ public interface IRenderable
     /// <param name="viewer">Camera viewing data for culling/LOD</param>
     /// <param name="properties">Shader properties (per-object or shared for instances)</param>
     /// <param name="mesh">Mesh to render</param>
-    /// <param name="model">Model matrix (only used when instanceCount == 1)</param>
-    /// <param name="instanceCount">Number of instances to render (1 = single instance, >1 = GPU instancing)</param>
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out int instanceCount);
-
-    /// <summary>
-    /// Gets the instanced VAO for GPU instancing (only called when instanceCount > 1).
-    /// The VAO should be configured with the mesh's vertex data and the instance buffer.
-    /// </summary>
-    /// <param name="viewer">Camera viewing data for culling/LOD</param>
-    /// <param name="vao">The VAO configured with mesh + instance buffer</param>
-    public void GetInstancedVAO(ViewerData viewer, out GraphicsVertexArray vao);
+    /// <param name="model">Model matrix (only used for single-instance rendering)</param>
+    /// <param name="instanceData">Instance data array for GPU instancing, or null for single-instance rendering</param>
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out InstanceData[]? instanceData);
 
     public void GetCullingData(out bool isRenderable, out AABB bounds);
 }
@@ -263,11 +255,11 @@ public abstract class RenderPipeline : EngineObject
             if (material.Shader.IsNotValid()) continue;
 
             // Get rendering data to determine if this is instanced or single-instance rendering
-            renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Double4x4 _, out int instanceCount);
+            renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Double4x4 _, out InstanceData[]? instanceData);
             if (mesh == null || mesh.VertexCount <= 0) continue;
 
-            // Handle instanced renderables separately (instanceCount > 1)
-            if (instanceCount > 1)
+            // Handle instanced renderables separately (instanceData != null)
+            if (instanceData != null && instanceData.Length > 0)
             {
                 DrawInstancedRenderable(renderable, shaderTag, tagValue, viewer, hasRenderOrder);
                 continue;
@@ -376,8 +368,8 @@ public abstract class RenderPipeline : EngineObject
                 IRenderable renderable = renderables[renderIndex];
 
                 // Get per-object data (transform, instance properties)
-                // Note: mesh and instanceCount are discarded (we already have them from the batch)
-                renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh _, out Double4x4 model, out int _);
+                // Note: mesh and instanceData are discarded (we already have them from the batch)
+                renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh _, out Double4x4 model, out InstanceData[]? _);
 
                 // Track model matrix for motion vectors (used in temporal effects like TAA)
                 int instanceId = properties.GetInt("_ObjectID");
@@ -412,27 +404,28 @@ public abstract class RenderPipeline : EngineObject
     /// <summary>
     /// Draws an instanced renderable with GPU instancing.
     /// Uses DrawIndexedInstanced to draw multiple instances in a single draw call.
-    /// Renderables manage their own instance buffers through the Mesh's cached VAO system.
+    /// The mesh's cached VAO system is used for optimal performance.
     /// </summary>
     private void DrawInstancedRenderable(IRenderable renderable, string shaderTag, string tagValue, ViewerData viewer, bool hasRenderOrder)
     {
-        // Get rendering data (mesh, properties, instance count)
-        renderable.GetRenderingData(viewer, out PropertyState sharedProperties, out Mesh mesh, out Double4x4 _, out int instanceCount);
+        // Get rendering data (mesh, properties, instance data)
+        renderable.GetRenderingData(viewer, out PropertyState sharedProperties, out Mesh mesh, out Double4x4 _, out InstanceData[]? instanceData);
 
-        if (mesh == null || instanceCount <= 0)
-            return;
-
-        // Get instanced VAO (cached by mesh)
-        renderable.GetInstancedVAO(viewer, out GraphicsVertexArray vao);
-
-        if (vao == null)
+        if (mesh == null || instanceData == null || instanceData.Length == 0)
             return;
 
         Material material = renderable.GetMaterial();
         if (material.Shader.IsNotValid())
             return;
 
-        // Get index data from mesh
+        // Get instanced VAO from mesh (creates and caches on first use)
+        GraphicsVertexArray vao = mesh.GetOrCreateInstanceVAO(instanceData, instanceData.Length);
+
+        if (vao == null)
+            return;
+
+        // Get rendering info from mesh
+        int instanceCount = instanceData.Length;
         int indexCount = mesh.IndexCount;
         bool useIndex32 = mesh.IndexFormat == IndexFormat.UInt32;
 

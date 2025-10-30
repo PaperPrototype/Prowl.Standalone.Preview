@@ -33,18 +33,12 @@ public class MeshRenderable : IRenderable
     public Material GetMaterial() => _material;
     public int GetLayer() => _layerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out int instanceCount)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out InstanceData[]? instanceData)
     {
         mesh = _mesh;
         properties = _properties;
         model = _transform;
-        instanceCount = 1; // Single instance rendering
-    }
-
-    public void GetInstancedVAO(ViewerData viewer, out GraphicsVertexArray vao)
-    {
-        // Not used for single-instance rendering
-        vao = null;
+        instanceData = null; // Single instance rendering
     }
 
     public void GetCullingData(out bool isRenderable, out AABB bounds)
@@ -199,8 +193,9 @@ public static class Graphics
     /// <param name="material">Material to render with</param>
     /// <param name="layer">Layer index for culling and sorting (default: 0)</param>
     /// <param name="properties">Optional shared properties for all instances</param>
+    /// <param name="bounds">Optional custom bounds for culling. If null, computed from mesh bounds.</param>
     /// <param name="maxBatchSize">Maximum instances per batch (default: 1023)</param>
-    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Float4x4[] transforms, Material material, int layer = 0, PropertyState? properties = null, int maxBatchSize = 1023)
+    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Float4x4[] transforms, Material material, int layer = 0, PropertyState? properties = null, AABB? bounds = null, int maxBatchSize = 1023)
     {
         if (scene == null || mesh == null || material == null || transforms == null || transforms.Length == 0) return;
 
@@ -220,7 +215,7 @@ public static class Graphics
             }
 
             // Push batch to scene
-            var renderable = new Rendering.InstancedMeshRenderable(mesh, material, instanceData, layer, properties);
+            var renderable = new Rendering.InstancedMeshRenderable(mesh, material, instanceData, layer, properties, bounds);
             scene.PushRenderable(renderable);
 
             remainingInstances -= batchSize;
@@ -232,7 +227,7 @@ public static class Graphics
     /// Queues multiple instances with per-instance colors.
     /// Automatically handles batching for large instance counts (>1023 instances).
     /// </summary>
-    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Float4x4[] transforms, Material material, Float4[] colors, int layer = 0, PropertyState? properties = null, int maxBatchSize = 1023)
+    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Float4x4[] transforms, Material material, Float4[] colors, int layer = 0, PropertyState? properties = null, AABB? bounds = null, int maxBatchSize = 1023)
     {
         if (scene == null || mesh == null || material == null || transforms == null || transforms.Length == 0) return;
 
@@ -254,7 +249,7 @@ public static class Graphics
             }
 
             // Push batch to scene
-            var renderable = new Rendering.InstancedMeshRenderable(mesh, material, instanceData, layer, properties);
+            var renderable = new Rendering.InstancedMeshRenderable(mesh, material, instanceData, layer, properties, bounds);
             scene.PushRenderable(renderable);
 
             remainingInstances -= batchSize;
@@ -275,6 +270,7 @@ public static class Graphics
     /// <param name="customData">Optional per-instance custom data (4 floats). Useful for UV offsets, lifetimes, etc.</param>
     /// <param name="layer">Layer index for culling and sorting (default: 0)</param>
     /// <param name="properties">Optional shared properties for all instances</param>
+    /// <param name="bounds">Optional custom bounds for culling. If null, computed from mesh bounds.</param>
     /// <param name="maxBatchSize">Maximum instances per batch (default: 1023)</param>
     public static void DrawMeshInstanced(
         Scene scene,
@@ -285,6 +281,7 @@ public static class Graphics
         Float4[]? customData = null,
         int layer = 0,
         PropertyState? properties = null,
+        AABB? bounds = null,
         int maxBatchSize = 1023)
     {
         if (scene == null || mesh == null || material == null || transforms == null || transforms.Length == 0) return;
@@ -308,7 +305,7 @@ public static class Graphics
             }
 
             // Push batch to scene
-            var renderable = new Rendering.InstancedMeshRenderable(mesh, material, instanceData, layer, properties);
+            var renderable = new Rendering.InstancedMeshRenderable(mesh, material, instanceData, layer, properties, bounds);
             scene.PushRenderable(renderable);
 
             remainingInstances -= batchSize;
@@ -320,11 +317,11 @@ public static class Graphics
     /// Legacy method - kept for compatibility with existing code.
     /// Prefer using the Float4x4[] overload for cleaner API.
     /// </summary>
-    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Material mat, Rendering.InstanceData[] instanceData, int layer = 0, PropertyState? properties = null)
+    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Material mat, Rendering.InstanceData[] instanceData, int layer = 0, PropertyState? properties = null, AABB? bounds = null)
     {
         if (mesh == null || mat == null || instanceData.Length == 0) return;
 
-        var renderable = new Rendering.InstancedMeshRenderable(mesh, mat, instanceData, layer, properties);
+        var renderable = new Rendering.InstancedMeshRenderable(mesh, mat, instanceData, layer, properties, bounds);
         scene.PushRenderable(renderable);
     }
 

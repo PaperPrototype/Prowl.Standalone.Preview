@@ -75,23 +75,17 @@ public class InstancedMeshRenderable : IRenderable
     public Material GetMaterial() => _material;
     public int GetLayer() => _layerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out int instanceCount)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out InstanceData[]? instanceData)
     {
         properties = _sharedProperties;
         mesh = _mesh;
         model = Double4x4.Identity; // Not used for instanced rendering
-        instanceCount = _instanceData.Length; // > 1 triggers instanced rendering
+        instanceData = _instanceData; // Return instance data for GPU instancing
     }
 
     public void GetCullingData(out bool isRenderable, out AABB bounds)
     {
         isRenderable = _instanceData.Length > 0 && _mesh != null && _material != null;
         bounds = _bounds;
-    }
-
-    public void GetInstancedVAO(ViewerData viewer, out GraphicsVertexArray vao)
-    {
-        // Use mesh's cached instance VAO (creates it on first use, reuses thereafter)
-        vao = _mesh.GetOrCreateInstanceVAO(_instanceData, _instanceData.Length);
     }
 }

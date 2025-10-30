@@ -55,6 +55,7 @@ public class ParticleSystemComponent : MonoBehaviour
     private Float4x4[] _transforms = Array.Empty<Float4x4>();
     private Float4[] _colors = Array.Empty<Float4>();
     private Float4[] _customData = Array.Empty<Float4>();
+    private AABB _bounds; // Computed bounds from particle positions + sizes
 
     #endregion
 
@@ -154,7 +155,8 @@ public class ParticleSystemComponent : MonoBehaviour
                 _colors,
                 _customData,
                 GameObject.LayerIndex,
-                _properties
+                _properties,
+                _bounds // Pass computed bounds for efficient culling
             );
         }
     }
@@ -368,6 +370,10 @@ public class ParticleSystemComponent : MonoBehaviour
             _customData = new Float4[_particles.Count];
         }
 
+        // Initialize bounds tracking
+        Double3 min = new Double3(double.MaxValue);
+        Double3 max = new Double3(double.MinValue);
+
         // Fill separate arrays from particles
         for (int i = 0; i < _particles.Count; i++)
         {
@@ -384,6 +390,21 @@ public class ParticleSystemComponent : MonoBehaviour
                 var worldPos = Transform.LocalToWorldMatrix * new Double4((Double3)position, 1.0);
                 position = new Float3((float)worldPos.X, (float)worldPos.Y, (float)worldPos.Z);
             }
+
+            // Update bounds - expand by particle size (radius = size * 0.5)
+            double radius = size * 0.5;
+            Double3 particleMin = new Double3(position.X - radius, position.Y - radius, position.Z - radius);
+            Double3 particleMax = new Double3(position.X + radius, position.Y + radius, position.Z + radius);
+            min = new Double3(
+                System.Math.Min(min.X, particleMin.X),
+                System.Math.Min(min.Y, particleMin.Y),
+                System.Math.Min(min.Z, particleMin.Z)
+            );
+            max = new Double3(
+                System.Math.Max(max.X, particleMax.X),
+                System.Math.Max(max.Y, particleMax.Y),
+                System.Math.Max(max.Z, particleMax.Z)
+            );
 
             // Build transformation matrix: Translation * Rotation * Scale
             // For billboarding, we'd want to face the camera, but for now use Z-axis rotation
@@ -411,6 +432,9 @@ public class ParticleSystemComponent : MonoBehaviour
             // CustomData: X=normalized lifetime, Y=UV offsetX, Z=UV offsetY, W=UV scale
             _customData[i] = new Float4(particle.NormalizedLifetime, uvTileInfo.X, uvTileInfo.Y, uvTileInfo.Z);
         }
+
+        // Store computed bounds
+        _bounds = _particles.Count > 0 ? new AABB(min, max) : new AABB(Double3.Zero, Double3.Zero);
     }
 
     #endregion
