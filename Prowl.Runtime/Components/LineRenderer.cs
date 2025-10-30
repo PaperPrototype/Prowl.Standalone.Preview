@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 
+using Prowl.Runtime.GraphicsBackend;
 using Prowl.Runtime.Rendering;
 using Prowl.Runtime.Resources;
 using Prowl.Vector;
@@ -172,7 +173,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
     public Material GetMaterial() => Material;
     public int GetLayer() => GameObject.LayerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model, out int instanceCount)
     {
         // Create mesh only once
         if (_cachedMesh.IsNotValid())
@@ -193,6 +194,13 @@ public class LineRenderer : MonoBehaviour, IRenderable
 
         drawData = _cachedMesh!;
         model = Double4x4.Identity; // Vertices are already in world space
+        instanceCount = 1; // Single instance rendering
+    }
+
+    public void GetInstancedVAO(ViewerData viewer, out GraphicsVertexArray vao)
+    {
+        // Not used for single-instance rendering
+        vao = null;
     }
 
     public void GetCullingData(out bool isRenderable, out AABB bounds)

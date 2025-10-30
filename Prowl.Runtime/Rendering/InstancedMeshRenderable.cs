@@ -14,7 +14,7 @@ namespace Prowl.Runtime.Rendering;
 /// Useful for drawing many copies of the same object efficiently (trees, grass, particles, etc.)
 /// Uses the mesh's cached instance VAO for optimal performance.
 /// </summary>
-public class InstancedMeshRenderable : IInstancedRenderable
+public class InstancedMeshRenderable : IRenderable
 {
     private readonly Mesh _mesh;
     private readonly Material _material;
@@ -75,13 +75,12 @@ public class InstancedMeshRenderable : IInstancedRenderable
     public Material GetMaterial() => _material;
     public int GetLayer() => _layerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out int instanceCount)
     {
-        // For instanced rendering, this shouldn't be called
-        // But we provide fallback data just in case
         properties = _sharedProperties;
-        drawData = _mesh;
-        model = Double4x4.Identity;
+        mesh = _mesh;
+        model = Double4x4.Identity; // Not used for instanced rendering
+        instanceCount = _instanceData.Length; // > 1 triggers instanced rendering
     }
 
     public void GetCullingData(out bool isRenderable, out AABB bounds)
@@ -90,15 +89,9 @@ public class InstancedMeshRenderable : IInstancedRenderable
         bounds = _bounds;
     }
 
-    public void GetInstanceData(ViewerData viewer, out PropertyState properties, out GraphicsVertexArray vao, out int instanceCount, out int indexCount, out bool useIndex32)
+    public void GetInstancedVAO(ViewerData viewer, out GraphicsVertexArray vao)
     {
-        properties = _sharedProperties;
-
         // Use mesh's cached instance VAO (creates it on first use, reuses thereafter)
         vao = _mesh.GetOrCreateInstanceVAO(_instanceData, _instanceData.Length);
-
-        instanceCount = _instanceData.Length;
-        indexCount = _mesh != null ? _mesh.IndexCount : 0;
-        useIndex32 = _mesh != null && _mesh.IndexFormat == IndexFormat.UInt32;
     }
 }

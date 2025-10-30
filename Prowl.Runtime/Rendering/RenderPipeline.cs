@@ -21,33 +21,34 @@ public struct RenderingData
     public Double3 GridSizes;
 }
 
+/// <summary>
+/// Interface for all renderable objects in the scene.
+/// Supports both single-instance and GPU-instanced rendering through a unified API.
+/// </summary>
 public interface IRenderable
 {
     public Material GetMaterial();
     public int GetLayer();
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model);
-
-    public void GetCullingData(out bool isRenderable, out AABB bounds);
-}
-
-/// <summary>
-/// Extended interface for renderables that use GPU instancing.
-/// Systems implementing this interface manage their own instance buffers and VAOs.
-/// </summary>
-public interface IInstancedRenderable : IRenderable
-{
     /// <summary>
-    /// Gets the instanced rendering data.
-    /// The system is responsible for creating and managing the instance buffer and VAO.
+    /// Gets the rendering data for this renderable.
     /// </summary>
     /// <param name="viewer">Camera viewing data for culling/LOD</param>
-    /// <param name="properties">Shared properties for all instances</param>
+    /// <param name="properties">Shader properties (per-object or shared for instances)</param>
+    /// <param name="mesh">Mesh to render</param>
+    /// <param name="model">Model matrix (only used when instanceCount == 1)</param>
+    /// <param name="instanceCount">Number of instances to render (1 = single instance, >1 = GPU instancing)</param>
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out int instanceCount);
+
+    /// <summary>
+    /// Gets the instanced VAO for GPU instancing (only called when instanceCount > 1).
+    /// The VAO should be configured with the mesh's vertex data and the instance buffer.
+    /// </summary>
+    /// <param name="viewer">Camera viewing data for culling/LOD</param>
     /// <param name="vao">The VAO configured with mesh + instance buffer</param>
-    /// <param name="instanceCount">Number of instances to draw</param>
-    /// <param name="indexCount">Number of indices per instance</param>
-    /// <param name="useIndex32">Whether indices are 32-bit (true) or 16-bit (false)</param>
-    void GetInstanceData(ViewerData viewer, out PropertyState properties, out GraphicsVertexArray vao, out int instanceCount, out int indexCount, out bool useIndex32);
+    public void GetInstancedVAO(ViewerData viewer, out GraphicsVertexArray vao);
+
+    public void GetCullingData(out bool isRenderable, out AABB bounds);
 }
 
 public enum LightType
@@ -258,19 +259,19 @@ public abstract class RenderPipeline : EngineObject
 
             IRenderable renderable = renderables[renderIndex];
 
-            // Handle instanced renderables separately
-            if (renderable is IInstancedRenderable instancedRenderable)
-            {
-                DrawInstancedRenderable(instancedRenderable, shaderTag, tagValue, viewer, hasRenderOrder);
-                continue;
-            }
-
             Material material = renderable.GetMaterial();
             if (material.Shader.IsNotValid()) continue;
 
-            // Extract mesh for batching (we query rendering data once here for grouping)
-            renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Double4x4 _);
+            // Get rendering data to determine if this is instanced or single-instance rendering
+            renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Double4x4 _, out int instanceCount);
             if (mesh == null || mesh.VertexCount <= 0) continue;
+
+            // Handle instanced renderables separately (instanceCount > 1)
+            if (instanceCount > 1)
+            {
+                DrawInstancedRenderable(renderable, shaderTag, tagValue, viewer, hasRenderOrder);
+                continue;
+            }
 
             // Get material hash for batching - materials with identical uniforms will batch together
             ulong materialHash = material.GetStateHash();
@@ -375,8 +376,8 @@ public abstract class RenderPipeline : EngineObject
                 IRenderable renderable = renderables[renderIndex];
 
                 // Get per-object data (transform, instance properties)
-                // Note: mesh is discarded (we already have it from the batch)
-                renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh _, out Double4x4 model);
+                // Note: mesh and instanceCount are discarded (we already have them from the batch)
+                renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh _, out Double4x4 model, out int _);
 
                 // Track model matrix for motion vectors (used in temporal effects like TAA)
                 int instanceId = properties.GetInt("_ObjectID");
@@ -409,21 +410,31 @@ public abstract class RenderPipeline : EngineObject
     }
 
     /// <summary>
-    /// Draws an instanced renderable with TRUE GPU instancing.
+    /// Draws an instanced renderable with GPU instancing.
     /// Uses DrawIndexedInstanced to draw multiple instances in a single draw call.
-    /// Systems are responsible for managing their own instance buffers and VAOs.
+    /// Renderables manage their own instance buffers through the Mesh's cached VAO system.
     /// </summary>
-    private void DrawInstancedRenderable(IInstancedRenderable renderable, string shaderTag, string tagValue, ViewerData viewer, bool hasRenderOrder)
+    private void DrawInstancedRenderable(IRenderable renderable, string shaderTag, string tagValue, ViewerData viewer, bool hasRenderOrder)
     {
-        // Get instance rendering data (VAO managed by the system)
-        renderable.GetInstanceData(viewer, out PropertyState sharedProperties, out GraphicsVertexArray vao, out int instanceCount, out int indexCount, out bool useIndex32);
+        // Get rendering data (mesh, properties, instance count)
+        renderable.GetRenderingData(viewer, out PropertyState sharedProperties, out Mesh mesh, out Double4x4 _, out int instanceCount);
 
-        if (vao == null || instanceCount <= 0 || indexCount <= 0)
+        if (mesh == null || instanceCount <= 0)
+            return;
+
+        // Get instanced VAO (cached by mesh)
+        renderable.GetInstancedVAO(viewer, out GraphicsVertexArray vao);
+
+        if (vao == null)
             return;
 
         Material material = renderable.GetMaterial();
         if (material.Shader.IsNotValid())
             return;
+
+        // Get index data from mesh
+        int indexCount = mesh.IndexCount;
+        bool useIndex32 = mesh.IndexFormat == IndexFormat.UInt32;
 
         // Enable GPU instancing keyword
         material.SetKeyword("GPU_INSTANCING", true);

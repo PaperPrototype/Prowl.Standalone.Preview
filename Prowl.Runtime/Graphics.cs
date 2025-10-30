@@ -33,11 +33,18 @@ public class MeshRenderable : IRenderable
     public Material GetMaterial() => _material;
     public int GetLayer() => _layerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out int instanceCount)
     {
-        drawData = _mesh;
+        mesh = _mesh;
         properties = _properties;
         model = _transform;
+        instanceCount = 1; // Single instance rendering
+    }
+
+    public void GetInstancedVAO(ViewerData viewer, out GraphicsVertexArray vao)
+    {
+        // Not used for single-instance rendering
+        vao = null;
     }
 
     public void GetCullingData(out bool isRenderable, out AABB bounds)
