@@ -31,6 +31,10 @@ public sealed unsafe class GLDevice : GraphicsDevice
 
     private RasterizerState.WindingOrder winding = RasterizerState.WindingOrder.CW;
 
+    private GraphicsFrameBuffer? currentFramebuffer = null;
+    private GraphicsFrameBuffer? currentReadFramebuffer = null;
+    private GraphicsFrameBuffer? currentDrawFramebuffer = null;
+
     public override void Initialize(bool debug)
     {
         GL = GL.GetApi(Window.InternalWindow);
@@ -260,7 +264,14 @@ public sealed unsafe class GLDevice : GraphicsDevice
     #region Frame Buffers
 
     public override GraphicsFrameBuffer CreateFramebuffer(GraphicsFrameBuffer.Attachment[] attachments, uint width, uint height) => new GLFrameBuffer(attachments, width, height);
-    public override void UnbindFramebuffer() => GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+    public override void UnbindFramebuffer()
+    {
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        currentFramebuffer = null;
+        currentReadFramebuffer = null;
+        currentDrawFramebuffer = null;
+    }
+
     public override void BindFramebuffer(GraphicsFrameBuffer frameBuffer, FBOTarget readFramebuffer)
     {
         FramebufferTarget target = readFramebuffer switch
@@ -273,7 +284,34 @@ public sealed unsafe class GLDevice : GraphicsDevice
         GL.BindFramebuffer(target, (frameBuffer as GLFrameBuffer)!.Handle);
         //GL.DrawBuffers((uint)(frameBuffer as GLFrameBuffer).NumOfAttachments, GLFrameBuffer.buffers);
 
+        // Track current framebuffer
+        switch (readFramebuffer)
+        {
+            case FBOTarget.Read:
+                currentReadFramebuffer = frameBuffer;
+                break;
+            case FBOTarget.Draw:
+                currentDrawFramebuffer = frameBuffer;
+                break;
+            case FBOTarget.Framebuffer:
+                currentFramebuffer = frameBuffer;
+                currentReadFramebuffer = frameBuffer;
+                currentDrawFramebuffer = frameBuffer;
+                break;
+        }
+
         Graphics.Device.Viewport(0, 0, frameBuffer.Width, frameBuffer.Height);
+    }
+
+    public override GraphicsFrameBuffer? GetCurrentFramebuffer(FBOTarget target = FBOTarget.Framebuffer)
+    {
+        return target switch
+        {
+            FBOTarget.Read => currentReadFramebuffer,
+            FBOTarget.Draw => currentDrawFramebuffer,
+            FBOTarget.Framebuffer => currentFramebuffer,
+            _ => currentFramebuffer,
+        };
     }
     public override void BlitFramebuffer(int srcX, int srcY, int srcWidth, int srcHeight, int destX, int destY, int destWidth, int destHeight, ClearFlags mask, BlitFilter filter)
     {

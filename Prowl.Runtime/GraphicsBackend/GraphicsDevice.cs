@@ -53,6 +53,7 @@ public abstract class GraphicsDevice
     public abstract GraphicsFrameBuffer CreateFramebuffer(GraphicsFrameBuffer.Attachment[] attachments, uint width, uint height);
     public abstract void UnbindFramebuffer();
     public abstract void BindFramebuffer(GraphicsFrameBuffer frameBuffer, FBOTarget readFramebuffer = FBOTarget.Framebuffer);
+    public abstract GraphicsFrameBuffer? GetCurrentFramebuffer(FBOTarget target = FBOTarget.Framebuffer);
     public abstract void BlitFramebuffer(int v1, int v2, int width, int height, int v3, int v4, int v5, int v6, ClearFlags depthBufferBit, BlitFilter nearest);
     public abstract T ReadPixel<T>(int attachment, int x, int y, TextureImageFormat format) where T : unmanaged;
 
