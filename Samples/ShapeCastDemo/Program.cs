@@ -102,9 +102,9 @@ public sealed class ShapeCastDemoGame : Game
     private void CreateStairs()
     {
         int stepCount = 10;
-        float stepWidth = 2.0;
-        float stepHeight = 0.3;
-        float stepDepth = 0.5;
+        float stepWidth = 2.0f;
+        float stepHeight = 0.3f;
+        float stepDepth = 0.5f;
 
         for (int i = 0; i < stepCount; i++)
         {
@@ -133,7 +133,7 @@ public sealed class ShapeCastDemoGame : Game
     {
         GameObject slope = new("Slope");
         MeshRenderer slopeRenderer = slope.AddComponent<MeshRenderer>();
-        slopeRenderer.Mesh = Mesh.CreateCube(new Float3(width, 0.5, length));
+        slopeRenderer.Mesh = Mesh.CreateCube(new Float3(width, 0.5f, length));
         slopeRenderer.Material = standardMaterial;
         slopeRenderer.MainColor = new Color(0.8f, 0.6f, 0.6f, 1.0f);
 
@@ -143,7 +143,7 @@ public sealed class ShapeCastDemoGame : Game
         Rigidbody3D slopeRb = slope.AddComponent<Rigidbody3D>();
         slopeRb.IsStatic = true;
         BoxCollider slopeCollider = slope.AddComponent<BoxCollider>();
-        slopeCollider.Size = new Float3(width, 0.5, length);
+        slopeCollider.Size = new Float3(width, 0.5f, length);
 
         scene.Add(slope);
     }
@@ -155,14 +155,14 @@ public sealed class ShapeCastDemoGame : Game
         {
             GameObject box = new($"Obstacle {i}");
             MeshRenderer boxRenderer = box.AddComponent<MeshRenderer>();
-            float height = 0.5 + i * 0.5;
+            float height = 0.5f + i * 0.5f;
             boxRenderer.Mesh = Mesh.CreateCube(new Float3(1, height, 1));
             boxRenderer.Material = standardMaterial;
             boxRenderer.MainColor = new Color(0.9f, 0.5f, 0.3f, 1.0f);
 
             box.Transform.Position = new Float3(
                 i * 3 - 6,
-                height * 0.5,
+                height * 0.5f,
                 -5
             );
 
@@ -196,7 +196,7 @@ public sealed class ShapeCastDemoGame : Game
         if (playerGO.IsValid())
         {
             Float3 targetPos = playerGO.Transform.Position + new Float3(0, 3, -8);
-            cameraGO.Transform.Position = Maths.Lerp(cameraGO.Transform.Position, targetPos, 1.0 * Time.DeltaTime);
+            cameraGO.Transform.Position = Maths.Lerp(cameraGO.Transform.Position, targetPos, 1.0f * Time.DeltaTime);
 
             // Look at player
             Float3 lookDir = playerGO.Transform.Position - cameraGO.Transform.Position;
@@ -205,8 +205,8 @@ public sealed class ShapeCastDemoGame : Game
                 float pitch = Maths.Atan2(lookDir.Y, Maths.Sqrt(lookDir.X * lookDir.X + lookDir.Z * lookDir.Z));
                 float yaw = Maths.Atan2(lookDir.X, lookDir.Z);
                 cameraGO.Transform.LocalEulerAngles = new Float3(
-                    -pitch * 180.0 / Maths.PI,
-                    yaw * 180.0 / Maths.PI,
+                    -pitch * 180.0f / Maths.PI,
+                    yaw * 180.0f / Maths.PI,
                     0
                 );
             }
@@ -227,12 +227,12 @@ public sealed class ShapeCastDemoGame : Game
 /// </summary>
 public class PlayerController : MonoBehaviour
 {
-    public float MoveSpeed = 5.0;
-    public float CrouchMoveSpeed = 2.5;
-    public float JumpForce = 8.0;
-    public float Gravity = 20.0;
-    public float StandingHeight = 1.8;
-    public float CrouchHeight = 0.9;
+    public float MoveSpeed = 5.0f;
+    public float CrouchMoveSpeed = 2.5f;
+    public float JumpForce = 8.0f;
+    public float Gravity = 20.0f;
+    public float StandingHeight = 1.8f;
+    public float CrouchHeight = 0.9f;
 
     private CharacterController? characterController;
     private Float3 velocity = Float3.Zero;
@@ -324,7 +324,7 @@ public class PlayerController : MonoBehaviour
         if (Float3.Length(velocity) > 0.1)
         {
             Float3 position = GameObject.Transform.Position;
-            Debug.DrawArrow(position, velocity * 0.5, new Color(255, 255, 0, 255));
+            Debug.DrawArrow(position, velocity * 0.5f, new Color(255, 255, 0, 255));
         }
     }
 }

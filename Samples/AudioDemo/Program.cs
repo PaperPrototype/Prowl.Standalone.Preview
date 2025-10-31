@@ -95,7 +95,7 @@ public sealed class AudioDemoGame : Game
         groundMr.Material = new Material(Shader.LoadDefault(DefaultShader.Standard));
         groundMr.Material.SetColor("_Color", new Color(0.3f, 0.3f, 0.35f, 1));
         groundGO.Transform.Position = new(0, -1, 0);
-        groundGO.Transform.LocalScale = new(40, 0.5, 40);
+        groundGO.Transform.LocalScale = new(40, 0.5f, 40);
         scene.Add(groundGO);
 
         // Create audio sources in the scene
@@ -183,8 +183,8 @@ public sealed class AudioDemoGame : Game
             new Float3(0, 2, 0),
             Color.White,
             looping: true,
-            volume: 0.8,
-            pitch: 1.0,
+            volume: 0.8f,
+            pitch: 1.0f,
             maxDistance: 10
         );
         staticSource.Clip = ambientClip ?? engineClip ?? musicClip;
@@ -196,8 +196,8 @@ public sealed class AudioDemoGame : Game
             new Float3(30, 2, 0),
             Color.Red,
             looping: true,
-            volume: 0.7,
-            pitch: 1.0,
+            volume: 0.7f,
+            pitch: 1.0f,
             maxDistance: 12
         );
         moving.Clip = engineClip ?? ambientClip ?? musicClip;
@@ -208,8 +208,8 @@ public sealed class AudioDemoGame : Game
             new Float3(-30, 2, 30),
             Color.Green,
             looping: true,
-            volume: 0.5,
-            pitch: 1.5,
+            volume: 0.5f,
+            pitch: 1.5f,
             maxDistance: 10
         );
         highPitch.Clip = engineClip ?? ambientClip ?? musicClip;
@@ -220,8 +220,8 @@ public sealed class AudioDemoGame : Game
             new Float3(-30, 2, -30),
             Color.Blue,
             looping: true,
-            volume: 0.6,
-            pitch: 0.7,
+            volume: 0.6f,
+            pitch: 0.7f,
             maxDistance: 10
         );
         lowPitch.Clip = engineClip ?? ambientClip ?? musicClip;
@@ -230,7 +230,7 @@ public sealed class AudioDemoGame : Game
     }
 
     private AudioSource CreateAudioSourceAt(string name, Float3 position, Color color, bool looping = false,
-        float volume = 1.0, float pitch = 1.0, float maxDistance = 20)
+        float volume = 1.0f, float pitch = 1.0f, float maxDistance = 20)
     {
         GameObject go = new(name);
         go.Transform.Position = position;
@@ -274,7 +274,7 @@ public sealed class AudioDemoGame : Game
                 mr.Material.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 1));
 
             markerGO.Transform.Position = audioSource.GameObject.Transform.Position;
-            markerGO.Transform.LocalScale = new Float3(0.5, 0.5, 0.5);
+            markerGO.Transform.LocalScale = new Float3(0.5f, 0.5f, 0.5f);
             markerGO.Transform.Parent = audioSource.GameObject.Transform;
             scene.Add(markerGO);
         }
@@ -382,7 +382,7 @@ public sealed class AudioDemoGame : Game
                 float angle = time * 4.2f;
                 audioSource.GameObject.Transform.Position = new Float3(
                     -30 + Maths.Cos(angle) * 8,
-                    2 + Maths.Sin(time * 2) * 0.5,
+                    2 + Maths.Sin(time * 2) * 0.5f,
                     30 + Maths.Sin(angle) * 8
                 );
             }

@@ -291,7 +291,7 @@ public sealed class PlanetNode
     {
         // Subdivide if camera is close enough (distance squared < size squared)
         float distance = AABB.GetSqrDistanceToPoint(cameraCenter);
-        float threshold = Float3.LengthSquared(AABB.Size) * 0.5;
+        float threshold = Float3.LengthSquared(AABB.Size) * 0.5f;
         return distance < threshold;
     }
 
@@ -362,7 +362,7 @@ public sealed class PlanetNode
                         localPos.Z / (RESOLUTION - 1)
                     );
                     Float3 worldPos = AABB.Min + normalizedPos * AABB.Size;
-                    verts[i] = new Float3((float)worldPos.X, (float)worldPos.Y, (float)worldPos.Z);
+                    verts[i] = new Float3(worldPos.X, worldPos.Y, worldPos.Z);
                 }
 
                 mesh.Vertices = verts.ToArray();
@@ -387,8 +387,8 @@ public sealed class PlanetNode
         children = new PlanetNode[8];
 
         // Calculate half size for the children
-        Float3 halfSize = AABB.Size * 0.5;
-        Float3 quarterSize = AABB.Size * 0.25;
+        Float3 halfSize = AABB.Size * 0.5f;
+        Float3 quarterSize = AABB.Size * 0.25f;
 
         // Create 8 children octants
         for (int i = 0; i < 8; i++)
@@ -429,7 +429,7 @@ public sealed class PlanetNode
 
             // Leaf node - draw this node's bounds
             Color color = GetColorForDepth(depth);
-            Float3 halfExtents = AABB.Size * 0.5;
+            Float3 halfExtents = AABB.Size * 0.5f;
             Debug.DrawWireCube(AABB.Center, halfExtents, color);
         }
         else

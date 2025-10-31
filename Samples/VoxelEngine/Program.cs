@@ -212,9 +212,9 @@ public class VoxelWorld : MonoBehaviour
 
         // Distance to next voxel boundary on each axis
         Float3 tDelta = new(
-            Maths.Abs(1.0 / rayDir.X),
-            Maths.Abs(1.0 / rayDir.Y),
-            Maths.Abs(1.0 / rayDir.Z)
+            Maths.Abs(1.0f / rayDir.X),
+            Maths.Abs(1.0f / rayDir.Y),
+            Maths.Abs(1.0f / rayDir.Z)
         );
 
         // Initial t values to reach next voxel boundary

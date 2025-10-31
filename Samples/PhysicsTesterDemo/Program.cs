@@ -159,7 +159,7 @@ public sealed class PhysicsTesterDemo : Game
 
         // Add Rigidbody3D FIRST
         Rigidbody3D rb = cube.AddComponent<Rigidbody3D>();
-        rb.Mass = 2.0;
+        rb.Mass = 2.0f;
 
         // Then add Collider
         BoxCollider collider = cube.AddComponent<BoxCollider>();
@@ -186,7 +186,7 @@ public sealed class PhysicsTesterDemo : Game
 
         // Then add Rigidbody3D (should claim the collider from static rigidbody)
         Rigidbody3D rb = cube.AddComponent<Rigidbody3D>();
-        rb.Mass = 2.0;
+        rb.Mass = 2.0f;
 
         scene.Add(cube);
         Debug.Log("  ✓ Cube created with Collider first, then Rigidbody3D - should fall");
@@ -206,7 +206,7 @@ public sealed class PhysicsTesterDemo : Game
 
         // Add Rigidbody3D to parent
         Rigidbody3D parentRb = parent.AddComponent<Rigidbody3D>();
-        parentRb.Mass = 3.0;
+        parentRb.Mass = 3.0f;
 
         // Add collider to parent
         BoxCollider parentCollider = parent.AddComponent<BoxCollider>();
@@ -225,7 +225,7 @@ public sealed class PhysicsTesterDemo : Game
 
         // Add Rigidbody3D to child (should claim its own collider)
         Rigidbody3D childRb = child.AddComponent<Rigidbody3D>();
-        childRb.Mass = 1.0;
+        childRb.Mass = 1.0f;
 
         // Add collider to child
         BoxCollider childCollider = child.AddComponent<BoxCollider>();
@@ -286,14 +286,14 @@ public sealed class PhysicsTesterDemo : Game
 
             // Calculate force to apply (spring-like force)
             Float3 currentPos = grabbedRigidbody.Transform.Position;
-            Float3 force = (targetPos - currentPos) * 50.0; // Spring constant
+            Float3 force = (targetPos - currentPos) * 50.0f; // Spring constant
 
             // Apply force
             grabbedRigidbody.AddForce(force);
 
             // Add damping to prevent oscillation
             Float3 velocity = grabbedRigidbody.LinearVelocity;
-            grabbedRigidbody.AddForce(-velocity * 5.0); // Damping
+            grabbedRigidbody.AddForce(-velocity * 5.0f); // Damping
         }
 
         // On mouse release, stop grabbing

@@ -88,7 +88,7 @@ public sealed class CarPhysicsGame : Game
         MeshRenderer groundRenderer = ground.AddComponent<MeshRenderer>();
         groundRenderer.Mesh = Mesh.CreateCube(new Float3(200, 1, 200));
         groundRenderer.Material = standardMaterial;
-        ground.Transform.Position = new Float3(0, -0.5, 0);
+        ground.Transform.Position = new Float3(0, -0.5f, 0);
 
         Rigidbody3D groundRigidbody = ground.AddComponent<Rigidbody3D>();
         groundRigidbody.IsStatic = true;
@@ -101,9 +101,9 @@ public sealed class CarPhysicsGame : Game
     private void CreateRampsAndObstacles()
     {
         // Create several ramps at different angles
-        CreateRamp(new Float3(-20, 0, 30), new Float3(10, 0.5, 15), 15); // Gentle ramp
-        CreateRamp(new Float3(20, 0, 30), new Float3(10, 0.5, 15), 30); // Steeper ramp
-        CreateRamp(new Float3(0, 0, -40), new Float3(15, 0.5, 10), -20); // Ramp going down
+        CreateRamp(new Float3(-20, 0, 30), new Float3(10, 0.5f, 15), 15); // Gentle ramp
+        CreateRamp(new Float3(20, 0, 30), new Float3(10, 0.5f, 15), 30); // Steeper ramp
+        CreateRamp(new Float3(0, 0, -40), new Float3(15, 0.5f, 10), -20); // Ramp going down
 
         // Create bumps scattered around
         CreateBump(new Float3(-30, 0, 0), 2f, new Color(0.7f, 0.5f, 0.3f, 1.0f));
@@ -126,7 +126,7 @@ public sealed class CarPhysicsGame : Game
         rampRenderer.Material = standardMaterial;
         //rampRenderer.MainColor = new Color(0.5f, 0.5f, 0.6f, 1.0f);
 
-        ramp.Transform.Position = position + new Float3(0, size.Y * Maths.Sin(angleDegrees * Maths.PI / 180.0) / 2, 0);
+        ramp.Transform.Position = position + new Float3(0, size.Y * Maths.Sin(angleDegrees * Maths.PI / 180.0f) / 2, 0);
         ramp.Transform.LocalEulerAngles = new Float3(angleDegrees, 0, 0);
 
         Rigidbody3D rampRigidbody = ramp.AddComponent<Rigidbody3D>();
@@ -178,7 +178,7 @@ public sealed class CarPhysicsGame : Game
         // Create car body
         carGO = new GameObject("Car");
         MeshRenderer carRenderer = carGO.AddComponent<MeshRenderer>();
-        carRenderer.Mesh = Mesh.CreateCube(new Float3(2, 0.5, 4));
+        carRenderer.Mesh = Mesh.CreateCube(new Float3(2, 0.5f, 4));
         carRenderer.Material = standardMaterial;
         //carRenderer.MainColor = new Color(0.8f, 0.2f, 0.2f, 1.0f); // Red car
 
@@ -186,13 +186,13 @@ public sealed class CarPhysicsGame : Game
 
         // Add rigidbody
         Rigidbody3D carRigidbody = carGO.AddComponent<Rigidbody3D>();
-        carRigidbody.Mass = 100.0; // Heavy car
+        carRigidbody.Mass = 100.0f; // Heavy car
         carRigidbody.LinearDamping = 0.0001f;
         carRigidbody.AngularDamping = 0.0001f;
 
         // Add collider for car body
         BoxCollider carCollider = carGO.AddComponent<BoxCollider>();
-        carCollider.Size = new Float3(2, 0.5, 4);
+        carCollider.Size = new Float3(2, 0.5f, 4);
 
         // Add car controller
         carController = carGO.AddComponent<CarController>();
@@ -200,10 +200,10 @@ public sealed class CarPhysicsGame : Game
         scene.Add(carGO);
 
         // Create 4 wheels as children
-        CreateWheel("FrontLeft", new Float3(-1.0, -0.5, 1.5), carGO, true);
-        CreateWheel("FrontRight", new Float3(1.0, -0.5, 1.5), carGO, true);
-        CreateWheel("RearLeft", new Float3(-1.0, -0.5, -1.5), carGO, false);
-        CreateWheel("RearRight", new Float3(1.0, -0.5, -1.5), carGO, false);
+        CreateWheel("FrontLeft", new Float3(-1.0f, -0.5f, 1.5f), carGO, true);
+        CreateWheel("FrontRight", new Float3(1.0f, -0.5f, 1.5f), carGO, true);
+        CreateWheel("RearLeft", new Float3(-1.0f, -0.5f, -1.5f), carGO, false);
+        CreateWheel("RearRight", new Float3(1.0f, -0.5f, -1.5f), carGO, false);
     }
 
     private void CreateWheel(string name, Float3 localPosition, GameObject parent, bool isFront)
@@ -275,10 +275,10 @@ public sealed class CarPhysicsGame : Game
 public class ThirdPersonCamera : MonoBehaviour
 {
     public GameObject? Target;
-    public float Distance = 10.0;
-    public float Height = 3.0;
-    public float Smoothness = 5.0;
-    public float MouseSensitivity = 0.1;
+    public float Distance = 10.0f;
+    public float Height = 3.0f;
+    public float Smoothness = 5.0f;
+    public float MouseSensitivity = 0.1f;
 
     private float currentYaw = 0;
     private float currentPitch = 20;
@@ -297,8 +297,8 @@ public class ThirdPersonCamera : MonoBehaviour
         }
 
         // Calculate desired camera position
-        float yawRad = currentYaw * Maths.PI / 180.0;
-        float pitchRad = currentPitch * Maths.PI / 180.0;
+        float yawRad = currentYaw * Maths.PI / 180.0f;
+        float pitchRad = currentPitch * Maths.PI / 180.0f;
 
         float x = Maths.Sin(yawRad) * Maths.Cos(pitchRad);
         float y = Maths.Sin(pitchRad);
@@ -327,9 +327,9 @@ public class CarController : MonoBehaviour
     public List<WheelCollider> frontWheels = new();
     public List<WheelCollider> rearWheels = new();
 
-    public float MaxSteerAngle = 30.0; // degrees
-    public float MotorTorque = 3500.0;
-    public float BrakeTorque = 100.0;
+    public float MaxSteerAngle = 30.0f; // degrees
+    public float MotorTorque = 3500.0f;
+    public float BrakeTorque = 100.0f;
 
     private Rigidbody3D? rigidbody;
     private bool wheelsAdjusted = false;
