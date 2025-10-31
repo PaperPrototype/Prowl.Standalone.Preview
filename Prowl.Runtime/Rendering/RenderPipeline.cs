@@ -570,9 +570,6 @@ public abstract class RenderPipeline : EngineObject
 
                     // Set as global texture for this and subsequent passes
                     PropertyState.SetGlobalTexture(pass.GrabTextureName, grabRT.MainTexture);
-
-                    // TODO: Need to track and release this RT at end of frame
-                    // For now, relying on RenderTexture pool cleanup
                 }
             }
 
