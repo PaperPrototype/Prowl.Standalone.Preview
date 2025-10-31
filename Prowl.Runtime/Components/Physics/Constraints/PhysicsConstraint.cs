@@ -139,18 +139,18 @@ public abstract class PhysicsConstraint : MonoBehaviour
     /// <summary>
     /// Converts a local position to world space.
     /// </summary>
-    protected Jitter2.LinearMath.JVector LocalToWorld(Double3 localPos, Transform transform)
+    protected Jitter2.LinearMath.JVector LocalToWorld(Float3 localPos, Transform transform)
     {
-        Double3 worldPos = transform.TransformPoint(localPos);
+        Float3 worldPos = transform.TransformPoint(localPos);
         return new Jitter2.LinearMath.JVector(worldPos.X, worldPos.Y, worldPos.Z);
     }
 
     /// <summary>
     /// Converts a local direction to world space.
     /// </summary>
-    protected Jitter2.LinearMath.JVector LocalDirToWorld(Double3 localDir, Transform transform)
+    protected Jitter2.LinearMath.JVector LocalDirToWorld(Float3 localDir, Transform transform)
     {
-        Double3 worldDir = transform.TransformDirection(localDir);
+        Float3 worldDir = transform.TransformDirection(localDir);
         return new Jitter2.LinearMath.JVector(worldDir.X, worldDir.Y, worldDir.Z);
     }
 }

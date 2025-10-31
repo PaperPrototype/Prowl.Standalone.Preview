@@ -16,19 +16,19 @@ namespace Prowl.Runtime;
 /// </summary>
 public class UniversalJoint : PhysicsJoint
 {
-    [SerializeField] private Double3 anchor = Double3.Zero;
-    [SerializeField] private Double3 axis1 = Double3.UnitX;
-    [SerializeField] private Double3 axis2 = Double3.UnitZ;
+    [SerializeField] private Float3 anchor = Float3.Zero;
+    [SerializeField] private Float3 axis1 = Float3.UnitX;
+    [SerializeField] private Float3 axis2 = Float3.UnitZ;
     [SerializeField] private bool hasMotor = false;
-    [SerializeField] private double motorTargetVelocity = 0.0;
-    [SerializeField] private double motorMaxForce = 100.0;
+    [SerializeField] private float motorTargetVelocity = 0.0f;
+    [SerializeField] private float motorMaxForce = 100.0f;
 
     private Jitter2.Dynamics.Constraints.UniversalJoint universalJoint;
 
     /// <summary>
     /// The anchor point in local space where the joint connects.
     /// </summary>
-    public Double3 Anchor
+    public Float3 Anchor
     {
         get => anchor;
         set
@@ -41,7 +41,7 @@ public class UniversalJoint : PhysicsJoint
     /// <summary>
     /// The first rotation axis in local space.
     /// </summary>
-    public Double3 Axis1
+    public Float3 Axis1
     {
         get => axis1;
         set
@@ -54,7 +54,7 @@ public class UniversalJoint : PhysicsJoint
     /// <summary>
     /// The second rotation axis in local space (should be perpendicular to Axis1).
     /// </summary>
-    public Double3 Axis2
+    public Float3 Axis2
     {
         get => axis2;
         set
@@ -83,7 +83,7 @@ public class UniversalJoint : PhysicsJoint
     /// <summary>
     /// Target velocity for the motor (if enabled).
     /// </summary>
-    public double MotorTargetVelocity
+    public float MotorTargetVelocity
     {
         get => motorTargetVelocity;
         set
@@ -97,7 +97,7 @@ public class UniversalJoint : PhysicsJoint
     /// <summary>
     /// Maximum force the motor can apply (if enabled).
     /// </summary>
-    public double MotorMaxForce
+    public float MotorMaxForce
     {
         get => motorMaxForce;
         set
@@ -111,12 +111,12 @@ public class UniversalJoint : PhysicsJoint
     /// <summary>
     /// Gets the current twist angle in degrees.
     /// </summary>
-    public double CurrentAngleDegrees
+    public float CurrentAngleDegrees
     {
         get
         {
-            if (universalJoint?.TwistAngle == null) return 0.0;
-            return (double)universalJoint.TwistAngle.Angle * (180.0 / System.Math.PI);
+            if (universalJoint?.TwistAngle == null) return 0.0f;
+            return (float)universalJoint.TwistAngle.Angle * (180.0f / Maths.PI);
         }
     }
 

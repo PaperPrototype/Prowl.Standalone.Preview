@@ -469,11 +469,11 @@ public static class ShaderParser
             ShaderProperty property = type switch
             {
                 ShaderPropertyType.Float => 0,
-                ShaderPropertyType.Vector2 => Double2.Zero,
-                ShaderPropertyType.Vector3 => Double3.Zero,
-                ShaderPropertyType.Vector4 => Double4.Zero,
+                ShaderPropertyType.Vector2 => Float2.Zero,
+                ShaderPropertyType.Vector3 => Float3.Zero,
+                ShaderPropertyType.Vector4 => Float4.Zero,
                 ShaderPropertyType.Color => Color.White,
-                ShaderPropertyType.Matrix => Double4x4.Identity,
+                ShaderPropertyType.Matrix => Float4x4.Identity,
                 ShaderPropertyType.Texture2D => Texture2D.White,
                 _ => throw new Exception($"Invalid property type") // Should never execute unless EnumParse() breaks.
             };
@@ -497,20 +497,20 @@ public static class ShaderParser
                 return DoubleParse(tokenizer.Token, "decimal value");
 
             case ShaderPropertyType.Vector2:
-                double[] v2 = VectorParse(tokenizer, 2);
-                return new Double2(v2[0], v2[1]);
+                float[] v2 = VectorParse(tokenizer, 2);
+                return new Float2(v2[0], v2[1]);
 
             case ShaderPropertyType.Vector3:
-                double[] v3 = VectorParse(tokenizer, 3);
-                return new Double3(v3[0], v3[1], v3[2]);
+                float[] v3 = VectorParse(tokenizer, 3);
+                return new Float3(v3[0], v3[1], v3[2]);
 
             case ShaderPropertyType.Color:
-                double[] col = VectorParse(tokenizer, 4);
+                float[] col = VectorParse(tokenizer, 4);
                 return new Color((float)col[0], (float)col[1], (float)col[2], (float)col[3]);
 
             case ShaderPropertyType.Vector4:
-                double[] v4 = VectorParse(tokenizer, 4);
-                return new Double4(v4[0], v4[1], v4[2], v4[3]);
+                float[] v4 = VectorParse(tokenizer, 4);
+                return new Float4(v4[0], v4[1], v4[2], v4[3]);
 
             case ShaderPropertyType.Matrix:
                 throw new ParseException("property", "matrix properties are only assignable programatically and cannot be assigned defaults");
@@ -629,7 +629,7 @@ public static class ShaderParser
             // Look for + or - followed by a number
             int plusIndex = rawValue.LastIndexOf('+');
             int minusIndex = rawValue.LastIndexOf('-');
-            int offsetIndex = Math.Max(plusIndex, minusIndex);
+            int offsetIndex = Maths.Max(plusIndex, minusIndex);
 
             if (offsetIndex > 0) // Must be after at least one character
             {
@@ -776,11 +776,11 @@ public static class ShaderParser
         throw new ParseException(fieldName, $"unknown value '{text.ToString()}' (possible values: [{string.Join(", ", values)}])");
     }
 
-    private static double DoubleParse(ReadOnlySpan<char> text, string fieldName)
+    private static float DoubleParse(ReadOnlySpan<char> text, string fieldName)
     {
         try
         {
-            return double.Parse(text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture);
+            return float.Parse(text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture);
         }
         catch (FormatException)
         {
@@ -793,11 +793,11 @@ public static class ShaderParser
     }
 
 
-    private static double[] VectorParse(Tokenizer<ShaderToken> tokenizer, int dimensions)
+    private static float[] VectorParse(Tokenizer<ShaderToken> tokenizer, int dimensions)
     {
         ExpectToken("vector", tokenizer, ShaderToken.OpenParen);
 
-        double[] vector = new double[dimensions];
+        float[] vector = new float[dimensions];
         int count = 0;
 
         while (tokenizer.MoveNext() && tokenizer.TokenType != ShaderToken.CloseParen)

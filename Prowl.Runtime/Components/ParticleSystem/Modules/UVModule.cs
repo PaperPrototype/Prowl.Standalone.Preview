@@ -96,7 +96,7 @@ public class UVModule : ParticleSystemModule
         }
         else
         {
-            frameFloat = Math.Min(frameFloat, totalFrames - 1);
+            frameFloat = Maths.Min(frameFloat, totalFrames - 1);
         }
 
         particle.UVFrame = frameFloat;
@@ -134,7 +134,7 @@ public class UVModule : ParticleSystemModule
 
         // Calculate current frame
         int frame = (int)particle.UVFrame;
-        frame = Math.Clamp(frame, 0, totalFrames - 1);
+        frame = Maths.Clamp(frame, 0, totalFrames - 1);
 
         // Calculate grid position
         int row = frame / TilesX;

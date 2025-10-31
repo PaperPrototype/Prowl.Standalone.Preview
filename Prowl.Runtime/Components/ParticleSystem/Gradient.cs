@@ -56,7 +56,7 @@ public class Gradient
     /// </summary>
     public Color Evaluate(float time)
     {
-        time = Math.Clamp(time, 0, 1);
+        time = Maths.Clamp(time, 0, 1);
 
         // Evaluate color
         Color color = ColorKeys[0].Color;

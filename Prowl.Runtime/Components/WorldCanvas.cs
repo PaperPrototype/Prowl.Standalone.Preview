@@ -38,7 +38,7 @@ public class WorldCanvas : MonoBehaviour, IRenderable
     private Mesh? _quadMesh;
 
     // Input state
-    private Double2? _lastMousePosition;
+    private Float2? _lastMousePosition;
     private bool[] _mouseButtonStates = new bool[3];
 
     public override void OnEnable()
@@ -118,11 +118,11 @@ public class WorldCanvas : MonoBehaviour, IRenderable
         Int2 mousePos = Input.MousePosition;
 
         // Cast a ray from the camera through the mouse position
-        Double2 screenSize = new(Window.InternalWindow.FramebufferSize.X, Window.InternalWindow.FramebufferSize.Y);
-        Ray ray = TargetCamera.ScreenPointToRay(new Double2(mousePos.X, mousePos.Y), screenSize);
+        Float2 screenSize = new(Window.InternalWindow.FramebufferSize.X, Window.InternalWindow.FramebufferSize.Y);
+        Ray ray = TargetCamera.ScreenPointToRay(new Float2(mousePos.X, mousePos.Y), screenSize);
 
         // Check if the ray intersects with the canvas quad
-        if (RaycastCanvas(ray, out Double2 uv))
+        if (RaycastCanvas(ray, out Float2 uv))
         {
             // Convert UV to canvas pixel coordinates
             int canvasX = (int)(uv.X * Width);
@@ -130,7 +130,7 @@ public class WorldCanvas : MonoBehaviour, IRenderable
 
             // Update Paper input state with movement
             _paper.SetPointerState(PaperMouseBtn.Unknown, canvasX, canvasY, false, true);
-            _lastMousePosition = new Double2(canvasX, canvasY);
+            _lastMousePosition = new Float2(canvasX, canvasY);
 
             // Handle mouse buttons
             for (int i = 0; i < 3; i++)
@@ -159,7 +159,7 @@ public class WorldCanvas : MonoBehaviour, IRenderable
             }
 
             // Handle mouse wheel
-            double wheelDelta = Input.MouseWheelDelta;
+            float wheelDelta = Input.MouseWheelDelta;
             if (wheelDelta != 0)
             {
                 _paper.SetPointerWheel(wheelDelta);
@@ -172,46 +172,46 @@ public class WorldCanvas : MonoBehaviour, IRenderable
         }
     }
 
-    private bool RaycastCanvas(Ray ray, out Double2 uv)
+    private bool RaycastCanvas(Ray ray, out Float2 uv)
     {
-        uv = Double2.Zero;
+        uv = Float2.Zero;
 
         // Get the transform matrix of the canvas
-        Double4x4 worldMatrix = Transform.LocalToWorldMatrix;
+        Float4x4 worldMatrix = Transform.LocalToWorldMatrix;
 
         // The fullscreen quad has vertices from (-1, -1, 0) to (1, 1, 0) in local space
         // Transform the quad plane to world space
-        Double3 worldPos = Transform.Position;
-        Double3 worldNormal = Transform.Forward;
+        Float3 worldPos = Transform.Position;
+        Float3 worldNormal = Transform.Forward;
 
         // Plane-ray intersection
-        double denom = Double3.Dot(worldNormal, ray.Direction);
+        float denom = Float3.Dot(worldNormal, ray.Direction);
 
         // Check if ray is parallel to plane
-        if (Math.Abs(denom) < 0.0001)
+        if (Maths.Abs(denom) < 0.0001)
             return false;
 
-        Double3 p0ToOrigin = worldPos - ray.Origin;
-        double t = Double3.Dot(p0ToOrigin, worldNormal) / denom;
+        Float3 p0ToOrigin = worldPos - ray.Origin;
+        float t = Float3.Dot(p0ToOrigin, worldNormal) / denom;
 
         // Check if intersection is behind the ray
         if (t < 0)
             return false;
 
         // Get intersection point in world space
-        Double3 hitPoint = ray.Origin + ray.Direction * t;
+        Float3 hitPoint = ray.Origin + ray.Direction * t;
 
         // Transform hit point to local space
-        Double4x4 worldToLocal = worldMatrix.Invert();
-        Double3 localHitPoint = Double4x4.TransformPoint(new Double4(hitPoint, 1.0), worldToLocal).XYZ;
+        Float4x4 worldToLocal = worldMatrix.Invert();
+        Float3 localHitPoint = Float4x4.TransformPoint(new Float4(hitPoint, 1.0f), worldToLocal).XYZ;
 
         // Convert local position to UV coordinates (0 to 1)
         // Fullscreen quad UV mapping:
         // - localHitPoint.X: -1 (left) -> U=0, +1 (right) -> U=1
         // - localHitPoint.Y: -1 (bottom) -> V=0, +1 (top) -> V=1
-        uv = new Double2(
-            (localHitPoint.X + 1.0) * 0.5,      // -1..1 -> 0..1 (left to right)
-            (1.0 - localHitPoint.Y) * 0.5       // -1..1 -> 1..0 (top to bottom for UI)
+        uv = new Float2(
+            (localHitPoint.X + 1.0f) * 0.5f,      // -1..1 -> 0..1 (left to right)
+            (1.0f - localHitPoint.Y) * 0.5f       // -1..1 -> 1..0 (top to bottom for UI)
         );
 
         return true;
@@ -228,7 +228,7 @@ public class WorldCanvas : MonoBehaviour, IRenderable
         Graphics.Device.Clear(0f, 0f, 0f, 0f, GraphicsBackend.Primitives.ClearFlags.Color);
 
         // Begin Paper frame
-        _paper.BeginFrame(Time.DeltaTimeF);
+        _paper.BeginFrame(Time.DeltaTime);
 
         // Invoke the user's GUI callback
         OnRenderUI?.Invoke(_paper);
@@ -245,7 +245,7 @@ public class WorldCanvas : MonoBehaviour, IRenderable
 
     public int GetLayer() => GameObject.LayerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model, out InstanceData[]? instanceData)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Float4x4 model, out InstanceData[]? instanceData)
     {
         properties = _properties;
         drawData = _quadMesh ?? Mesh.GetFullscreenQuad();
@@ -258,8 +258,8 @@ public class WorldCanvas : MonoBehaviour, IRenderable
         isRenderable = _renderTexture.IsValid() && Material.IsValid();
 
         // Create bounds for the fullscreen quad (-1 to 1 in local space)
-        Double3 min = new(-1, -1, 0);
-        Double3 max = new(1, 1, 0);
+        Float3 min = new(-1, -1, 0);
+        Float3 max = new(1, 1, 0);
         AABB localBounds = new(min, max);
         bounds = localBounds.TransformBy(Transform.LocalToWorldMatrix);
     }

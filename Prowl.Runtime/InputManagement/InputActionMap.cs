@@ -119,7 +119,7 @@ public class InputActionMap : ISerializable
     /// <summary>
     /// Internal method to update all actions in this map.
     /// </summary>
-    internal void UpdateActions(IInputHandler inputHandler, double currentTime)
+    internal void UpdateActions(IInputHandler inputHandler, float currentTime)
     {
         foreach (InputAction action in _actions.Values)
         {

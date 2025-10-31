@@ -4,6 +4,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using Prowl.Runtime.Audio.Native;
+using Prowl.Vector;
 
 namespace Prowl.Runtime.Audio.Effects
 {
@@ -76,7 +77,7 @@ namespace Prowl.Runtime.Audio.Effects
 			{
 				lock (lockObject)
 				{
-					bufferSizeInFrames = (Int32)Math.Ceiling(value * sampleRate);
+					bufferSizeInFrames = (Int32)Maths.Ceiling(value * sampleRate);
 
 					if (bufferSizeInFrames < 1)
 					{
@@ -116,7 +117,7 @@ namespace Prowl.Runtime.Audio.Effects
 			wet = 1.0f;
 			dry = 1.0f;
 			this.decay = decay;
-			bufferSizeInFrames = (Int32)Math.Ceiling(delayInSeconds * sampleRate);
+			bufferSizeInFrames = (Int32)Maths.Ceiling(delayInSeconds * sampleRate);
 			actualBufferSize = (Int32)GetNextPowerOfTwo((UInt32)(bufferSizeInFrames * channels));
 			buffer = new float[actualBufferSize];
 		}

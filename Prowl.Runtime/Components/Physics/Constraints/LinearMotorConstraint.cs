@@ -17,17 +17,17 @@ namespace Prowl.Runtime;
 /// </summary>
 public class LinearMotorConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 axis1 = Double3.UnitX;
-    [SerializeField] private Double3 axis2 = Double3.UnitX;
-    [SerializeField] private double targetVelocity = 0.0;
-    [SerializeField] private double maximumForce = 0.0;
+    [SerializeField] private Float3 axis1 = Float3.UnitX;
+    [SerializeField] private Float3 axis2 = Float3.UnitX;
+    [SerializeField] private float targetVelocity = 0.0f;
+    [SerializeField] private float maximumForce = 0.0f;
 
     private LinearMotor constraint;
 
     /// <summary>
     /// The motor axis in local space of the first rigidbody.
     /// </summary>
-    public Double3 Axis1
+    public Float3 Axis1
     {
         get => axis1;
         set
@@ -41,7 +41,7 @@ public class LinearMotorConstraint : PhysicsConstraint
     /// The motor axis in local space of the second rigidbody.
     /// If no connected body is specified, this is in world space.
     /// </summary>
-    public Double3 Axis2
+    public Float3 Axis2
     {
         get => axis2;
         set
@@ -54,7 +54,7 @@ public class LinearMotorConstraint : PhysicsConstraint
     /// <summary>
     /// Target velocity for the motor. Positive values move along the axis direction.
     /// </summary>
-    public double TargetVelocity
+    public float TargetVelocity
     {
         get => targetVelocity;
         set
@@ -67,7 +67,7 @@ public class LinearMotorConstraint : PhysicsConstraint
     /// <summary>
     /// Maximum force the motor can apply. Set to 0 to disable the motor.
     /// </summary>
-    public double MaximumForce
+    public float MaximumForce
     {
         get => maximumForce;
         set
@@ -80,7 +80,7 @@ public class LinearMotorConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public double Impulse => constraint?.Impulse ?? 0.0;
+    public float Impulse => constraint?.Impulse ?? 0.0f;
 
     protected override Constraint GetConstraint() => constraint;
 

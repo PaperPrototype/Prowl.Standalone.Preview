@@ -21,17 +21,17 @@ public struct RaycastHit
     /// <summary>
     /// The distance from the ray's origin to the impact point.
     /// </summary>
-    public double Distance;
+    public float Distance;
 
     /// <summary>
     /// The normal of the surface the ray hit.
     /// </summary>
-    public Double3 Normal;
+    public Float3 Normal;
 
     /// <summary>
     /// The point in world space where the ray hit the collider.
     /// </summary>
-    public Double3 Point;
+    public Float3 Point;
 
     /// <summary>
     /// The Rigidbody3D of the collider that was hit.
@@ -48,7 +48,7 @@ public struct RaycastHit
     /// </summary>
     public Transform Transform;
 
-    internal void SetFromJitterResult(DynamicTree.RayCastResult result, Double3 origin, Double3 direction)
+    internal void SetFromJitterResult(DynamicTree.RayCastResult result, Float3 origin, Float3 direction)
     {
         Shape = result.Entity as RigidBodyShape;
         if (Shape == null)
@@ -62,7 +62,7 @@ public struct RaycastHit
         Hit = true;
         Rigidbody = userData.Rigidbody;
         Transform = Rigidbody?.GameObject?.Transform;
-        Normal = new Double3(result.Normal.X, result.Normal.Y, result.Normal.Z);
+        Normal = new Float3(result.Normal.X, result.Normal.Y, result.Normal.Z);
         Distance = result.Lambda;
         Point = origin + (direction * Distance);
     }

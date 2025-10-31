@@ -17,11 +17,11 @@ public class MeshRenderable : IRenderable
 {
     private Mesh _mesh;
     private Material _material;
-    private Double4x4 _transform;
+    private Float4x4 _transform;
     private int _layerIndex;
     private PropertyState _properties;
 
-    public MeshRenderable(Mesh mesh, Material material, Double4x4 matrix, int layerIndex, PropertyState? propertyBlock = null)
+    public MeshRenderable(Mesh mesh, Material material, Float4x4 matrix, int layerIndex, PropertyState? propertyBlock = null)
     {
         _mesh = mesh;
         _material = material;
@@ -33,7 +33,7 @@ public class MeshRenderable : IRenderable
     public Material GetMaterial() => _material;
     public int GetLayer() => _layerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out InstanceData[]? instanceData)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Float4x4 model, out InstanceData[]? instanceData)
     {
         mesh = _mesh;
         properties = _properties;
@@ -86,21 +86,21 @@ public class InstancedMeshRenderable : IRenderable
         {
             // Calculate bounds from all instances
             AABB meshBounds = mesh.bounds;
-            Double3 min = new Double3(double.MaxValue);
-            Double3 max = new Double3(double.MinValue);
+            Float3 min = new Float3(float.MaxValue);
+            Float3 max = new Float3(float.MinValue);
 
             foreach (var instance in instanceData)
             {
-                AABB instanceBounds = meshBounds.TransformBy((Double4x4)instance.GetMatrix());
-                min = new Double3(
-                    System.Math.Min(min.X, instanceBounds.Min.X),
-                    System.Math.Min(min.Y, instanceBounds.Min.Y),
-                    System.Math.Min(min.Z, instanceBounds.Min.Z)
+                AABB instanceBounds = meshBounds.TransformBy((Float4x4)instance.GetMatrix());
+                min = new Float3(
+                    Maths.Min(min.X, instanceBounds.Min.X),
+                    Maths.Min(min.Y, instanceBounds.Min.Y),
+                    Maths.Min(min.Z, instanceBounds.Min.Z)
                 );
-                max = new Double3(
-                    System.Math.Max(max.X, instanceBounds.Max.X),
-                    System.Math.Max(max.Y, instanceBounds.Max.Y),
-                    System.Math.Max(max.Z, instanceBounds.Max.Z)
+                max = new Float3(
+                    Maths.Max(max.X, instanceBounds.Max.X),
+                    Maths.Max(max.Y, instanceBounds.Max.Y),
+                    Maths.Max(max.Z, instanceBounds.Max.Z)
                 );
             }
 
@@ -108,18 +108,18 @@ public class InstancedMeshRenderable : IRenderable
         }
         else
         {
-            _bounds = new AABB(Double3.Zero, Double3.Zero);
+            _bounds = new AABB(Float3.Zero, Float3.Zero);
         }
     }
 
     public Material GetMaterial() => _material;
     public int GetLayer() => _layerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out InstanceData[]? instanceData)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Float4x4 model, out InstanceData[]? instanceData)
     {
         properties = _sharedProperties;
         mesh = _mesh;
-        model = Double4x4.Identity; // Not used for instanced rendering
+        model = Float4x4.Identity; // Not used for instanced rendering
         instanceData = _instanceData; // Return instance data for GPU instancing
     }
 
@@ -140,7 +140,7 @@ public static class Graphics
     public static int MaxArrayTextureLayers { get; internal set; }
     public static int MaxFramebufferColorAttachments { get; internal set; }
 
-    public static Double2 ScreenSize => new(Window.InternalWindow.FramebufferSize.X, Window.InternalWindow.FramebufferSize.Y);
+    public static Float2 ScreenSize => new(Window.InternalWindow.FramebufferSize.X, Window.InternalWindow.FramebufferSize.Y);
     public static IntRect ScreenRect => new(0, 0, Window.InternalWindow.FramebufferSize.X, Window.InternalWindow.FramebufferSize.Y);
 
     // ============================================================================
@@ -157,7 +157,7 @@ public static class Graphics
     /// <param name="material">Material to render with</param>
     /// <param name="layer">Layer index for culling and sorting (default: 0)</param>
     /// <param name="properties">Optional per-object property overrides</param>
-    public static void DrawMesh(Scene scene, Mesh mesh, Double4x4 transform, Material material, int layer = 0, PropertyState? properties = null)
+    public static void DrawMesh(Scene scene, Mesh mesh, Float4x4 transform, Material material, int layer = 0, PropertyState? properties = null)
     {
         if (scene == null || mesh == null || material == null) return;
 
@@ -187,7 +187,7 @@ public static class Graphics
 
         while (remainingInstances > 0)
         {
-            int batchSize = System.Math.Min(remainingInstances, maxBatchSize);
+            int batchSize = Maths.Min(remainingInstances, maxBatchSize);
 
             // Create instance data for this batch
             var instanceData = new Rendering.InstanceData[batchSize];
@@ -219,7 +219,7 @@ public static class Graphics
 
         while (remainingInstances > 0)
         {
-            int batchSize = System.Math.Min(remainingInstances, maxBatchSize);
+            int batchSize = Maths.Min(remainingInstances, maxBatchSize);
 
             // Create instance data for this batch with colors
             var instanceData = new Rendering.InstanceData[batchSize];
@@ -274,7 +274,7 @@ public static class Graphics
 
         while (remainingInstances > 0)
         {
-            int batchSize = System.Math.Min(remainingInstances, maxBatchSize);
+            int batchSize = Maths.Min(remainingInstances, maxBatchSize);
 
             // Build InstanceData from separate arrays
             var instanceData = new Rendering.InstanceData[batchSize];

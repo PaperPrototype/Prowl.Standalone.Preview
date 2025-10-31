@@ -22,7 +22,7 @@ public struct InstanceData
     public Float4 ModelRow3;
 
     // Per-instance color tint (RGBA as floats for GPU compatibility)
-    public Float4 Color;
+    public Color Color;
 
     // Custom data (can be used for anything - UV offsets, size, etc.)
     public Float4 CustomData;
@@ -30,17 +30,17 @@ public struct InstanceData
     /// <summary>
     /// Creates instance data from a transform matrix.
     /// </summary>
-    public InstanceData(Float4x4 model) : this(model, new Float4(1, 1, 1, 1), Float4.Zero) { }
+    public InstanceData(Float4x4 model) : this(model, Color.White, Float4.Zero) { }
 
     /// <summary>
     /// Creates instance data from a transform matrix and color as Float4.
     /// </summary>
-    public InstanceData(Float4x4 model, Float4 color) : this(model, color, Float4.Zero) { }
+    public InstanceData(Float4x4 model, Color color) : this(model, color, Float4.Zero) { }
 
     /// <summary>
     /// Creates instance data with all properties.
     /// </summary>
-    public InstanceData(Float4x4 model, Float4 color, Float4 customData)
+    public InstanceData(Float4x4 model, Color color, Float4 customData)
     {
         // Float4x4 stores columns (c0, c1, c2, c3)
         // GLSL mat4() constructor also takes columns, so pass them directly (no transpose needed)
@@ -50,20 +50,6 @@ public struct InstanceData
         ModelRow3 = model.c3;
         Color = color;
         CustomData = customData;
-    }
-
-    /// <summary>
-    /// Creates instance data from a Double4x4 matrix (converts to Float4x4).
-    /// </summary>
-    public InstanceData(Double4x4 model) : this((Float4x4)model, new Float4(1, 1, 1, 1), Float4.Zero) { }
-
-    /// <summary>
-    /// Helper to convert Prowl.Vector.Color to Float4 for instance data.
-    /// </summary>
-    public static Float4 ColorToFloat4(Color color)
-    {
-        // Color uses doubles, convert to floats
-        return new Float4((float)color.R, (float)color.G, (float)color.B, (float)color.A);
     }
 
     /// <summary>

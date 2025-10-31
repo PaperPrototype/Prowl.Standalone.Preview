@@ -56,7 +56,7 @@ public sealed class BokehDepthOfFieldEffect : ImageEffect
         _mat.SetKeyword("AUTOFOCUS", UseAutoFocus);
 
         // Set resolution for blur passes
-        _mat.SetVector("_Resolution", new Double2(blurWidth, blurHeight));
+        _mat.SetVector("_Resolution", new Float2(blurWidth, blurHeight));
 
         // Pass 0: Horizontal MRT - outputs to 3 render targets (R, G, B channels)
         _mat.SetTexture("_MainTex", context.SceneColor.MainTexture);
@@ -71,7 +71,7 @@ public sealed class BokehDepthOfFieldEffect : ImageEffect
         // Pass 2: Final Combine - blend with original image based on CoC (at full resolution, in-place)
         _mat.SetTexture("_MainTex", context.SceneColor.MainTexture);
         _mat.SetTexture("_BlurredTex", verticalResult.MainTexture);
-        _mat.SetVector("_Resolution", new Double2(fullWidth, fullHeight));
+        _mat.SetVector("_Resolution", new Float2(fullWidth, fullHeight));
         RenderPipeline.Blit(context.SceneColor, context.SceneColor, _mat, 2);
 
         // Clean up MRT

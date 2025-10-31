@@ -13,14 +13,14 @@ namespace Prowl.Runtime;
 public interface IInputProcessor
 {
     /// <summary>
-    /// Process a double value.
+    /// Process a float value.
     /// </summary>
-    double Process(double value);
+    float Process(float value);
 
     /// <summary>
     /// Process a Vector2 value.
     /// </summary>
-    Double2 Process(Double2 value);
+    Float2 Process(Float2 value);
 }
 
 /// <summary>
@@ -28,12 +28,12 @@ public interface IInputProcessor
 /// </summary>
 public class NormalizeProcessor : IInputProcessor
 {
-    public double Process(double value) => Math.Clamp(value, -1.0, 1.0);
+    public float Process(float value) => Maths.Clamp(value, -1.0f, 1.0f);
 
-    public Double2 Process(Double2 value)
+    public Float2 Process(Float2 value)
     {
-        double magnitude = Math.Sqrt(value.X * value.X + value.Y * value.Y);
-        if (magnitude > 1.0)
+        float magnitude = Maths.Sqrt(value.X * value.X + value.Y * value.Y);
+        if (magnitude > 1.0f)
             return value / magnitude;
         return value;
     }
@@ -44,8 +44,8 @@ public class NormalizeProcessor : IInputProcessor
 /// </summary>
 public class InvertProcessor : IInputProcessor
 {
-    public double Process(double value) => -value;
-    public Double2 Process(Double2 value) => -value;
+    public float Process(float value) => -value;
+    public Float2 Process(Float2 value) => -value;
 }
 
 /// <summary>
@@ -53,15 +53,15 @@ public class InvertProcessor : IInputProcessor
 /// </summary>
 public class ScaleProcessor : IInputProcessor
 {
-    public double Scale { get; set; } = 1.0;
+    public float Scale { get; set; } = 1.0f;
 
-    public ScaleProcessor(double scale)
+    public ScaleProcessor(float scale)
     {
         Scale = scale;
     }
 
-    public double Process(double value) => value * Scale;
-    public Double2 Process(Double2 value) => value * Scale;
+    public float Process(float value) => value * Scale;
+    public Float2 Process(Float2 value) => value * Scale;
 }
 
 /// <summary>
@@ -69,22 +69,22 @@ public class ScaleProcessor : IInputProcessor
 /// </summary>
 public class ClampProcessor : IInputProcessor
 {
-    public double Min { get; set; } = 0.0;
-    public double Max { get; set; } = 1.0;
+    public float Min { get; set; } = 0.0f;
+    public float Max { get; set; } = 1.0f;
 
-    public ClampProcessor(double min, double max)
+    public ClampProcessor(float min, float max)
     {
         Min = min;
         Max = max;
     }
 
-    public double Process(double value) => Math.Clamp(value, Min, Max);
+    public float Process(float value) => Maths.Clamp(value, Min, Max);
 
-    public Double2 Process(Double2 value)
+    public Float2 Process(Float2 value)
     {
-        return new Double2(
-            Math.Clamp(value.X, Min, Max),
-            Math.Clamp(value.Y, Min, Max)
+        return new Float2(
+            Maths.Clamp(value.X, Min, Max),
+            Maths.Clamp(value.Y, Min, Max)
         );
     }
 }
@@ -94,32 +94,32 @@ public class ClampProcessor : IInputProcessor
 /// </summary>
 public class DeadzoneProcessor : IInputProcessor
 {
-    public double Threshold { get; set; } = 0.2;
+    public float Threshold { get; set; } = 0.2f;
 
-    public DeadzoneProcessor(double threshold = 0.2)
+    public DeadzoneProcessor(float threshold = 0.2f)
     {
         Threshold = threshold;
     }
 
-    public double Process(double value)
+    public float Process(float value)
     {
-        if (Math.Abs(value) < Threshold)
+        if (Maths.Abs(value) < Threshold)
             return 0f;
 
         // Rescale the value to start from 0 after the deadzone
-        double sign = Math.Sign(value);
-        double adjustedValue = (Math.Abs(value) - Threshold) / (1.0 - Threshold);
+        float sign = Maths.Sign(value);
+        float adjustedValue = (Maths.Abs(value) - Threshold) / (1.0f - Threshold);
         return sign * adjustedValue;
     }
 
-    public Double2 Process(Double2 value)
+    public Float2 Process(Float2 value)
     {
-        double magnitude = Math.Sqrt(value.X * value.X + value.Y * value.Y);
+        float magnitude = Maths.Sqrt(value.X * value.X + value.Y * value.Y);
         if (magnitude < Threshold)
-            return Double2.Zero;
+            return Float2.Zero;
 
         // Radial deadzone - preserve direction
-        double adjustedMagnitude = (magnitude - Threshold) / (1.0 - Threshold);
+        float adjustedMagnitude = (magnitude - Threshold) / (1.0f - Threshold);
         return value * (adjustedMagnitude / magnitude);
     }
 }
@@ -129,21 +129,21 @@ public class DeadzoneProcessor : IInputProcessor
 /// </summary>
 public class ExponentialProcessor : IInputProcessor
 {
-    public double Exponent { get; set; } = 2.0;
+    public float Exponent { get; set; } = 2.0f;
 
-    public ExponentialProcessor(double exponent = 2.0)
+    public ExponentialProcessor(float exponent = 2.0f)
     {
         Exponent = exponent;
     }
 
-    public double Process(double value)
+    public float Process(float value)
     {
-        double sign = Math.Sign(value);
-        return sign * Math.Pow(Math.Abs(value), Exponent);
+        float sign = Maths.Sign(value);
+        return sign * Maths.Pow(Maths.Abs(value), Exponent);
     }
 
-    public Double2 Process(Double2 value)
+    public Float2 Process(Float2 value)
     {
-        return new Double2(Process(value.X), Process(value.Y));
+        return new Float2(Process(value.X), Process(value.Y));
     }
 }

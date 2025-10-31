@@ -18,20 +18,20 @@ namespace Prowl.Runtime;
 /// </summary>
 public class PointOnPlaneConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 planeNormal = Double3.UnitY;
-    [SerializeField] private Double3 anchor1 = Double3.Zero;
-    [SerializeField] private Double3 anchor2 = Double3.Zero;
-    [SerializeField] private double minDistance = double.NegativeInfinity;
-    [SerializeField] private double maxDistance = double.PositiveInfinity;
-    [SerializeField] private double softness = 0.00001;
-    [SerializeField] private double biasFactor = 0.01;
+    [SerializeField] private Float3 planeNormal = Float3.UnitY;
+    [SerializeField] private Float3 anchor1 = Float3.Zero;
+    [SerializeField] private Float3 anchor2 = Float3.Zero;
+    [SerializeField] private float minDistance = float.NegativeInfinity;
+    [SerializeField] private float maxDistance = float.PositiveInfinity;
+    [SerializeField] private float softness = 0.00001f;
+    [SerializeField] private float biasFactor = 0.01f;
 
     private PointOnPlane constraint;
 
     /// <summary>
     /// The plane normal in local space of the first rigidbody.
     /// </summary>
-    public Double3 PlaneNormal
+    public Float3 PlaneNormal
     {
         get => planeNormal;
         set
@@ -44,7 +44,7 @@ public class PointOnPlaneConstraint : PhysicsConstraint
     /// <summary>
     /// Anchor point on the first body that defines the plane position.
     /// </summary>
-    public Double3 Anchor1
+    public Float3 Anchor1
     {
         get => anchor1;
         set
@@ -57,7 +57,7 @@ public class PointOnPlaneConstraint : PhysicsConstraint
     /// <summary>
     /// Anchor point on the second body that is constrained to the plane.
     /// </summary>
-    public Double3 Anchor2
+    public Float3 Anchor2
     {
         get => anchor2;
         set
@@ -68,9 +68,9 @@ public class PointOnPlaneConstraint : PhysicsConstraint
     }
 
     /// <summary>
-    /// Minimum allowed distance from the plane. Use double.NegativeInfinity for no minimum.
+    /// Minimum allowed distance from the plane. Use float.NegativeInfinity for no minimum.
     /// </summary>
-    public double MinDistance
+    public float MinDistance
     {
         get => minDistance;
         set
@@ -81,9 +81,9 @@ public class PointOnPlaneConstraint : PhysicsConstraint
     }
 
     /// <summary>
-    /// Maximum allowed distance from the plane. Use double.PositiveInfinity for no maximum.
+    /// Maximum allowed distance from the plane. Use float.PositiveInfinity for no maximum.
     /// </summary>
-    public double MaxDistance
+    public float MaxDistance
     {
         get => maxDistance;
         set
@@ -96,7 +96,7 @@ public class PointOnPlaneConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the constraint. Higher values make the constraint softer.
     /// </summary>
-    public double Softness
+    public float Softness
     {
         get => softness;
         set
@@ -109,7 +109,7 @@ public class PointOnPlaneConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for error correction. Higher values correct errors faster.
     /// </summary>
-    public double BiasFactor
+    public float BiasFactor
     {
         get => biasFactor;
         set
@@ -122,7 +122,7 @@ public class PointOnPlaneConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public double Impulse => constraint?.Impulse ?? 0.0;
+    public float Impulse => constraint?.Impulse ?? 0.0f;
 
     protected override Constraint GetConstraint() => constraint;
 

@@ -31,13 +31,13 @@ public class DirectionalLight : Light
     public Resolution ShadowResolution = Resolution._1024;
     public CascadeCount Cascades = CascadeCount.Four;
 
-    public double ShadowDistance = 100f;
+    public float ShadowDistance = 100f;
 
     private Material? _lightMaterial;
 
     // Cascade data (max 4 cascades)
-    private Double4x4[] _cascadeShadowMatrices = new Double4x4[4];
-    private Double4[] _cascadeAtlasParams = new Double4[4]; // xy = atlas pos, z = atlas size, w = split distance
+    private Float4x4[] _cascadeShadowMatrices = new Float4x4[4];
+    private Float4[] _cascadeAtlasParams = new Float4[4]; // xy = atlas pos, z = atlas size, w = split distance
     private int _activeCascades = 0;
 
     public override void Update()
@@ -80,36 +80,36 @@ public class DirectionalLight : Light
 
     public override LightType GetLightType() => LightType.Directional;
 
-    private void GetShadowMatrix(Double3 cameraPosition, int shadowResolution, double cascadeDistance, out Double4x4 view, out Double4x4 projection)
+    private void GetShadowMatrix(Float3 cameraPosition, int shadowResolution, float cascadeDistance, out Float4x4 view, out Float4x4 projection)
     {
-        Double3 forward = -Transform.Forward;
-        projection = Double4x4.CreateOrtho(cascadeDistance, cascadeDistance, -cascadeDistance * 0.5f, cascadeDistance * 0.5f);
+        Float3 forward = -Transform.Forward;
+        projection = Float4x4.CreateOrtho(cascadeDistance, cascadeDistance, -cascadeDistance * 0.5f, cascadeDistance * 0.5f);
 
         // Calculate texel size in world units
-        double texelSize = (cascadeDistance * 2.0) / shadowResolution;
+        float texelSize = (cascadeDistance * 2.0f) / shadowResolution;
 
         // Build orthonormal basis for light space
-        Double3 lightUp = Double3.Normalize(Transform.Up);
-        Double3 lightRight = Double3.Normalize(Double3.Cross(lightUp, forward));
-        lightUp = Double3.Normalize(Double3.Cross(forward, lightRight)); // Recompute to ensure orthogonality
+        Float3 lightUp = Float3.Normalize(Transform.Up);
+        Float3 lightRight = Float3.Normalize(Float3.Cross(lightUp, forward));
+        lightUp = Float3.Normalize(Float3.Cross(forward, lightRight)); // Recompute to ensure orthogonality
 
         // Project camera position onto light space axes
-        double x = Double3.Dot(cameraPosition, lightRight);
-        double y = Double3.Dot(cameraPosition, lightUp);
-        double z = Double3.Dot(cameraPosition, forward); // KEEP the Z component! god damnit lost so much time to this
+        float x = Float3.Dot(cameraPosition, lightRight);
+        float y = Float3.Dot(cameraPosition, lightUp);
+        float z = Float3.Dot(cameraPosition, forward); // KEEP the Z component! god damnit lost so much time to this
 
         // Snap only X and Y to texel grid in light space
         x = Maths.Round(x / texelSize) * texelSize;
         y = Maths.Round(y / texelSize) * texelSize;
 
         // Reconstruct the snapped position (X and Y snapped, Z preserved)
-        Double3 snappedPosition = (lightRight * x) + (lightUp * y) + (forward * z);
+        Float3 snappedPosition = (lightRight * x) + (lightUp * y) + (forward * z);
 
         // Position the shadow map at the snapped position
-        view = Double4x4.CreateLookTo(snappedPosition, forward, Transform.Up);
+        view = Float4x4.CreateLookTo(snappedPosition, forward, Transform.Up);
     }
 
-    public override void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
+    public override void RenderShadows(RenderPipeline pipeline, Float3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
     {
         if (!DoCastShadows())
         {
@@ -123,19 +123,19 @@ public class DirectionalLight : Light
         _activeCascades = numCascades;
 
         // Calculate linear split distances
-        double cascadeInterval = ShadowDistance / numCascades;
+        float cascadeInterval = ShadowDistance / numCascades;
 
 
         // Light direction vectors
-        Double3 forward = -Transform.Forward;
-        Double3 right = Transform.Right;
-        Double3 up = Transform.Up;
+        Float3 forward = -Transform.Forward;
+        Float3 right = Transform.Right;
+        Float3 up = Transform.Up;
 
         // Render each cascade
         for (int cascadeIndex = 0; cascadeIndex < numCascades; cascadeIndex++)
         {
             // Calculate this cascade's distance (linear split)
-            double cascadeDistance = cascadeInterval * (cascadeIndex + 1);
+            float cascadeDistance = cascadeInterval * (cascadeIndex + 1);
 
             // Get shadow resolution per cascade
             int res = (int)ShadowResolution;
@@ -156,7 +156,7 @@ public class DirectionalLight : Light
                 Graphics.Device.Viewport(atlasX, atlasY, (uint)res, (uint)res);
 
                 // Calculate shadow matrix for this cascade distance
-                GetShadowMatrix(cameraPosition, res, cascadeDistance, out Double4x4 view, out Double4x4 proj);
+                GetShadowMatrix(cameraPosition, res, cascadeDistance, out Float4x4 view, out Float4x4 proj);
 
                 Frustum frustum = Frustum.FromMatrix(proj * view);
 
@@ -167,12 +167,12 @@ public class DirectionalLight : Light
 
                 // Store cascade data for shader
                 _cascadeShadowMatrices[cascadeIndex] = proj * view;
-                _cascadeAtlasParams[cascadeIndex] = new Double4(atlasX, atlasY, res, cascadeDistance);
+                _cascadeAtlasParams[cascadeIndex] = new Float4(atlasX, atlasY, res, cascadeDistance);
             }
             else
             {
                 // Failed to reserve atlas space for this cascade
-                _cascadeAtlasParams[cascadeIndex] = new Double4(-1, -1, 0, cascadeDistance);
+                _cascadeAtlasParams[cascadeIndex] = new Float4(-1, -1, 0, cascadeDistance);
             }
         }
     }
@@ -192,7 +192,7 @@ public class DirectionalLight : Light
         // Set shadow atlas texture and size
         var shadowAtlas = ShadowAtlas.GetAtlas();
         _lightMaterial.SetTexture("_ShadowAtlas", shadowAtlas.InternalDepth);
-        _lightMaterial.SetVector("_ShadowAtlasSize", new Double2(shadowAtlas.Width, shadowAtlas.Height));
+        _lightMaterial.SetVector("_ShadowAtlasSize", new Float2(shadowAtlas.Width, shadowAtlas.Height));
 
         // Set directional light properties
         _lightMaterial.SetVector("_LightDirection", Transform.Forward);

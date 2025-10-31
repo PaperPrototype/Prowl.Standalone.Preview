@@ -9,6 +9,8 @@ using Jitter2.Collision.Shapes;
 using Jitter2.Dynamics;
 using Jitter2.LinearMath;
 
+using Prowl.Vector;
+
 namespace Prowl.Runtime;
 
 /// <summary>
@@ -86,10 +88,10 @@ public class TerrainCollisionFilter : IBroadPhaseFilter
         var max = rbs.WorldBoundingBox.Max;
 
         // Convert world space bounds to grid space
-        int minX = Math.Max(0, (int)Math.Floor((min.X - _terrainOrigin.X) / _cellSize));
-        int minZ = Math.Max(0, (int)Math.Floor((min.Z - _terrainOrigin.Z) / _cellSize));
-        int maxX = Math.Min(_heightProvider.Width - 1, (int)Math.Ceiling((max.X - _terrainOrigin.X) / _cellSize));
-        int maxZ = Math.Min(_heightProvider.Height - 1, (int)Math.Ceiling((max.Z - _terrainOrigin.Z) / _cellSize));
+        int minX = Maths.Max(0, (int)Maths.Floor((min.X - _terrainOrigin.X) / _cellSize));
+        int minZ = Maths.Max(0, (int)Maths.Floor((min.Z - _terrainOrigin.Z) / _cellSize));
+        int maxX = Maths.Min(_heightProvider.Width - 1, (int)Maths.Ceiling((max.X - _terrainOrigin.X) / _cellSize));
+        int maxZ = Maths.Min(_heightProvider.Height - 1, (int)Maths.Ceiling((max.Z - _terrainOrigin.Z) / _cellSize));
 
         // Test each potentially colliding grid cell
         for (int x = minX; x < maxX; x++)
@@ -121,7 +123,7 @@ public class TerrainCollisionFilter : IBroadPhaseFilter
                 JVector normal = JVector.Normalize((triangle.B - triangle.A) % (triangle.C - triangle.A));
 
                 bool hit = NarrowPhase.MprEpa(triangle, rbs, body.Orientation, body.Position,
-                    out JVector pointA, out JVector pointB, out _, out double penetration);
+                    out JVector pointA, out JVector pointB, out _, out float penetration);
 
                 if (hit)
                 {

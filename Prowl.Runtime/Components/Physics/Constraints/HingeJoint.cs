@@ -16,20 +16,20 @@ namespace Prowl.Runtime;
 /// </summary>
 public class HingeJoint : PhysicsJoint
 {
-    [SerializeField] private Double3 anchor = Double3.Zero;
-    [SerializeField] private Double3 axis = Double3.UnitY;
-    [SerializeField] private double minAngleDegrees = -180.0;
-    [SerializeField] private double maxAngleDegrees = 180.0;
+    [SerializeField] private Float3 anchor = Float3.Zero;
+    [SerializeField] private Float3 axis = Float3.UnitY;
+    [SerializeField] private float minAngleDegrees = -180.0f;
+    [SerializeField] private float maxAngleDegrees = 180.0f;
     [SerializeField] private bool hasMotor = false;
-    [SerializeField] private double motorTargetVelocity = 0.0;
-    [SerializeField] private double motorMaxForce = 100.0;
+    [SerializeField] private float motorTargetVelocity = 0.0f;
+    [SerializeField] private float motorMaxForce = 100.0f;
 
     private Jitter2.Dynamics.Constraints.HingeJoint hingeJoint;
 
     /// <summary>
     /// The anchor point in local space where the joint connects.
     /// </summary>
-    public Double3 Anchor
+    public Float3 Anchor
     {
         get => anchor;
         set
@@ -42,7 +42,7 @@ public class HingeJoint : PhysicsJoint
     /// <summary>
     /// The axis of rotation in local space.
     /// </summary>
-    public Double3 Axis
+    public Float3 Axis
     {
         get => axis;
         set
@@ -55,7 +55,7 @@ public class HingeJoint : PhysicsJoint
     /// <summary>
     /// Minimum angle limit in degrees.
     /// </summary>
-    public double MinAngleDegrees
+    public float MinAngleDegrees
     {
         get => minAngleDegrees;
         set
@@ -68,7 +68,7 @@ public class HingeJoint : PhysicsJoint
     /// <summary>
     /// Maximum angle limit in degrees.
     /// </summary>
-    public double MaxAngleDegrees
+    public float MaxAngleDegrees
     {
         get => maxAngleDegrees;
         set
@@ -97,7 +97,7 @@ public class HingeJoint : PhysicsJoint
     /// <summary>
     /// Target velocity for the motor (if enabled).
     /// </summary>
-    public double MotorTargetVelocity
+    public float MotorTargetVelocity
     {
         get => motorTargetVelocity;
         set
@@ -111,7 +111,7 @@ public class HingeJoint : PhysicsJoint
     /// <summary>
     /// Maximum force the motor can apply (if enabled).
     /// </summary>
-    public double MotorMaxForce
+    public float MotorMaxForce
     {
         get => motorMaxForce;
         set
@@ -125,12 +125,12 @@ public class HingeJoint : PhysicsJoint
     /// <summary>
     /// Gets the current angle of the hinge in degrees.
     /// </summary>
-    public double CurrentAngleDegrees
+    public float CurrentAngleDegrees
     {
         get
         {
-            if (hingeJoint?.HingeAngle == null) return 0.0;
-            return (double)hingeJoint.HingeAngle.Angle * (180.0 / System.Math.PI);
+            if (hingeJoint?.HingeAngle == null) return 0.0f;
+            return (float)hingeJoint.HingeAngle.Angle * (180.0f / Maths.PI);
         }
     }
 

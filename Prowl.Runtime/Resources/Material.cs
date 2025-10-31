@@ -77,23 +77,23 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
     public void SetKeyword(string keyword, bool value) => _localKeywords[keyword] = value;
 
     public void SetColor(string name, Color value) { _properties.SetColor(name, value); MarkDirty(); }
-    public void SetVector(string name, Double2 value) { _properties.SetVector(name, value); MarkDirty(); }
-    public void SetVector(string name, Double3 value) { _properties.SetVector(name, value); MarkDirty(); }
-    public void SetVector(string name, Double4 value) { _properties.SetVector(name, value); MarkDirty(); }
+    public void SetVector(string name, Float2 value) { _properties.SetVector(name, value); MarkDirty(); }
+    public void SetVector(string name, Float3 value) { _properties.SetVector(name, value); MarkDirty(); }
+    public void SetVector(string name, Float4 value) { _properties.SetVector(name, value); MarkDirty(); }
     public void SetFloat(string name, float value) { _properties.SetFloat(name, value); MarkDirty(); }
     public void SetInt(string name, int value) { _properties.SetInt(name, value); MarkDirty(); }
-    public void SetMatrix(string name, Double4x4 value) { _properties.SetMatrix(name, value); MarkDirty(); }
+    public void SetMatrix(string name, Float4x4 value) { _properties.SetMatrix(name, value); MarkDirty(); }
     public void SetTexture(string name, Texture2D value) { _properties.SetTexture(name, value); MarkDirty(); }
 
     #region Global Properties
 
     public static void SetGlobalColor(string name, Color value) => PropertyState.SetGlobalColor(name, value);
-    public static void SetGlobalVector(string name, Double2 value) => PropertyState.SetGlobalVector(name, value);
-    public static void SetGlobalVector(string name, Double3 value) => PropertyState.SetGlobalVector(name, value);
-    public static void SetGlobalVector(string name, Double4 value) => PropertyState.SetGlobalVector(name, value);
+    public static void SetGlobalVector(string name, Float2 value) => PropertyState.SetGlobalVector(name, value);
+    public static void SetGlobalVector(string name, Float3 value) => PropertyState.SetGlobalVector(name, value);
+    public static void SetGlobalVector(string name, Float4 value) => PropertyState.SetGlobalVector(name, value);
     public static void SetGlobalFloat(string name, float value) => PropertyState.SetGlobalFloat(name, value);
     public static void SetGlobalInt(string name, int value) => PropertyState.SetGlobalInt(name, value);
-    public static void SetGlobalMatrix(string name, Double4x4 value) => PropertyState.SetGlobalMatrix(name, value);
+    public static void SetGlobalMatrix(string name, Float4x4 value) => PropertyState.SetGlobalMatrix(name, value);
     public static void SetGlobalTexture(string name, Texture2D value) => PropertyState.SetGlobalTexture(name, value);
 
     #endregion
@@ -111,15 +111,15 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
                 break;
 
             case ShaderPropertyType.Vector2:
-                _properties.SetVector(property.Name, (Double2)property);
+                _properties.SetVector(property.Name, (Float2)property);
                 break;
 
             case ShaderPropertyType.Vector3:
-                _properties.SetVector(property.Name, (Double3)property);
+                _properties.SetVector(property.Name, (Float3)property);
                 break;
 
             case ShaderPropertyType.Vector4:
-                _properties.SetVector(property.Name, (Double4)property);
+                _properties.SetVector(property.Name, (Float4)property);
                 break;
 
             case ShaderPropertyType.Color:
@@ -127,7 +127,7 @@ public sealed class Material : EngineObject, ISerializationCallbackReceiver
                 break;
 
             case ShaderPropertyType.Matrix:
-                _properties.SetMatrix(property.Name, (Double4x4)property);
+                _properties.SetMatrix(property.Name, (Float4x4)property);
                 break;
         }
     }

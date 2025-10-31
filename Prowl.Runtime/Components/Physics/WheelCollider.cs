@@ -155,7 +155,7 @@ public sealed class WheelCollider : MonoBehaviour
     public int NumberOfRays
     {
         get => numberOfRays;
-        set => numberOfRays = Math.Max(1, value);
+        set => numberOfRays = Maths.Max(1, value);
     }
 
     /// <summary>
@@ -210,9 +210,9 @@ public sealed class WheelCollider : MonoBehaviour
         float wheelMass = (float)(rigidbody.Mass * 0.03);
         wheelInertia = 0.5f * (radius * radius) * wheelMass;
     
-        float gravity = (float)Double3.Length(GameObject.Scene.Physics.Gravity);
+        float gravity = (float)Float3.Length(GameObject.Scene.Physics.Gravity);
         suspensionStiffness = mass * gravity / (suspensionTravel * SpringFrac);
-        suspensionDamping = 2.0f * (float)Math.Sqrt(suspensionStiffness * rigidbody.Mass) * 0.25f * DampingFrac;
+        suspensionDamping = 2.0f * (float)Maths.Sqrt(suspensionStiffness * rigidbody.Mass) * 0.25f * DampingFrac;
     }
 
     /// <summary>
@@ -226,13 +226,13 @@ public sealed class WheelCollider : MonoBehaviour
     /// <summary>
     /// Gets the world position of the wheel center.
     /// </summary>
-    public Double3 GetWheelCenter()
+    public Float3 GetWheelCenter()
     {
         var up = Transform.Up;
         return Transform.Position + up * displacement;
     }
 
-    private void OnPostStep(double timeStep)
+    private void OnPostStep(float timeStep)
     {
         if (rigidbody == null || rigidbody._body == null || timeStep <= 0.0) return;
 
@@ -260,13 +260,13 @@ public sealed class WheelCollider : MonoBehaviour
             angularVelocity += driveTorque * dt / wheelInertia;
             driveTorque = 0;
 
-            angularVelocity = Math.Clamp(angularVelocity, -maxAngularVelocity, maxAngularVelocity);
+            angularVelocity = Maths.Clamp(angularVelocity, -maxAngularVelocity, maxAngularVelocity);
 
             wheelRotation += dt * angularVelocity;
         }
     }
 
-    private void OnPreStep(double timeStep)
+    private void OnPreStep(float timeStep)
     {
         if (rigidbody == null || rigidbody._body == null || timeStep <= 0.0) return;
 
@@ -311,18 +311,18 @@ public sealed class WheelCollider : MonoBehaviour
         for (int i = 0; i < numberOfRays; i++)
         {
             //float distFwd = deltaFwdStart + i * deltaFwd - radius;
-            //float zOffset = radius * (1.0f - (float)Math.Cos(Math.PI / 2.0f * (distFwd / radius)));
+            //float zOffset = radius * (1.0f - (float)Maths.Cos(Maths.PI / 2.0f * (distFwd / radius)));
             //
             //JVector newOrigin = wheelRayOrigin + distFwd * wheelFwd + zOffset * wheelUp;
 
-            double distFwd = deltaFwdStart + i * deltaFwd - Radius;
-            double normalizedDist = distFwd / Radius;
-            double zOffset = Radius - Math.Sqrt(Math.Max(0, Radius * Radius - distFwd * distFwd));
+            float distFwd = deltaFwdStart + i * deltaFwd - Radius;
+            float normalizedDist = distFwd / Radius;
+            float zOffset = Radius - Maths.Sqrt(Maths.Max(0, Radius * Radius - distFwd * distFwd));
             JVector newOrigin = wheelRayOrigin + distFwd * wheelFwd + zOffset * wheelUp;
 
 
             bool result = world.DynamicTree.RayCast(newOrigin, wheelRayDelta,
-                RayCastFilter, null, out IDynamicTreeProxy shape, out JVector normal, out double frac);
+                RayCastFilter, null, out IDynamicTreeProxy shape, out JVector normal, out float frac);
 
             if (result && frac <= 1.0 && shape is RigidBodyShape rbs)
             {
@@ -346,7 +346,7 @@ public sealed class WheelCollider : MonoBehaviour
             JVector.NormalizeInPlace(ref groundNormal);
 
         displacement = rayLen * (1.0f - deepestFrac);
-        displacement = Math.Clamp(displacement, 0.0f, suspensionTravel);
+        displacement = Maths.Clamp(displacement, 0.0f, suspensionTravel);
 
         float displacementForceMag = displacement * suspensionStiffness;
 
@@ -396,20 +396,20 @@ public sealed class WheelCollider : MonoBehaviour
         float friction = sideFriction;
         float sideVel = (float)JVector.Dot(wheelPointVel, groundLeft);
 
-        if (Math.Abs(sideVel) > slipVel)
+        if (Maths.Abs(sideVel) > slipVel)
         {
             friction *= slipFactor;
         }
-        else if (Math.Abs(sideVel) > noslipVel)
+        else if (Maths.Abs(sideVel) > noslipVel)
         {
-            friction *= 1.0f - (1.0f - slipFactor) * (Math.Abs(sideVel) - noslipVel) / (slipVel - noslipVel);
+            friction *= 1.0f - (1.0f - slipFactor) * (Maths.Abs(sideVel) - noslipVel) / (slipVel - noslipVel);
         }
 
         if (sideVel < 0.0f)
             friction *= -1.0f;
 
-        if (Math.Abs(sideVel) < smallVel)
-            friction *= Math.Abs(sideVel) / smallVel;
+        if (Maths.Abs(sideVel) < smallVel)
+            friction *= Maths.Abs(sideVel) / smallVel;
 
         float sideForce = -friction * totalForceMag;
         extraForce = sideForce * groundLeft;
@@ -419,20 +419,20 @@ public sealed class WheelCollider : MonoBehaviour
         friction = forwardFriction;
         float fwdVel = (float)JVector.Dot(wheelPointVel, groundFwd);
 
-        if (Math.Abs(fwdVel) > slipVel)
+        if (Maths.Abs(fwdVel) > slipVel)
         {
             friction *= slipFactor;
         }
-        else if (Math.Abs(fwdVel) > noslipVel)
+        else if (Maths.Abs(fwdVel) > noslipVel)
         {
-            friction *= 1.0f - (1.0f - slipFactor) * (Math.Abs(fwdVel) - noslipVel) / (slipVel - noslipVel);
+            friction *= 1.0f - (1.0f - slipFactor) * (Maths.Abs(fwdVel) - noslipVel) / (slipVel - noslipVel);
         }
 
         if (fwdVel < 0.0f)
             friction *= -1.0f;
 
-        if (Math.Abs(fwdVel) < smallVel)
-            friction *= Math.Abs(fwdVel) / smallVel;
+        if (Maths.Abs(fwdVel) < smallVel)
+            friction *= Maths.Abs(fwdVel) / smallVel;
 
         float fwdForce = -friction * totalForceMag;
         extraForce = fwdForce * groundFwd;
@@ -491,6 +491,6 @@ public sealed class WheelCollider : MonoBehaviour
         var up = Transform.Up;
         var right = Transform.Right;
         int segments = 16;
-        Debug.DrawWireCircle(wheelCenter, new Double3(wheelLeft.X, wheelLeft.Y, wheelLeft.Z), radius, wheelColor, segments);
+        Debug.DrawWireCircle(wheelCenter, new Float3(wheelLeft.X, wheelLeft.Y, wheelLeft.Z), radius, wheelColor, segments);
     }
 }

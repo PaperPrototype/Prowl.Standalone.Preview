@@ -12,6 +12,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using Prowl.Runtime.Audio.Native;
+using Prowl.Vector;
 
 namespace Prowl.Runtime.Audio.Effects
 {
@@ -176,15 +177,15 @@ namespace Prowl.Runtime.Audio.Effects
 		{
 			get
 			{
-				double decay;
+				float decay;
 
 				if (mode >= FREEZE_MODE)
 				{
 					return 0; /* Freeze mode creates an infinite decay. */
 				}
 
-				decay = SILENCE_THRESHOLD / Math.Abs(-20.0 * Math.Log(1.0 / roomsize1));
-				decay *= (double)(combR[7].bufsize * 2);
+				decay = SILENCE_THRESHOLD / Maths.Abs(-20.0f * Maths.Log(1.0f / roomsize1));
+				decay *= (float)(combR[7].bufsize * 2);
 				return (UInt64)decay;
 			}
 		}
@@ -315,7 +316,7 @@ namespace Prowl.Runtime.Audio.Effects
 					* use in commercial applications.
 					*/
 
-					float tmp = 1.0f / (float)Math.Max(1 + input_width, 2);
+					float tmp = 1.0f / (float)Maths.Max(1 + input_width, 2);
 					float coef_mid = 1 * tmp;
 					float coef_side = input_width * tmp;
 
@@ -436,12 +437,12 @@ namespace Prowl.Runtime.Audio.Effects
 
 		private int GetScaledBufferSize(UInt32 sampleRate, UInt32 value)
 		{
-			double result = (double)sampleRate;
-			result /= 44100.0;
-			result = (double)value * result;
+			float result = (float)sampleRate;
+			result /= 44100.0f;
+			result = (float)value * result;
 			if (result < 1.0)
 			{
-				result = 1.0;
+				result = 1.0f;
 			}
 			return (int)result;
 		}

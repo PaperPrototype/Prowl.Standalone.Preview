@@ -7,17 +7,18 @@
 
 using System;
 using Prowl.Runtime.Audio;
+using Prowl.Vector;
 
 namespace Prowl.Runtime.Audio.Effects
 {
     public class ADSR
     {
-        public double a;
-        public double d;
-        public double s;
-        public double r;
+        public float a;
+        public float d;
+        public float s;
+        public float r;
 
-        public ADSR(double a, double d, double s, double r)
+        public ADSR(float a, float d, float s, float r)
         {
             this.a = a * AudioContext.SampleRate;
             this.d = d * AudioContext.SampleRate;
@@ -38,21 +39,21 @@ namespace Prowl.Runtime.Audio.Effects
         }
 
         private EnvelopeState state;
-        private double output;
-        private double attackRate;
-        private double decayRate;
-        private double releaseRate;
-        private double attackCoef;
-        private double decayCoef;
-        private double releaseCoef;
-        private double sustainLevel;
-        private double targetRatioA;
-        private double targetRatioDR;
-        private double attackBase;
-        private double decayBase;
-        private double releaseBase;
+        private float output;
+        private float attackRate;
+        private float decayRate;
+        private float releaseRate;
+        private float attackCoef;
+        private float decayCoef;
+        private float releaseCoef;
+        private float sustainLevel;
+        private float targetRatioA;
+        private float targetRatioDR;
+        private float attackBase;
+        private float decayBase;
+        private float releaseBase;
 
-        public double Attack
+        public float Attack
         {
             get
             {
@@ -64,7 +65,7 @@ namespace Prowl.Runtime.Audio.Effects
             }
         }
 
-        public double Decay
+        public float Decay
         {
             get
             {
@@ -76,7 +77,7 @@ namespace Prowl.Runtime.Audio.Effects
             }
         }
 
-        public double Sustain
+        public float Sustain
         {
             get
             {
@@ -88,7 +89,7 @@ namespace Prowl.Runtime.Audio.Effects
             }
         }
 
-        public double Release
+        public float Release
         {
             get
             {
@@ -108,7 +109,7 @@ namespace Prowl.Runtime.Audio.Effects
             }
         }
 
-        public double Output
+        public float Output
         {
             get
             {
@@ -123,9 +124,9 @@ namespace Prowl.Runtime.Audio.Effects
             SetAttackRate(0);
             SetDecayRate(0);
             SetReleaseRate(0);
-            SetSustainLevel(1.0);
+            SetSustainLevel(1.0f);
             SetTargetRatioA(0.3f);
-            SetTargetRatioDR(0.0001);
+            SetTargetRatioDR(0.0001f);
 
             state = EnvelopeState.Attack;
         }
@@ -139,12 +140,12 @@ namespace Prowl.Runtime.Audio.Effects
             SetReleaseRate(config.r);
             SetSustainLevel(config.s);
             SetTargetRatioA(0.3f);
-            SetTargetRatioDR(0.0001);
+            SetTargetRatioDR(0.0001f);
 
             state = EnvelopeState.Attack;
         }
 
-        public Envelope(double attackRate, double decayRate, double sustainLevel, double releaseRate)
+        public Envelope(float attackRate, float decayRate, float sustainLevel, float releaseRate)
         {
             Reset();
 
@@ -153,7 +154,7 @@ namespace Prowl.Runtime.Audio.Effects
             SetReleaseRate(releaseRate);
             SetSustainLevel(sustainLevel);
             SetTargetRatioA(0.3f);
-            SetTargetRatioDR(0.0001);
+            SetTargetRatioDR(0.0001f);
 
             state = EnvelopeState.Attack;
         }
@@ -169,8 +170,8 @@ namespace Prowl.Runtime.Audio.Effects
                 case EnvelopeState.Attack:
                 {
                     output = attackBase + output * attackCoef;
-                    if (output >= 1.0) {
-                        output = 1.0;
+                    if (output >= 1.0f) {
+                        output = 1.0f;
                         state = EnvelopeState.Decay;
                     }
                     break;
@@ -191,8 +192,8 @@ namespace Prowl.Runtime.Audio.Effects
                 case EnvelopeState.Release:
                 {
                     output = releaseBase + output * releaseCoef;
-                    if (output <= 0.0) {
-                        output = 0.0;
+                    if (output <= 0.0f) {
+                        output = 0.0f;
                         state = EnvelopeState.Idle;
                     }
                     break;
@@ -212,59 +213,59 @@ namespace Prowl.Runtime.Audio.Effects
         public void Reset()
         {
             state = EnvelopeState.Idle;
-            output = 0.0;
+            output = 0.0f;
         }
 
-        private void SetAttackRate(double rate)
+        private void SetAttackRate(float rate)
         {
             attackRate = rate;
             attackCoef = CalcCoef(rate, targetRatioA);
-            attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
+            attackBase = (1.0f + targetRatioA) * (1.0f - attackCoef);
         }
 
-        private void SetDecayRate(double rate)
+        private void SetDecayRate(float rate)
         {
             decayRate = rate;
             decayCoef = CalcCoef(rate, targetRatioDR);
-            decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
+            decayBase = (sustainLevel - targetRatioDR) * (1.0f - decayCoef);
         }
 
-        private void SetReleaseRate(double rate)
+        private void SetReleaseRate(float rate)
         {
             releaseRate = rate;
             releaseCoef = CalcCoef(rate, targetRatioDR);
-            releaseBase = -targetRatioDR * (1.0 - releaseCoef);
+            releaseBase = -targetRatioDR * (1.0f - releaseCoef);
         }
 
-        private double CalcCoef(double rate, double targetRatio)
+        private float CalcCoef(float rate, float targetRatio)
         {
-            return (rate <= 0) ? 0.0 : Math.Exp(-Math.Log((1.0 + targetRatio) / targetRatio) / rate);
+            return (rate <= 0) ? 0.0f : Maths.Exp(-Maths.Log((1.0f + targetRatio) / targetRatio) / rate);
         }
 
-        private void SetSustainLevel(double level)
+        private void SetSustainLevel(float level)
         {
             sustainLevel = level;
-            decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
+            decayBase = (sustainLevel - targetRatioDR) * (1.0f - decayCoef);
         }
 
-        private void SetTargetRatioA(double targetRatio)
+        private void SetTargetRatioA(float targetRatio)
         {
-            if (targetRatio < 0.000000001)
-                targetRatio = 0.000000001;  // -180 dB
+            if (targetRatio < 0.000000001f)
+                targetRatio = 0.000000001f;  // -180 dB
             targetRatioA = targetRatio;
             attackCoef = CalcCoef(attackRate, targetRatioA);
-            attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
+            attackBase = (1.0f + targetRatioA) * (1.0f - attackCoef);
         }
 
-        private void SetTargetRatioDR(double targetRatio)
+        private void SetTargetRatioDR(float targetRatio)
         {
-            if (targetRatio < 0.000000001)
-                targetRatio = 0.000000001;  // -180 dB
+            if (targetRatio < 0.000000001f)
+                targetRatio = 0.000000001f;  // -180 dB
             targetRatioDR = targetRatio;
             decayCoef = CalcCoef(decayRate, targetRatioDR);
             releaseCoef = CalcCoef(releaseRate, targetRatioDR);
-            decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
-            releaseBase = -targetRatioDR * (1.0 - releaseCoef);
+            decayBase = (sustainLevel - targetRatioDR) * (1.0f - decayCoef);
+            releaseBase = -targetRatioDR * (1.0f - releaseCoef);
         }
     }
 }

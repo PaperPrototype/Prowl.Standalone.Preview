@@ -34,7 +34,7 @@ public class TerrainComponent : MonoBehaviour
     public Texture Layer2Albedo;
     public Texture Layer3Albedo;
 
-    public double TerrainSize = 1024.0;    // World size of terrain
+    public float TerrainSize = 1024.0f;    // World size of terrain
     public float TerrainHeight = 100.0f;   // Maximum height
     public int MaxLODLevel = 4;            // Maximum LOD subdivision levels
     public int MeshResolution = 16;        // Resolution of base mesh (32x32)
@@ -59,7 +59,7 @@ public class TerrainComponent : MonoBehaviour
         if (_baseMesh == null)
             CreateBaseMesh();
         if (_quadtree == null)
-            _quadtree = new TerrainQuadtree(Double3.Zero, TerrainSize, MaxLODLevel);
+            _quadtree = new TerrainQuadtree(Float3.Zero, TerrainSize, MaxLODLevel);
     }
 
     public override void Update()
@@ -77,7 +77,7 @@ public class TerrainComponent : MonoBehaviour
         if (camera == null)
             return;
 
-        Double3 cameraPos = camera.Transform.Position - this.Transform.Position;
+        Float3 cameraPos = camera.Transform.Position - this.Transform.Position;
         // Project camera position onto terrain plane
         cameraPos.Y = 0;
 
@@ -113,7 +113,7 @@ public class TerrainComponent : MonoBehaviour
 
             _properties.SetVector("_TerrainOffset", this.Transform.Position);
 
-            var bounds = new AABB(this.Transform.Position + new Double3(0, -TerrainHeight * 2.0, 0), this.Transform.Position + new Double3(TerrainSize, TerrainHeight * 2.0, TerrainSize));
+            var bounds = new AABB(this.Transform.Position + new Float3(0, -TerrainHeight * 2.0f, 0), this.Transform.Position + new Float3(TerrainSize, TerrainHeight * 2.0f, TerrainSize));
 
             // Draw instanced terrain with properties (automatically batched for >1023 chunks)
             Graphics.DrawMeshInstanced(

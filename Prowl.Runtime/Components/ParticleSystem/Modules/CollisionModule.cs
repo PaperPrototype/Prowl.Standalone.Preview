@@ -99,10 +99,10 @@ public class CollisionModule : ParticleSystemModule
             Float3 worldVel = particle.Velocity;
             if (simulationSpace == SimulationSpace.Local && particleSystemTransform != null)
             {
-                var worldPosDouble = particleSystemTransform.LocalToWorldMatrix * new Double4((Double3)particle.Position, 1.0);
+                var worldPosDouble = particleSystemTransform.LocalToWorldMatrix * new Float4(particle.Position, 1.0f);
                 worldPos = new Float3((float)worldPosDouble.X, (float)worldPosDouble.Y, (float)worldPosDouble.Z);
 
-                var worldVelDouble = particleSystemTransform.LocalToWorldMatrix * new Double4((Double3)particle.Velocity, 0.0);
+                var worldVelDouble = particleSystemTransform.LocalToWorldMatrix * new Float4(particle.Velocity, 0.0f);
                 worldVel = new Float3((float)worldVelDouble.X, (float)worldVelDouble.Y, (float)worldVelDouble.Z);
             }
 
@@ -125,10 +125,10 @@ public class CollisionModule : ParticleSystemModule
                     // Transform back to local space if needed
                     if (simulationSpace == SimulationSpace.Local && particleSystemTransform != null)
                     {
-                        var localPosDouble = particleSystemTransform.WorldToLocalMatrix * new Double4((Double3)worldPos, 1.0);
+                        var localPosDouble = particleSystemTransform.WorldToLocalMatrix * new Float4(worldPos, 1.0f);
                         particle.Position = new Float3((float)localPosDouble.X, (float)localPosDouble.Y, (float)localPosDouble.Z);
 
-                        var localVelDouble = particleSystemTransform.WorldToLocalMatrix * new Double4((Double3)worldVel, 0.0);
+                        var localVelDouble = particleSystemTransform.WorldToLocalMatrix * new Float4(worldVel, 0.0f);
                         particle.Velocity = new Float3((float)localVelDouble.X, (float)localVelDouble.Y, (float)localVelDouble.Z);
                     }
                     else
@@ -295,10 +295,10 @@ public class CollisionModule : ParticleSystemModule
 
         if (simulationSpace == SimulationSpace.Local && particleSystemTransform != null)
         {
-            var worldPosDouble = particleSystemTransform.LocalToWorldMatrix * new Double4((Double3)particle.Position, 1.0);
+            var worldPosDouble = particleSystemTransform.LocalToWorldMatrix * new Float4(particle.Position, 1.0f);
             worldPos = new Float3((float)worldPosDouble.X, (float)worldPosDouble.Y, (float)worldPosDouble.Z);
 
-            var worldVelDouble = particleSystemTransform.LocalToWorldMatrix * new Double4((Double3)particle.Velocity, 0.0);
+            var worldVelDouble = particleSystemTransform.LocalToWorldMatrix * new Float4(particle.Velocity, 0.0f);
             worldVel = new Float3((float)worldVelDouble.X, (float)worldVelDouble.Y, (float)worldVelDouble.Z);
         }
 
@@ -308,10 +308,10 @@ public class CollisionModule : ParticleSystemModule
         float distance = Float3.Distance(currentPos, nextPos) + ParticleRadius;
 
         // Clamp distance to max
-        distance = Math.Min(distance, MaxCollisionDistance);
+        distance = Maths.Min(distance, MaxCollisionDistance);
 
         // Raycast from current to next position
-        if (physics.Raycast((Double3)currentPos, (Double3)direction, out RaycastHit hit, distance, CollidesWith))
+        if (physics.Raycast((Float3)currentPos, (Float3)direction, out RaycastHit hit, distance, CollidesWith))
         {
             // Collision detected!
             Float3 hitPoint = (Float3)hit.Point;
@@ -328,10 +328,10 @@ public class CollisionModule : ParticleSystemModule
             // Transform back to local space if needed
             if (simulationSpace == SimulationSpace.Local && particleSystemTransform != null)
             {
-                var localPosDouble = particleSystemTransform.WorldToLocalMatrix * new Double4((Double3)worldPos, 1.0);
+                var localPosDouble = particleSystemTransform.WorldToLocalMatrix * new Float4(worldPos, 1.0f);
                 particle.Position = new Float3((float)localPosDouble.X, (float)localPosDouble.Y, (float)localPosDouble.Z);
 
-                var localVelDouble = particleSystemTransform.WorldToLocalMatrix * new Double4((Double3)worldVel, 0.0);
+                var localVelDouble = particleSystemTransform.WorldToLocalMatrix * new Float4(worldVel, 0.0f);
                 particle.Velocity = new Float3((float)localVelDouble.X, (float)localVelDouble.Y, (float)localVelDouble.Z);
             }
             else
@@ -362,9 +362,9 @@ public class CollisionModule : ParticleSystemModule
     {
         float voxelSize = customVoxelSize > 0 ? customVoxelSize : VoxelSize;
         return new Int3(
-            (int)Math.Floor(worldPos.X / voxelSize),
-            (int)Math.Floor(worldPos.Y / voxelSize),
-            (int)Math.Floor(worldPos.Z / voxelSize)
+            (int)Maths.Floor(worldPos.X / voxelSize),
+            (int)Maths.Floor(worldPos.Y / voxelSize),
+            (int)Maths.Floor(worldPos.Z / voxelSize)
         );
     }
 }

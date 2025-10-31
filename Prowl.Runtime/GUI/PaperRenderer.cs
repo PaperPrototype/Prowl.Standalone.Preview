@@ -10,7 +10,6 @@ using Prowl.Runtime.GraphicsBackend;
 using Prowl.Runtime.GraphicsBackend.Primitives;
 using Prowl.Runtime.Resources;
 using Prowl.Vector;
-using Prowl.Vector.Geometry;
 
 namespace Prowl.Runtime.GUI;
 
@@ -24,7 +23,7 @@ public class PaperRenderer : ICanvasRenderer
     private Texture2D _defaultTexture;
 
     // View properties
-    private Double4x4 _projection;
+    private Float4x4 _projection;
 
     public void Initialize(int width, int height)
     {
@@ -56,7 +55,7 @@ public class PaperRenderer : ICanvasRenderer
 
     public void UpdateProjection(int width, int height)
     {
-        _projection = Double4x4.CreateOrthoOffCenter(0, width, height, 0, -1, 1);
+        _projection = Float4x4.CreateOrthoOffCenter(0, width, height, 0, -1, 1);
     }
 
     public void Cleanup()
@@ -170,23 +169,23 @@ public class PaperRenderer : ICanvasRenderer
             Graphics.Device.SetUniformTexture(_shaderProgram, "texture0", 0, texture.Handle);
 
             // Set scissor rectangle
-            drawCall.GetScissor(out Double4x4 scissor, out Double2 extent);
-            Graphics.Device.SetUniformMatrix(_shaderProgram, "scissorMat", false, (Float4x4)scissor);
-            Graphics.Device.SetUniformV2(_shaderProgram, "scissorExt", (Float2)extent);
+            drawCall.GetScissor(out Float4x4 scissor, out Float2 extent);
+            Graphics.Device.SetUniformMatrix(_shaderProgram, "scissorMat", false, scissor);
+            Graphics.Device.SetUniformV2(_shaderProgram, "scissorExt", extent);
 
             // Set brush parameters
-            Graphics.Device.SetUniformMatrix(_shaderProgram, "brushMat", false, (Float4x4)drawCall.Brush.BrushMatrix);
+            Graphics.Device.SetUniformMatrix(_shaderProgram, "brushMat", false, drawCall.Brush.BrushMatrix);
             Graphics.Device.SetUniformI(_shaderProgram, "brushType", (int)drawCall.Brush.Type);
             Graphics.Device.SetUniformV4(_shaderProgram, "brushColor1", ToVector4(drawCall.Brush.Color1));
             Graphics.Device.SetUniformV4(_shaderProgram, "brushColor2", ToVector4(drawCall.Brush.Color2));
             Graphics.Device.SetUniformV4(_shaderProgram, "brushParams", new Float4(
-                (float)drawCall.Brush.Point1.X,
-                (float)drawCall.Brush.Point1.Y,
-                (float)drawCall.Brush.Point2.X,
-                (float)drawCall.Brush.Point2.Y));
+                drawCall.Brush.Point1.X,
+                drawCall.Brush.Point1.Y,
+                drawCall.Brush.Point2.X,
+                drawCall.Brush.Point2.Y));
             Graphics.Device.SetUniformV2(_shaderProgram, "brushParams2", new Float2(
-                (float)drawCall.Brush.CornerRadii,
-                (float)drawCall.Brush.Feather));
+                drawCall.Brush.CornerRadii,
+                drawCall.Brush.Feather));
 
             // Draw the elements
             Graphics.Device.DrawIndexed(

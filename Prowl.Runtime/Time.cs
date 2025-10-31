@@ -9,12 +9,12 @@ namespace Prowl.Runtime;
 
 public class TimeData
 {
-    public double UnscaledDeltaTime;
-    public double UnscaledTotalTime;
-    public double DeltaTime;
-    public double Time;
-    public double SmoothUnscaledDeltaTime;
-    public double SmoothDeltaTime;
+    public float UnscaledDeltaTime;
+    public float UnscaledTotalTime;
+    public float DeltaTime;
+    public float Time;
+    public float SmoothUnscaledDeltaTime;
+    public float SmoothDeltaTime;
 
     private Stopwatch _stopwatch;
 
@@ -22,15 +22,14 @@ public class TimeData
 
     public long FrameCount;
 
-    public double TimeScale = 1f;
-    public float TimeScaleF => (float)TimeScale;
-    public double TimeSmoothFactor = .25f;
+    public float TimeScale = 1f;
+    public float TimeSmoothFactor = .25f;
 
     public void Update()
     {
         _stopwatch ??= Stopwatch.StartNew();
 
-        double dt = _stopwatch.Elapsed.TotalMilliseconds / 1000.0;
+        float dt = (float)_stopwatch.Elapsed.TotalMilliseconds / 1000.0f;
 
         FrameCount++;
 
@@ -54,32 +53,25 @@ public static class Time
 
     public static TimeData CurrentTime => TimeStack.Peek();
 
-    public static double UnscaledDeltaTime => CurrentTime.UnscaledDeltaTime;
-    public static double UnscaledTotalTime => CurrentTime.UnscaledTotalTime;
+    public static float UnscaledDeltaTime => CurrentTime.UnscaledDeltaTime;
+    public static float UnscaledTotalTime => CurrentTime.UnscaledTotalTime;
 
-    public static double DeltaTime => CurrentTime.DeltaTime;
-    public static float DeltaTimeF => (float)DeltaTime;
-    public static double FixedDeltaTime => 1.0 / 60.0; // 60 FPS fixed timestep
-    public static double TimeSinceStartup => CurrentTime.Time;
+    public static float DeltaTime => CurrentTime.DeltaTime;
+    public static float FixedDeltaTime => 1.0f / 60.0f; // 60 FPS fixed timestep
+    public static float TimeSinceStartup => CurrentTime.Time;
 
-    public static double SmoothUnscaledDeltaTime => CurrentTime.SmoothUnscaledDeltaTime;
-    public static double SmoothDeltaTime => CurrentTime.SmoothDeltaTime;
+    public static float SmoothUnscaledDeltaTime => CurrentTime.SmoothUnscaledDeltaTime;
+    public static float SmoothDeltaTime => CurrentTime.SmoothDeltaTime;
 
     public static long FrameCount => CurrentTime.FrameCount;
 
-    public static double TimeScale
+    public static float TimeScale
     {
         get => CurrentTime.TimeScale;
         set => CurrentTime.TimeScale = value;
     }
 
-    public static float TimeScaleF
-    {
-        get => (float)TimeScale;
-        set => TimeScale = value;
-    }
-
-    public static double TimeSmoothFactor
+    public static float TimeSmoothFactor
     {
         get => CurrentTime.TimeSmoothFactor;
         set => CurrentTime.TimeSmoothFactor = value;

@@ -22,13 +22,13 @@ public class PointLight : Light
     }
 
     public Resolution ShadowResolution = Resolution._256;
-    public double Range = 10.0;
+    public float Range = 10.0f;
 
     private Material? _lightMaterial;
 
     // Shadow cubemap data - 6 faces stored in a 3x2 grid in the shadow atlas
-    private Double4[] _shadowFaceParams = new Double4[6]; // xy = atlas pos, z = face size, w = far plane
-    private Double4x4[] _shadowMatrices = new Double4x4[6]; // View-projection for each face
+    private Float4[] _shadowFaceParams = new Float4[6]; // xy = atlas pos, z = face size, w = far plane
+    private Float4x4[] _shadowMatrices = new Float4x4[6]; // View-projection for each face
     private bool _shadowsValid = false;
 
     public override void Update()
@@ -43,7 +43,7 @@ public class PointLight : Light
 
     public override LightType GetLightType() => LightType.Point;
 
-    public override void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
+    public override void RenderShadows(RenderPipeline pipeline, Float3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
     {
         if (!DoCastShadows())
         {
@@ -52,7 +52,7 @@ public class PointLight : Light
         }
 
         int res = (int)ShadowResolution;
-        Double3 lightPos = Transform.Position;
+        Float3 lightPos = Transform.Position;
 
         // Reserve 3x2 grid in shadow atlas for 6 cubemap faces
         // Layout: [+X][-X][+Y]
@@ -72,18 +72,18 @@ public class PointLight : Light
 
         // Define the 6 cube faces with their orientations
         // Each face needs: target direction and up vector
-        (Double3 forward, Double3 up)[] faceOrientations = new[]
+        (Float3 forward, Float3 up)[] faceOrientations = new[]
         {
-            (Double3.UnitX,  -Double3.UnitY), // +X (right)
-            (-Double3.UnitX, -Double3.UnitY), // -X (left)
-            (Double3.UnitY,   Double3.UnitZ), // +Y (up)
-            (-Double3.UnitY, -Double3.UnitZ), // -Y (down)
-            (Double3.UnitZ,  -Double3.UnitY), // +Z (forward)
-            (-Double3.UnitZ, -Double3.UnitY), // -Z (back)
+            (Float3.UnitX,  -Float3.UnitY), // +X (right)
+            (-Float3.UnitX, -Float3.UnitY), // -X (left)
+            (Float3.UnitY,   Float3.UnitZ), // +Y (up)
+            (-Float3.UnitY, -Float3.UnitZ), // -Y (down)
+            (Float3.UnitZ,  -Float3.UnitY), // +Z (forward)
+            (-Float3.UnitZ, -Float3.UnitY), // -Z (back)
         };
 
         // Create perspective projection for all faces (90 degree FOV for cubemap)
-        Double4x4 projection = Double4x4.CreatePerspectiveFov(Maths.PI / 2.0, 1.0, 0.1, Range);
+        Float4x4 projection = Float4x4.CreatePerspectiveFov(Maths.PI / 2.0f, 1.0f, 0.1f, Range);
 
         // Render each face
         for (int faceIndex = 0; faceIndex < 6; faceIndex++)
@@ -98,13 +98,13 @@ public class PointLight : Light
             Graphics.Device.Viewport(viewportX, viewportY, (uint)res, (uint)res);
 
             // Create view matrix for this face
-            (Double3 forward, Double3 up) = faceOrientations[faceIndex];
-            Double4x4 view = Double4x4.CreateLookTo(lightPos, forward, up);
+            (Float3 forward, Float3 up) = faceOrientations[faceIndex];
+            Float4x4 view = Float4x4.CreateLookTo(lightPos, forward, up);
 
             Frustum frustum = Frustum.FromMatrix(projection * view);
 
             // Calculate viewer data for this face
-            Double3 right = Double3.Normalize(Double3.Cross(up, forward));
+            Float3 right = Float3.Normalize(Float3.Cross(up, forward));
             ViewerData viewerData = new ViewerData(lightPos, forward, right, up);
 
             // Cull and render shadow casters for this face
@@ -114,7 +114,7 @@ public class PointLight : Light
 
             // Store face data for shader
             _shadowMatrices[faceIndex] = projection * view;
-            _shadowFaceParams[faceIndex] = new Double4(viewportX, viewportY, res, Range);
+            _shadowFaceParams[faceIndex] = new Float4(viewportX, viewportY, res, Range);
         }
 
         _shadowsValid = true;
@@ -162,8 +162,8 @@ public class PointLight : Light
         }
 
         // Create model matrix - scale sphere by range and position at light location
-        Double4x4 model = this.Transform.LocalToWorldMatrix;
-        Double4x4 scale = Double4x4.CreateScale(new Double3(Range, Range, Range));
+        Float4x4 model = this.Transform.LocalToWorldMatrix;
+        Float4x4 scale = Float4x4.CreateScale(new Float3(Range, Range, Range));
         model = model * scale;
 
         // Set transform matrices

@@ -17,16 +17,16 @@ namespace Prowl.Runtime;
 /// </summary>
 public class BallSocketConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 anchor = Double3.Zero;
-    [SerializeField] private double softness = 0.0;
-    [SerializeField] private double biasFactor = 0.2;
+    [SerializeField] private Float3 anchor = Float3.Zero;
+    [SerializeField] private float softness = 0.0f;
+    [SerializeField] private float biasFactor = 0.2f;
 
     private BallSocket constraint;
 
     /// <summary>
     /// The anchor point in local space of this rigidbody.
     /// </summary>
-    public Double3 Anchor
+    public Float3 Anchor
     {
         get => anchor;
         set
@@ -39,7 +39,7 @@ public class BallSocketConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the constraint. Higher values make the constraint softer.
     /// </summary>
-    public double Softness
+    public float Softness
     {
         get => softness;
         set
@@ -52,7 +52,7 @@ public class BallSocketConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for error correction. Higher values correct errors faster.
     /// </summary>
-    public double BiasFactor
+    public float BiasFactor
     {
         get => biasFactor;
         set
@@ -65,13 +65,13 @@ public class BallSocketConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public Double3 Impulse
+    public Float3 Impulse
     {
         get
         {
-            if (constraint == null) return Double3.Zero;
+            if (constraint == null) return Float3.Zero;
             Jitter2.LinearMath.JVector impulse = constraint.Impulse;
-            return new Double3(impulse.X, impulse.Y, impulse.Z);
+            return new Float3(impulse.X, impulse.Y, impulse.Z);
         }
     }
 

@@ -21,27 +21,27 @@ public struct ShapeCastHit
     /// The fraction/lambda along the sweep direction where the hit occurred (0 = start, 1 = end of sweep).
     /// Note: This is not a distance, but a normalized value between 0 and 1.
     /// </summary>
-    public double Fraction;
+    public float Fraction;
 
     /// <summary>
     /// The amount of penetration at the hit point. Only valid for overlap casts.
     /// </summary>
-    public double Penetration;
+    public float Penetration;
 
     /// <summary>
     /// The normal of the surface the shape hit.
     /// </summary>
-    public Double3 Normal;
+    public Float3 Normal;
 
     /// <summary>
     /// The point in world space on the casting shape where it hit the collider (at t=0).
     /// </summary>
-    public Double3 Point;
+    public Float3 Point;
 
     /// <summary>
     /// The point in world space on the hit collider where the cast shape touched it (at t=0).
     /// </summary>
-    public Double3 HitPoint;
+    public Float3 HitPoint;
 
     /// <summary>
     /// The Rigidbody3D of the collider that was hit.
@@ -64,13 +64,13 @@ public struct ShapeCastHit
     /// <param name="hitColor">Color to draw the hit visualization.</param>
     /// <param name="normalColor">Color to draw the hit normal.</param>
     /// <param name="normalLength">Length of the normal arrow.</param>
-    public readonly void DrawGizmos(Color hitColor, Color normalColor, double normalLength = 1.0)
+    public readonly void DrawGizmos(Color hitColor, Color normalColor, float normalLength = 1.0f)
     {
         if (!Hit) return;
 
         // Draw hit point as a small sphere
-        Debug.DrawWireSphere(Point, 0.1, hitColor, 8);
-        Debug.DrawWireSphere(HitPoint, 0.1, hitColor, 8);
+        Debug.DrawWireSphere(Point, 0.1f, hitColor, 8);
+        Debug.DrawWireSphere(HitPoint, 0.1f, hitColor, 8);
 
         // Draw line between the two hit points
         Debug.DrawLine(Point, HitPoint, hitColor);
@@ -84,6 +84,6 @@ public struct ShapeCastHit
     /// </summary>
     public readonly void DrawGizmos()
     {
-        DrawGizmos(new Color(255, 255, 0, 200), new Color(255, 0, 0, 255), 1.0);
+        DrawGizmos(new Color(255, 255, 0, 200), new Color(255, 0, 0, 255), 1.0f);
     }
 }

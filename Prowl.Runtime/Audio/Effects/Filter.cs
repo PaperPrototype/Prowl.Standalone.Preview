@@ -3,6 +3,7 @@
 
 using System;
 using Prowl.Runtime.Audio.Native;
+using Prowl.Vector;
 
 namespace Prowl.Runtime.Audio.Effects
 {
@@ -161,7 +162,7 @@ namespace Prowl.Runtime.Audio.Effects
 
         private static void CalculateLowpassCoefficients(Filter filter) 
         {
-            float k = (float)Math.Tan(Math.PI * filter.frequency / filter.sampleRate);
+            float k = (float)Maths.Tan(Maths.PI * filter.frequency / filter.sampleRate);
             float norm = 1.0f / (1.0f + k / filter.q + k * k);
             filter.a0 = k * k * norm;
             filter.a1 = 2.0f * filter.a0;
@@ -172,7 +173,7 @@ namespace Prowl.Runtime.Audio.Effects
 
         private static void CalculateHighpassCoefficients(Filter filter) 
         {
-            float k = (float)Math.Tan(Math.PI * filter.frequency / filter.sampleRate);
+            float k = (float)Maths.Tan(Maths.PI * filter.frequency / filter.sampleRate);
             float norm = 1.0f / (1.0f + k / filter.q + k * k);
             filter.a0 = 1.0f * norm;
             filter.a1 = -2.0f * filter.a0;
@@ -183,7 +184,7 @@ namespace Prowl.Runtime.Audio.Effects
 
         private static void CalculateBandpassCoefficients(Filter filter) 
         {
-            float k = (float)Math.Tan(Math.PI * filter.frequency / filter.sampleRate);
+            float k = (float)Maths.Tan(Maths.PI * filter.frequency / filter.sampleRate);
             float norm = 1.0f / (1.0f + k / filter.q + k * k);
             filter.a0 = k / filter.q * norm;
             filter.a1 = 0.0f;
@@ -195,57 +196,57 @@ namespace Prowl.Runtime.Audio.Effects
         private static void CalculateLowshelfCoefficients(Filter filter) 
         {
             const float sqrt2 = 1.4142135623730951f;
-            float k = (float)Math.Tan(Math.PI * filter.frequency / filter.sampleRate);
-            float v = (float)Math.Pow(10.0f, Math.Abs(filter.gainDB) / 20.0f);
+            float k = (float)Maths.Tan(Maths.PI * filter.frequency / filter.sampleRate);
+            float v = (float)Maths.Pow(10.0f, Maths.Abs(filter.gainDB) / 20.0f);
             float norm;
             if (filter.gainDB >= 0.0f) {
                 // boost
                 norm = 1.0f / (1.0f + sqrt2 * k + k * k);
-                filter.a0 = (1.0f + (float)Math.Sqrt(2.0f * v) * k + v * k * k) * norm;
+                filter.a0 = (1.0f + (float)Maths.Sqrt(2.0f * v) * k + v * k * k) * norm;
                 filter.a1 = 2.0f * (v * k * k - 1.0f) * norm;
-                filter.a2 = (1.0f - (float)Math.Sqrt(2.0f * v) * k + v * k * k) * norm;
+                filter.a2 = (1.0f - (float)Maths.Sqrt(2.0f * v) * k + v * k * k) * norm;
                 filter.b1 = 2.0f * (k * k - 1.0f) * norm;
                 filter.b2 = (1.0f - sqrt2 * k + k * k) * norm;
             } else {
                 // cut
-                norm = 1.0f / (1.0f + (float)Math.Sqrt(2.0f * v) * k + v * k * k);
+                norm = 1.0f / (1.0f + (float)Maths.Sqrt(2.0f * v) * k + v * k * k);
                 filter.a0 = (1.0f + sqrt2 * k + k * k) * norm;
                 filter.a1 = 2.0f * (k * k - 1.0f) * norm;
                 filter.a2 = (1.0f - sqrt2 * k + k * k) * norm;
                 filter.b1 = 2.0f * (v * k * k - 1.0f) * norm;
-                filter.b2 = (1.0f - (float)Math.Sqrt(2.0f * v) * k + v * k * k) * norm;
+                filter.b2 = (1.0f - (float)Maths.Sqrt(2.0f * v) * k + v * k * k) * norm;
             }
         }
 
         private static void CalculateHighshelfCoefficients(Filter filter) 
         {
             const float sqrt2 = 1.4142135623730951f;
-            float k = (float)Math.Tan(Math.PI * filter.frequency / filter.sampleRate);
-            float v = (float)Math.Pow(10.0f, Math.Abs(filter.gainDB) / 20.0f);
+            float k = (float)Maths.Tan(Maths.PI * filter.frequency / filter.sampleRate);
+            float v = (float)Maths.Pow(10.0f, Maths.Abs(filter.gainDB) / 20.0f);
             float norm = 0.0f;
             if (filter.gainDB >= 0) {
                 // boost
                 norm = 1.0f / (1.0f + sqrt2 * k + k * k);
-                filter.a0 = (v + (float)Math.Sqrt(2.0f * v) * k + k * k) * norm;
+                filter.a0 = (v + (float)Maths.Sqrt(2.0f * v) * k + k * k) * norm;
                 filter.a1 = 2.0f * (k * k - v) * norm;
-                filter.a2 = (v - (float)Math.Sqrt(2.0f * v) * k + k * k) * norm;
+                filter.a2 = (v - (float)Maths.Sqrt(2.0f * v) * k + k * k) * norm;
                 filter.b1 = 2.0f * (k * k - 1.0f) * norm;
                 filter.b2 = (1.0f - sqrt2 * k + k * k) * norm;
             } else {
                 // cut
-                norm = 1.0f / (v + (float)Math.Sqrt(2.0f * v) * k + k * k);
+                norm = 1.0f / (v + (float)Maths.Sqrt(2.0f * v) * k + k * k);
                 filter.a0 = (1.0f + sqrt2 * k + k * k) * norm;
                 filter.a1 = 2.0f * (k * k - 1.0f) * norm;
                 filter.a2 = (1.0f - sqrt2 * k + k * k) * norm;
                 filter.b1 = 2.0f * (k * k - v) * norm;
-                filter.b2 = (v - (float)Math.Sqrt(2.0f * v) * k + k * k) * norm;
+                filter.b2 = (v - (float)Maths.Sqrt(2.0f * v) * k + k * k) * norm;
             }
         }
 
         private static void CalculatePeakCoefficients(Filter filter) 
         {
-            float v = (float)Math.Pow(10, Math.Abs(filter.gainDB) / 20.0f);
-            float k = (float)Math.Tan(Math.PI * filter.frequency / filter.sampleRate);
+            float v = (float)Maths.Pow(10, Maths.Abs(filter.gainDB) / 20.0f);
+            float k = (float)Maths.Tan(Maths.PI * filter.frequency / filter.sampleRate);
             float q = filter.q;
             float norm = 0;
 
@@ -270,7 +271,7 @@ namespace Prowl.Runtime.Audio.Effects
 
         private static void CalculateNotchCoefficients(Filter filter) 
         {
-            float k = (float)Math.Tan(Math.PI * filter.frequency / filter.sampleRate);
+            float k = (float)Maths.Tan(Maths.PI * filter.frequency / filter.sampleRate);
             float norm = 1.0f / (1.0f + k / filter.q + k * k);
             filter.a0 = (1.0f + k * k) * norm;
             filter.a1 = 2.0f * (k * k - 1.0f) * norm;

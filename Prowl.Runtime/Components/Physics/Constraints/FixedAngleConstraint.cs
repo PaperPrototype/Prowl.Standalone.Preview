@@ -16,15 +16,15 @@ namespace Prowl.Runtime;
 /// </summary>
 public class FixedAngleConstraint : PhysicsConstraint
 {
-    [SerializeField] private double softness = 0.001;
-    [SerializeField] private double biasFactor = 0.2;
+    [SerializeField] private float softness = 0.001f;
+    [SerializeField] private float biasFactor = 0.2f;
 
     private FixedAngle constraint;
 
     /// <summary>
     /// Softness of the constraint. Higher values make the constraint softer.
     /// </summary>
-    public double Softness
+    public float Softness
     {
         get => softness;
         set
@@ -37,7 +37,7 @@ public class FixedAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for error correction. Higher values correct errors faster.
     /// </summary>
-    public double BiasFactor
+    public float BiasFactor
     {
         get => biasFactor;
         set
@@ -50,13 +50,13 @@ public class FixedAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public Double3 Impulse
+    public Float3 Impulse
     {
         get
         {
-            if (constraint == null) return Double3.Zero;
+            if (constraint == null) return Float3.Zero;
             Jitter2.LinearMath.JVector impulse = constraint.Impulse;
-            return new Double3(impulse.X, impulse.Y, impulse.Z);
+            return new Float3(impulse.X, impulse.Y, impulse.Z);
         }
     }
 

@@ -61,7 +61,7 @@ public sealed class GTAOEffect : ImageEffect
         _mat.SetInt("_DirectionSamples", DirectionSamples);
         _mat.SetFloat("_Radius", Radius);
         _mat.SetFloat("_Intensity", Intensity);
-        _mat.SetVector("_NoiseScale", new Double2(width / 4.0, height / 4.0)); // Tile noise pattern
+        _mat.SetVector("_NoiseScale", new Float2(width / 4.0f, height / 4.0f)); // Tile noise pattern
         RenderPipeline.Blit(context.SceneColor, aoRT, _mat, 0);
 
         // Pass 1: Blur Horizontal (if blur is enabled)
@@ -69,12 +69,12 @@ public sealed class GTAOEffect : ImageEffect
         {
             RenderTexture blurTempRT = RenderTexture.GetTemporaryRT(width, height, false, [TextureImageFormat.Color4b]);
 
-            _mat.SetVector("_BlurDirection", new Double2(1.0, 0.0));
+            _mat.SetVector("_BlurDirection", new Float2(1.0f, 0.0f));
             _mat.SetFloat("_BlurRadius", BlurRadius);
             RenderPipeline.Blit(aoRT, blurTempRT, _mat, 1);
 
             // Pass 1: Blur Vertical
-            _mat.SetVector("_BlurDirection", new Double2(0.0, 1.0));
+            _mat.SetVector("_BlurDirection", new Float2(0.0f, 1.0f));
             _mat.SetFloat("_BlurRadius", BlurRadius);
             RenderPipeline.Blit(blurTempRT, aoRT, _mat, 1);
 

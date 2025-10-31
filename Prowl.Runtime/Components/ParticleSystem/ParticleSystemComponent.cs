@@ -82,7 +82,7 @@ public class ParticleSystemComponent : MonoBehaviour
         if (!_isPlaying)
             return;
 
-        float deltaTime = Time.DeltaTimeF;
+        float deltaTime = Time.DeltaTime;
 
         // Update time
         _time += deltaTime;
@@ -256,13 +256,13 @@ public class ParticleSystemComponent : MonoBehaviour
     private Float3 RandomDirection()
     {
         // Random direction on unit sphere
-        float theta = (float)(_random.NextDouble() * Math.PI * 2);
-        float phi = (float)(Math.Acos(2.0 * _random.NextDouble() - 1.0));
+        float theta = (float)(_random.NextDouble() * Maths.PI * 2);
+        float phi = (float)(Maths.Acos(2.0 * _random.NextDouble() - 1.0));
 
         return new Float3(
-            (float)(Math.Sin(phi) * Math.Cos(theta)),
-            (float)(Math.Sin(phi) * Math.Sin(theta)),
-            (float)Math.Cos(phi)
+            (float)(Maths.Sin(phi) * Maths.Cos(theta)),
+            (float)(Maths.Sin(phi) * Maths.Sin(theta)),
+            (float)Maths.Cos(phi)
         );
     }
 
@@ -282,7 +282,7 @@ public class ParticleSystemComponent : MonoBehaviour
 
         while (elapsed < prewarmTime)
         {
-            float deltaTime = Math.Min(step, prewarmTime - elapsed);
+            float deltaTime = Maths.Min(step, prewarmTime - elapsed);
 
             // Emit particles
             int emitCount = Emission.CalculateEmitCount(deltaTime, elapsed / Duration, _random);
@@ -371,8 +371,8 @@ public class ParticleSystemComponent : MonoBehaviour
         }
 
         // Initialize bounds tracking
-        Double3 min = new Double3(double.MaxValue);
-        Double3 max = new Double3(double.MinValue);
+        Float3 min = new Float3(float.MaxValue);
+        Float3 max = new Float3(float.MinValue);
 
         // Fill separate arrays from particles
         for (int i = 0; i < _particles.Count; i++)
@@ -387,23 +387,23 @@ public class ParticleSystemComponent : MonoBehaviour
             // Transform to world space if in local simulation space
             if (SimulationSpace == SimulationSpace.Local)
             {
-                var worldPos = Transform.LocalToWorldMatrix * new Double4((Double3)position, 1.0);
-                position = new Float3((float)worldPos.X, (float)worldPos.Y, (float)worldPos.Z);
+                var worldPos = Transform.LocalToWorldMatrix * new Float4(position, 1.0f);
+                position = new Float3(worldPos.X, worldPos.Y, worldPos.Z);
             }
 
             // Update bounds - expand by particle size (radius = size * 0.5)
-            double radius = size * 0.5;
-            Double3 particleMin = new Double3(position.X - radius, position.Y - radius, position.Z - radius);
-            Double3 particleMax = new Double3(position.X + radius, position.Y + radius, position.Z + radius);
-            min = new Double3(
-                System.Math.Min(min.X, particleMin.X),
-                System.Math.Min(min.Y, particleMin.Y),
-                System.Math.Min(min.Z, particleMin.Z)
+            float radius = size * 0.5f;
+            Float3 particleMin = new Float3(position.X - radius, position.Y - radius, position.Z - radius);
+            Float3 particleMax = new Float3(position.X + radius, position.Y + radius, position.Z + radius);
+            min = new Float3(
+                Maths.Min(min.X, particleMin.X),
+                Maths.Min(min.Y, particleMin.Y),
+                Maths.Min(min.Z, particleMin.Z)
             );
-            max = new Double3(
-                System.Math.Max(max.X, particleMax.X),
-                System.Math.Max(max.Y, particleMax.Y),
-                System.Math.Max(max.Z, particleMax.Z)
+            max = new Float3(
+                Maths.Max(max.X, particleMax.X),
+                Maths.Max(max.Y, particleMax.Y),
+                Maths.Max(max.Z, particleMax.Z)
             );
 
             // Build transformation matrix: Translation * Rotation * Scale
@@ -411,8 +411,8 @@ public class ParticleSystemComponent : MonoBehaviour
             Float4x4 translation = Float4x4.CreateTranslation(position);
 
             // Create rotation matrix around Z axis manually
-            float cos = (float)Math.Cos(rotation);
-            float sin = (float)Math.Sin(rotation);
+            float cos = (float)Maths.Cos(rotation);
+            float sin = (float)Maths.Sin(rotation);
             Float4x4 rotationMat = new Float4x4(
                 new Float4(cos, sin, 0, 0),
                 new Float4(-sin, cos, 0, 0),
@@ -427,14 +427,14 @@ public class ParticleSystemComponent : MonoBehaviour
             Float4 uvTileInfo = UV.Enabled ? UV.GetUVTileInfo(particle) : new Float4(0, 0, 1, 1);
 
             // Store color and custom data
-            _colors[i] = InstanceData.ColorToFloat4(particle.Color);
+            _colors[i] = particle.Color;
 
             // CustomData: X=normalized lifetime, Y=UV offsetX, Z=UV offsetY, W=UV scale
             _customData[i] = new Float4(particle.NormalizedLifetime, uvTileInfo.X, uvTileInfo.Y, uvTileInfo.Z);
         }
 
         // Store computed bounds
-        _bounds = _particles.Count > 0 ? new AABB(min, max) : new AABB(Double3.Zero, Double3.Zero);
+        _bounds = _particles.Count > 0 ? new AABB(min, max) : new AABB(Float3.Zero, Float3.Zero);
     }
 
     #endregion

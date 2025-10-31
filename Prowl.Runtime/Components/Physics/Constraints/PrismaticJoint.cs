@@ -16,21 +16,21 @@ namespace Prowl.Runtime;
 /// </summary>
 public class PrismaticJoint : PhysicsJoint
 {
-    [SerializeField] private Double3 anchor = Double3.Zero;
-    [SerializeField] private Double3 axis = Double3.UnitX;
-    [SerializeField] private double minDistance = double.NegativeInfinity;
-    [SerializeField] private double maxDistance = double.PositiveInfinity;
+    [SerializeField] private Float3 anchor = Float3.Zero;
+    [SerializeField] private Float3 axis = Float3.UnitX;
+    [SerializeField] private float minDistance = float.NegativeInfinity;
+    [SerializeField] private float maxDistance = float.PositiveInfinity;
     [SerializeField] private bool pinned = true;
     [SerializeField] private bool hasMotor = false;
-    [SerializeField] private double motorTargetVelocity = 0.0;
-    [SerializeField] private double motorMaxForce = 100.0;
+    [SerializeField] private float motorTargetVelocity = 0.0f;
+    [SerializeField] private float motorMaxForce = 100.0f;
 
     private Jitter2.Dynamics.Constraints.PrismaticJoint prismaticJoint;
 
     /// <summary>
     /// The anchor point in local space where the joint connects.
     /// </summary>
-    public Double3 Anchor
+    public Float3 Anchor
     {
         get => anchor;
         set
@@ -43,7 +43,7 @@ public class PrismaticJoint : PhysicsJoint
     /// <summary>
     /// The axis of movement in local space.
     /// </summary>
-    public Double3 Axis
+    public Float3 Axis
     {
         get => axis;
         set
@@ -54,9 +54,9 @@ public class PrismaticJoint : PhysicsJoint
     }
 
     /// <summary>
-    /// Minimum distance along the axis. Use double.NegativeInfinity for no limit.
+    /// Minimum distance along the axis. Use float.NegativeInfinity for no limit.
     /// </summary>
-    public double MinDistance
+    public float MinDistance
     {
         get => minDistance;
         set
@@ -67,9 +67,9 @@ public class PrismaticJoint : PhysicsJoint
     }
 
     /// <summary>
-    /// Maximum distance along the axis. Use double.PositiveInfinity for no limit.
+    /// Maximum distance along the axis. Use float.PositiveInfinity for no limit.
     /// </summary>
-    public double MaxDistance
+    public float MaxDistance
     {
         get => maxDistance;
         set
@@ -114,7 +114,7 @@ public class PrismaticJoint : PhysicsJoint
     /// <summary>
     /// Target velocity for the motor (if enabled).
     /// </summary>
-    public double MotorTargetVelocity
+    public float MotorTargetVelocity
     {
         get => motorTargetVelocity;
         set
@@ -128,7 +128,7 @@ public class PrismaticJoint : PhysicsJoint
     /// <summary>
     /// Maximum force the motor can apply (if enabled).
     /// </summary>
-    public double MotorMaxForce
+    public float MotorMaxForce
     {
         get => motorMaxForce;
         set
@@ -142,11 +142,11 @@ public class PrismaticJoint : PhysicsJoint
     /// <summary>
     /// Gets the current distance along the slider axis.
     /// </summary>
-    public double CurrentDistance
+    public float CurrentDistance
     {
         get
         {
-            if (prismaticJoint?.Slider == null) return 0.0;
+            if (prismaticJoint?.Slider == null) return 0.0f;
             return prismaticJoint.Slider.Distance;
         }
     }

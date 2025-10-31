@@ -42,15 +42,15 @@ public class DefaultInputHandler : IInputHandler, IDisposable
             Mice[0].Position = (Float2)value;
         }
     }
-    public Double2 MouseDelta
+    public Float2 MouseDelta
     {
         get
         {
             Int2 delta = _currentMousePos - _prevMousePos;
-            return new Double2(delta.X, delta.Y); // Invert Y to match gamepad (up = positive)
+            return new Float2(delta.X, delta.Y); // Invert Y to match gamepad (up = positive)
         }
     }
-    public double MouseWheelDelta => Mice[0].ScrollWheels[0].Y;
+    public float MouseWheelDelta => Mice[0].ScrollWheels[0].Y;
 
     private Dictionary<KeyCode, bool> wasKeyPressed = [];
     private Dictionary<KeyCode, bool> isKeyPressed = [];
@@ -64,7 +64,7 @@ public class DefaultInputHandler : IInputHandler, IDisposable
     private Queue<char> pressedChars { get; set; } = new();
 
     public event Action<KeyCode, bool> OnKeyEvent;
-    public event Action<MouseButton, double, double, bool, bool> OnMouseEvent;
+    public event Action<MouseButton, float, float, bool, bool> OnMouseEvent;
 
     public bool IsAnyKeyDown => isKeyPressed.ContainsValue(true);
 
@@ -257,32 +257,32 @@ public class DefaultInputHandler : IInputHandler, IDisposable
                wasGamepadButtonPressed[gamepadIndex].GetValueOrDefault(button, false);
     }
 
-    public Double2 GetGamepadAxis(int gamepadIndex, int axisIndex)
+    public Float2 GetGamepadAxis(int gamepadIndex, int axisIndex)
     {
         if (!IsGamepadConnected(gamepadIndex))
-            return Double2.Zero;
+            return Float2.Zero;
 
         IGamepad gamepad = Context.Gamepads[gamepadIndex];
         if (axisIndex < 0 || axisIndex >= gamepad.Thumbsticks.Count)
-            return Double2.Zero;
+            return Float2.Zero;
 
         Thumbstick thumbstick = gamepad.Thumbsticks[axisIndex];
-        return new Double2(thumbstick.X, thumbstick.Y); // We flip y to make UP on the stick positive
+        return new Float2(thumbstick.X, thumbstick.Y); // We flip y to make UP on the stick positive
     }
 
-    public double GetGamepadTrigger(int gamepadIndex, int triggerIndex)
+    public float GetGamepadTrigger(int gamepadIndex, int triggerIndex)
     {
         if (!IsGamepadConnected(gamepadIndex))
-            return 0.0;
+            return 0.0f;
 
         IGamepad gamepad = Context.Gamepads[gamepadIndex];
         if (triggerIndex < 0 || triggerIndex >= gamepad.Triggers.Count)
-            return 0.0;
+            return 0.0f;
 
         return gamepad.Triggers[triggerIndex].Position;
     }
 
-    public void SetGamepadVibration(int gamepadIndex, double leftMotor, double rightMotor)
+    public void SetGamepadVibration(int gamepadIndex, float leftMotor, float rightMotor)
     {
         if (!IsGamepadConnected(gamepadIndex))
             return;

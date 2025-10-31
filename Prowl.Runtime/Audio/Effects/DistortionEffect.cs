@@ -4,6 +4,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using Prowl.Runtime.Audio.Native;
+using Prowl.Vector;
 
 namespace Prowl.Runtime.Audio.Effects
 {
@@ -61,7 +62,7 @@ namespace Prowl.Runtime.Audio.Effects
 		{
 			float xClean = x;
 			x *= drive * range;
-			double result = (((((2.0f / Math.PI) * Math.Atan(x)) * blend) + (xClean * (1.0f - blend))) / 2.0f) * volume;
+			float result = (((((2.0f / Maths.PI) * Maths.Atan(x)) * blend) + (xClean * (1.0f - blend))) / 2.0f) * volume;
 			return (float)result;
 		}
 		

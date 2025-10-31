@@ -171,7 +171,7 @@ public class EmissionModule : ParticleSystemModule
                 {
                     // Uniform random point in or on sphere
                     direction = RandomDirection(random);
-                    float radius = EmitFromShell ? Radius : (float)Math.Pow(random.NextDouble(), 1.0 / 3.0) * Radius;
+                    float radius = EmitFromShell ? Radius : (float)Maths.Pow(random.NextDouble(), 1.0 / 3.0) * Radius;
                     position = direction * radius;
                 }
                 break;

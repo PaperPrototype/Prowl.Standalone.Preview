@@ -16,20 +16,20 @@ namespace Prowl.Runtime;
 /// </summary>
 public class HingeAngleConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 hingeAxis = Double3.UnitY;
-    [SerializeField] private double minAngle = -180.0;
-    [SerializeField] private double maxAngle = 180.0;
-    [SerializeField] private double softness = 0.001;
-    [SerializeField] private double limitSoftness = 0.001;
-    [SerializeField] private double biasFactor = 0.2;
-    [SerializeField] private double limitBias = 0.1;
+    [SerializeField] private Float3 hingeAxis = Float3.UnitY;
+    [SerializeField] private float minAngle = -180.0f;
+    [SerializeField] private float maxAngle = 180.0f;
+    [SerializeField] private float softness = 0.001f;
+    [SerializeField] private float limitSoftness = 0.001f;
+    [SerializeField] private float biasFactor = 0.2f;
+    [SerializeField] private float limitBias = 0.1f;
 
     private HingeAngle constraint;
 
     /// <summary>
     /// The hinge axis in local space of this rigidbody.
     /// </summary>
-    public Double3 HingeAxis
+    public Float3 HingeAxis
     {
         get => hingeAxis;
         set
@@ -42,7 +42,7 @@ public class HingeAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Minimum angle in degrees. Default is -180.
     /// </summary>
-    public double MinAngle
+    public float MinAngle
     {
         get => minAngle;
         set
@@ -55,7 +55,7 @@ public class HingeAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Maximum angle in degrees. Default is 180.
     /// </summary>
-    public double MaxAngle
+    public float MaxAngle
     {
         get => maxAngle;
         set
@@ -68,7 +68,7 @@ public class HingeAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the constraint. Higher values make the constraint softer.
     /// </summary>
-    public double Softness
+    public float Softness
     {
         get => softness;
         set
@@ -81,7 +81,7 @@ public class HingeAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the angle limit. Higher values make the limit softer.
     /// </summary>
-    public double LimitSoftness
+    public float LimitSoftness
     {
         get => limitSoftness;
         set
@@ -94,7 +94,7 @@ public class HingeAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for error correction. Higher values correct errors faster.
     /// </summary>
-    public double BiasFactor
+    public float BiasFactor
     {
         get => biasFactor;
         set
@@ -107,7 +107,7 @@ public class HingeAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for limit error correction.
     /// </summary>
-    public double LimitBias
+    public float LimitBias
     {
         get => limitBias;
         set
@@ -120,11 +120,11 @@ public class HingeAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the current hinge angle in degrees.
     /// </summary>
-    public double Angle
+    public float Angle
     {
         get
         {
-            if (constraint == null) return 0.0;
+            if (constraint == null) return 0.0f;
             return constraint.Angle.Degree;
         }
     }
@@ -132,13 +132,13 @@ public class HingeAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public Double3 Impulse
+    public Float3 Impulse
     {
         get
         {
-            if (constraint == null) return Double3.Zero;
+            if (constraint == null) return Float3.Zero;
             Jitter2.LinearMath.JVector impulse = constraint.Impulse;
-            return new Double3(impulse.X, impulse.Y, impulse.Z);
+            return new Float3(impulse.X, impulse.Y, impulse.Z);
         }
     }
 

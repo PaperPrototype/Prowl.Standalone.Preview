@@ -17,6 +17,8 @@ namespace Prowl.Runtime.Rendering;
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
 public struct GlobalUniformsData
 {
+    public static int SizeInBytes => Marshal.SizeOf<GlobalUniformsData>();
+
     // Suppress IDE0130 warning about naming rule violation, as these are meant to match the naming of the Shader code
 #pragma warning disable IDE1006 // Naming Styles
 
@@ -104,87 +106,87 @@ public static class GlobalUniforms
     }
 
     // Camera matrix setters (per-frame data)
-    public static void SetMatrixV(Double4x4 value)
+    public static void SetMatrixV(Float4x4 value)
     {
         s_data.prowl_MatV = (Float4x4)value;
         s_isDirty = true;
     }
 
-    public static void SetMatrixIV(Double4x4 value)
+    public static void SetMatrixIV(Float4x4 value)
     {
         s_data.prowl_MatIV = (Float4x4)value;
         s_isDirty = true;
     }
 
-    public static void SetMatrixP(Double4x4 value)
+    public static void SetMatrixP(Float4x4 value)
     {
         s_data.prowl_MatP = (Float4x4)value;
         s_isDirty = true;
     }
 
-    public static void SetMatrixVP(Double4x4 value)
+    public static void SetMatrixVP(Float4x4 value)
     {
         s_data.prowl_MatVP = (Float4x4)value;
         s_isDirty = true;
     }
 
-    public static void SetPrevViewProj(Double4x4 value)
+    public static void SetPrevViewProj(Float4x4 value)
     {
         s_data.prowl_PrevViewProj = (Float4x4)value;
         s_isDirty = true;
     }
 
     // Camera parameters
-    public static void SetWorldSpaceCameraPos(Double3 value)
+    public static void SetWorldSpaceCameraPos(Float3 value)
     {
         s_data._WorldSpaceCameraPos = (Float3)value;
         s_isDirty = true;
     }
 
-    public static void SetProjectionParams(Double4 value)
+    public static void SetProjectionParams(Float4 value)
     {
         s_data._ProjectionParams = (Float4)value;
         s_isDirty = true;
     }
 
-    public static void SetScreenParams(Double4 value)
+    public static void SetScreenParams(Float4 value)
     {
         s_data._ScreenParams = (Float4)value;
         s_isDirty = true;
     }
 
-    public static void SetCameraJitter(Double2 value)
+    public static void SetCameraJitter(Float2 value)
     {
         s_data._CameraJitter = (Float2)value;
         s_isDirty = true;
     }
 
-    public static void SetCameraPreviousJitter(Double2 value)
+    public static void SetCameraPreviousJitter(Float2 value)
     {
         s_data._CameraPreviousJitter = (Float2)value;
         s_isDirty = true;
     }
 
     // Time parameters
-    public static void SetTime(Double4 value)
+    public static void SetTime(Float4 value)
     {
         s_data._Time = (Float4)value;
         s_isDirty = true;
     }
 
-    public static void SetSinTime(Double4 value)
+    public static void SetSinTime(Float4 value)
     {
         s_data._SinTime = (Float4)value;
         s_isDirty = true;
     }
 
-    public static void SetCosTime(Double4 value)
+    public static void SetCosTime(Float4 value)
     {
         s_data._CosTime = (Float4)value;
         s_isDirty = true;
     }
 
-    public static void SetDeltaTime(Double4 value)
+    public static void SetDeltaTime(Float4 value)
     {
         s_data.prowl_DeltaTime = (Float4)value;
         s_isDirty = true;

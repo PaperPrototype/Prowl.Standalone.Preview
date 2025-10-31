@@ -59,7 +59,7 @@ public sealed class AudioSource : MonoBehaviour, ISerializable
     private SourceInfo _mainSource;
     private ma_sound_group_ptr _soundGroup;
     private ma_effect_node_ptr _effectNode;
-    private Double3 _previousPosition;
+    private Float3 _previousPosition;
     private ma_effect_node_process_proc _onEffectNodeProcess;
     private ma_procedural_data_source_proc _proceduralProcessCallback;
 
@@ -359,10 +359,10 @@ public sealed class AudioSource : MonoBehaviour, ISerializable
             MiniAudioNative.ma_sound_group_set_direction(_soundGroup, (float)forward.X, (float)forward.Y, (float)forward.Z);
 
             // Calculate velocity based on position change
-            double deltaTime = Time.DeltaTime;
+            float deltaTime = Time.DeltaTime;
             if (deltaTime > 0)
             {
-                Double3 velocity = (pos - _previousPosition) / deltaTime;
+                Float3 velocity = (pos - _previousPosition) / deltaTime;
                 MiniAudioNative.ma_sound_group_set_velocity(_soundGroup, (float)velocity.X, (float)velocity.Y, (float)velocity.Z);
             }
 
@@ -547,20 +547,20 @@ public sealed class AudioSource : MonoBehaviour, ISerializable
     /// <summary>
     /// Gets the calculated velocity based on position changes.
     /// </summary>
-    public Vector3f GetCalculatedVelocity()
+    public Float3 GetCalculatedVelocity()
     {
         if (_soundGroup.pointer == IntPtr.Zero)
-            return new Vector3f(0, 0, 0);
+            return new Float3(0, 0, 0);
 
         float deltaTime = AudioContext.DeltaTime;
         var result = MiniAudioNative.ma_sound_group_get_position(_soundGroup);
-        Vector3f currentPosition = new Vector3f(result.x, result.y, result.z);
+        Float3 currentPosition = new Float3(result.x, result.y, result.z);
 
-        float dx = currentPosition.x - (float)_previousPosition.X;
-        float dy = currentPosition.y - (float)_previousPosition.Y;
-        float dz = currentPosition.z - (float)_previousPosition.Z;
+        float dx = currentPosition.X - _previousPosition.X;
+        float dy = currentPosition.Y - _previousPosition.Y;
+        float dz = currentPosition.Z - _previousPosition.Z;
 
-        return new Vector3f(dx / deltaTime, dy / deltaTime, dz / deltaTime);
+        return new Float3(dx / deltaTime, dy / deltaTime, dz / deltaTime);
     }
 
     /// <summary>

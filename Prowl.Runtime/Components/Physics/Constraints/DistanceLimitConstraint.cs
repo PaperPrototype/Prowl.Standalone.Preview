@@ -17,20 +17,20 @@ namespace Prowl.Runtime;
 /// </summary>
 public class DistanceLimitConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 anchor = Double3.Zero;
-    [SerializeField] private Double3 connectedAnchor = Double3.Zero;
-    [SerializeField] private double targetDistance = 1.0;
-    [SerializeField] private double minDistance = double.NegativeInfinity;
-    [SerializeField] private double maxDistance = double.PositiveInfinity;
-    [SerializeField] private double softness = 0.001;
-    [SerializeField] private double biasFactor = 0.2;
+    [SerializeField] private Float3 anchor = Float3.Zero;
+    [SerializeField] private Float3 connectedAnchor = Float3.Zero;
+    [SerializeField] private float targetDistance = 1.0f;
+    [SerializeField] private float minDistance = float.NegativeInfinity;
+    [SerializeField] private float maxDistance = float.PositiveInfinity;
+    [SerializeField] private float softness = 0.001f;
+    [SerializeField] private float biasFactor = 0.2f;
 
     private DistanceLimit constraint;
 
     /// <summary>
     /// The anchor point in local space of this rigidbody.
     /// </summary>
-    public Double3 Anchor
+    public Float3 Anchor
     {
         get => anchor;
         set
@@ -43,7 +43,7 @@ public class DistanceLimitConstraint : PhysicsConstraint
     /// <summary>
     /// The anchor point in local space of the connected rigidbody.
     /// </summary>
-    public Double3 ConnectedAnchor
+    public Float3 ConnectedAnchor
     {
         get => connectedAnchor;
         set
@@ -56,7 +56,7 @@ public class DistanceLimitConstraint : PhysicsConstraint
     /// <summary>
     /// The target distance to maintain between the anchors.
     /// </summary>
-    public double TargetDistance
+    public float TargetDistance
     {
         get => targetDistance;
         set
@@ -67,9 +67,9 @@ public class DistanceLimitConstraint : PhysicsConstraint
     }
 
     /// <summary>
-    /// Minimum allowed distance. Use double.NegativeInfinity for no minimum.
+    /// Minimum allowed distance. Use float.NegativeInfinity for no minimum.
     /// </summary>
-    public double MinDistance
+    public float MinDistance
     {
         get => minDistance;
         set
@@ -80,9 +80,9 @@ public class DistanceLimitConstraint : PhysicsConstraint
     }
 
     /// <summary>
-    /// Maximum allowed distance. Use double.PositiveInfinity for no maximum.
+    /// Maximum allowed distance. Use float.PositiveInfinity for no maximum.
     /// </summary>
-    public double MaxDistance
+    public float MaxDistance
     {
         get => maxDistance;
         set
@@ -95,7 +95,7 @@ public class DistanceLimitConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the constraint. Higher values make the constraint softer.
     /// </summary>
-    public double Softness
+    public float Softness
     {
         get => softness;
         set
@@ -108,7 +108,7 @@ public class DistanceLimitConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for error correction. Higher values correct errors faster.
     /// </summary>
-    public double BiasFactor
+    public float BiasFactor
     {
         get => biasFactor;
         set
@@ -121,12 +121,12 @@ public class DistanceLimitConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the current distance between the anchors.
     /// </summary>
-    public double CurrentDistance => constraint?.Distance ?? 0.0;
+    public float CurrentDistance => constraint?.Distance ?? 0.0f;
 
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public double Impulse => constraint?.Impulse ?? 0.0;
+    public float Impulse => constraint?.Impulse ?? 0.0f;
 
     protected override Constraint GetConstraint() => constraint;
 

@@ -46,10 +46,10 @@ public class Scene : EngineObject, ISerializationCallbackReceiver
             ExponentialSquared
         }
         public FogMode Mode = FogMode.ExponentialSquared;
-        public Double4 Color = new(0.5, 0.5, 0.5, 1.0);
-        public double Start = 20;
-        public double End = 100;
-        public double Density = 0.01f;
+        public Color Color = new(0.5f, 0.5f, 0.5f, 1.0f);
+        public float Start = 20;
+        public float End = 100;
+        public float Density = 0.01f;
 
         public bool IsFogLinear => Mode == FogMode.Linear;
 
@@ -70,14 +70,14 @@ public class Scene : EngineObject, ISerializationCallbackReceiver
 
         public AmbientMode Mode = AmbientMode.Uniform;
 
-        public double Strength = 1f;
+        public float Strength = 1f;
 
         // Uniform ambient
-        public Double4 Color = new(0.2f, 0.2f, 0.2f, 1.0f);
+        public Float4 Color = new(0.2f, 0.2f, 0.2f, 1.0f);
 
         // Hemisphere ambient
-        public Double4 SkyColor = new(0.3f, 0.3f, 0.4f, 1.0f);
-        public Double4 GroundColor = new(0.2f, 0.2f, 0.2f, 1.0f);
+        public Float4 SkyColor = new(0.3f, 0.3f, 0.4f, 1.0f);
+        public Float4 GroundColor = new(0.2f, 0.2f, 0.2f, 1.0f);
 
         public bool UseHemisphere => Mode == AmbientMode.Hemisphere;
 

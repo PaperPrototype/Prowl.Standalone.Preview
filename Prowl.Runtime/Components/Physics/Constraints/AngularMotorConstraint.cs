@@ -17,17 +17,17 @@ namespace Prowl.Runtime;
 /// </summary>
 public class AngularMotorConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 axis1 = Double3.UnitY;
-    [SerializeField] private Double3 axis2 = Double3.UnitY;
-    [SerializeField] private double targetVelocity = 0.0;
-    [SerializeField] private double maximumForce = 0.0;
+    [SerializeField] private Float3 axis1 = Float3.UnitY;
+    [SerializeField] private Float3 axis2 = Float3.UnitY;
+    [SerializeField] private float targetVelocity = 0.0f;
+    [SerializeField] private float maximumForce = 0.0f;
 
     private AngularMotor constraint;
 
     /// <summary>
     /// The motor axis in local space of the first rigidbody.
     /// </summary>
-    public Double3 Axis1
+    public Float3 Axis1
     {
         get => axis1;
         set
@@ -41,7 +41,7 @@ public class AngularMotorConstraint : PhysicsConstraint
     /// The motor axis in local space of the second rigidbody.
     /// If no connected body is specified, this is in world space.
     /// </summary>
-    public Double3 Axis2
+    public Float3 Axis2
     {
         get => axis2;
         set
@@ -55,7 +55,7 @@ public class AngularMotorConstraint : PhysicsConstraint
     /// Target angular velocity for the motor in radians per second.
     /// Positive values rotate in the direction of the axis.
     /// </summary>
-    public double TargetVelocity
+    public float TargetVelocity
     {
         get => targetVelocity;
         set
@@ -68,7 +68,7 @@ public class AngularMotorConstraint : PhysicsConstraint
     /// <summary>
     /// Maximum torque the motor can apply. Set to 0 to disable the motor.
     /// </summary>
-    public double MaximumForce
+    public float MaximumForce
     {
         get => maximumForce;
         set
@@ -81,26 +81,26 @@ public class AngularMotorConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the local axis on the first body.
     /// </summary>
-    public Double3 LocalAxis1
+    public Float3 LocalAxis1
     {
         get
         {
             if (constraint == null) return axis1;
             JVector jaxis = constraint.LocalAxis1;
-            return new Double3(jaxis.X, jaxis.Y, jaxis.Z);
+            return new Float3(jaxis.X, jaxis.Y, jaxis.Z);
         }
     }
 
     /// <summary>
     /// Gets the local axis on the second body.
     /// </summary>
-    public Double3 LocalAxis2
+    public Float3 LocalAxis2
     {
         get
         {
             if (constraint == null) return axis2;
             JVector jaxis = constraint.LocalAxis2;
-            return new Double3(jaxis.X, jaxis.Y, jaxis.Z);
+            return new Float3(jaxis.X, jaxis.Y, jaxis.Z);
         }
     }
 

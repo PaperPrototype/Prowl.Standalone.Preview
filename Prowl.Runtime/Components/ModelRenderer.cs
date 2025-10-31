@@ -20,20 +20,20 @@ public class ModelRenderer : MonoBehaviour
     public AnimationClip CurrentAnimation;
     public bool PlayAutomatically = true;
     public bool Loop = true;
-    public double AnimationSpeed = 10.0;
+    public float AnimationSpeed = 10.0f;
 
-    private double _animationTime = 0.0;
+    private float _animationTime = 0.0f;
     private bool _isPlaying = false;
     private Dictionary<string, ModelNodeTransform> _nodeTransforms = [];
     private Dictionary<string, int> _boneNameToIndex = [];
 
     private class ModelNodeTransform
     {
-        public Double3 Position;
+        public Float3 Position;
         public Quaternion Rotation;
-        public Double3 Scale;
-        public Double4x4 LocalMatrix;
-        public Double4x4 WorldMatrix;
+        public Float3 Scale;
+        public Float4x4 LocalMatrix;
+        public Float4x4 WorldMatrix;
     }
 
     public override void OnEnable()
@@ -41,7 +41,7 @@ public class ModelRenderer : MonoBehaviour
         if (Model.IsValid())
         {
             // Build node transform cache
-            BuildNodeTransformCache(Model.RootNode, Double4x4.Identity);
+            BuildNodeTransformCache(Model.RootNode, Float4x4.Identity);
 
             // Auto-play first animation if requested
             if (PlayAutomatically && Model.Animations.Count > 0)
@@ -57,7 +57,7 @@ public class ModelRenderer : MonoBehaviour
         // Update animation
         if (_isPlaying && CurrentAnimation.IsValid())
         {
-            _animationTime += Time.DeltaTimeF * AnimationSpeed;
+            _animationTime += Time.DeltaTime * AnimationSpeed;
 
             if (_animationTime >= CurrentAnimation.Duration)
             {
@@ -90,7 +90,7 @@ public class ModelRenderer : MonoBehaviour
 
         if (CurrentAnimation.IsValid())
         {
-            _animationTime = 0.0;
+            _animationTime = 0.0f;
             _isPlaying = true;
         }
     }
@@ -98,7 +98,7 @@ public class ModelRenderer : MonoBehaviour
     public void Stop()
     {
         _isPlaying = false;
-        _animationTime = 0.0;
+        _animationTime = 0.0f;
     }
 
     public void Pause()
@@ -112,11 +112,11 @@ public class ModelRenderer : MonoBehaviour
             _isPlaying = true;
     }
 
-    private void BuildNodeTransformCache(ModelNode node, Double4x4 parentWorldMatrix)
+    private void BuildNodeTransformCache(ModelNode node, Float4x4 parentWorldMatrix)
     {
         // Calculate this node's matrices
-        var localMatrix = Double4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
-        Double4x4 worldMatrix = parentWorldMatrix * localMatrix;
+        var localMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
+        Float4x4 worldMatrix = parentWorldMatrix * localMatrix;
 
         _nodeTransforms[node.Name] = new ModelNodeTransform
         {
@@ -134,10 +134,10 @@ public class ModelRenderer : MonoBehaviour
         }
     }
 
-    private void EvaluateAnimation(AnimationClip clip, double time)
+    private void EvaluateAnimation(AnimationClip clip, float time)
     {
         // Reset all transforms to bind pose first
-        BuildNodeTransformCache(Model.RootNode, Double4x4.Identity);
+        BuildNodeTransformCache(Model.RootNode, Float4x4.Identity);
 
         // Apply animation to each bone
         foreach (AnimationClip.AnimBone bone in clip.Bones)
@@ -145,23 +145,23 @@ public class ModelRenderer : MonoBehaviour
             if (_nodeTransforms.TryGetValue(bone.BoneName, out ModelNodeTransform? nodeTransform))
             {
                 // Evaluate animation curves at current time
-                Double3 position = bone.EvaluatePositionAt(time);
+                Float3 position = bone.EvaluatePositionAt(time);
                 Quaternion rotation = bone.EvaluateRotationAt(time);
-                Double3 scale = bone.EvaluateScaleAt(time);
+                Float3 scale = bone.EvaluateScaleAt(time);
 
                 // Update the node transform
                 nodeTransform.Position = position;
                 nodeTransform.Rotation = rotation;
                 nodeTransform.Scale = scale;
-                nodeTransform.LocalMatrix = Double4x4.CreateTRS(position, rotation, scale);
+                nodeTransform.LocalMatrix = Float4x4.CreateTRS(position, rotation, scale);
             }
         }
 
         // Recalculate world matrices after animation update
-        UpdateWorldMatrices(Model.RootNode, Double4x4.Identity);
+        UpdateWorldMatrices(Model.RootNode, Float4x4.Identity);
     }
 
-    private void UpdateWorldMatrices(ModelNode node, Double4x4 parentWorldMatrix)
+    private void UpdateWorldMatrices(ModelNode node, Float4x4 parentWorldMatrix)
     {
         if (_nodeTransforms.TryGetValue(node.Name, out ModelNodeTransform? nodeTransform))
         {
@@ -175,7 +175,7 @@ public class ModelRenderer : MonoBehaviour
         }
     }
 
-    private Float4x4[] CalculateBoneMatrices(ModelMesh modelMesh, Double4x4 meshWorldMatrix)
+    private Float4x4[] CalculateBoneMatrices(ModelMesh modelMesh, Float4x4 meshWorldMatrix)
     {
         if (!modelMesh.HasBones || modelMesh.Mesh.bindPoses == null || modelMesh.Mesh.boneNames == null)
             return null;
@@ -211,10 +211,10 @@ public class ModelRenderer : MonoBehaviour
         return boneMatrices;
     }
 
-    private void RenderModelNode(ModelNode node, Double4x4 parentMatrix)
+    private void RenderModelNode(ModelNode node, Float4x4 parentMatrix)
     {
         // Get the node's world matrix (from animation or bind pose)
-        Double4x4 nodeWorldMatrix;
+        Float4x4 nodeWorldMatrix;
         if (_nodeTransforms.TryGetValue(node.Name, out ModelNodeTransform? nodeTransform))
         {
             // Use the animated/cached transform
@@ -223,7 +223,7 @@ public class ModelRenderer : MonoBehaviour
         else
         {
             // Fallback to node's original transform
-            var nodeLocalMatrix = Double4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
+            var nodeLocalMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
             nodeWorldMatrix = parentMatrix * nodeLocalMatrix;
         }
 
@@ -244,8 +244,8 @@ public class ModelRenderer : MonoBehaviour
                     Float4x4[] boneMatrices = CalculateBoneMatrices(modelMesh, nodeWorldMatrix);
                     if (boneMatrices != null && boneMatrices.Length > 0)
                     {
-                        // Convert to Double4x4 array for PropertyState
-                        Double4x4[] boneMatricesDouble = [.. boneMatrices.Select(m => (Double4x4)m)];
+                        // Convert to Float4x4 array for PropertyState
+                        Float4x4[] boneMatricesDouble = [.. boneMatrices.Select(m => (Float4x4)m)];
                         properties.SetMatrices("boneTransforms", boneMatricesDouble);
                     }
                 }
@@ -266,9 +266,9 @@ public class ModelRenderer : MonoBehaviour
         }
     }
 
-    public bool Raycast(Ray ray, out double distance)
+    public bool Raycast(Ray ray, out float distance)
     {
-        distance = double.MaxValue;
+        distance = float.MaxValue;
 
         if (Model.IsNotValid())
             return false;
@@ -276,19 +276,19 @@ public class ModelRenderer : MonoBehaviour
         return RaycastModelNode(Model.RootNode, Transform.LocalToWorldMatrix, ray, ref distance);
     }
 
-    private bool RaycastModelNode(ModelNode node, Double4x4 parentMatrix, Ray ray, ref double closestDistance)
+    private bool RaycastModelNode(ModelNode node, Float4x4 parentMatrix, Ray ray, ref float closestDistance)
     {
         bool hit = false;
 
         // Get the node's world matrix
-        Double4x4 nodeWorldMatrix;
+        Float4x4 nodeWorldMatrix;
         if (_nodeTransforms.TryGetValue(node.Name, out ModelNodeTransform? nodeTransform))
         {
             nodeWorldMatrix = parentMatrix * nodeTransform.LocalMatrix;
         }
         else
         {
-            var nodeLocalMatrix = Double4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
+            var nodeLocalMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
             nodeWorldMatrix = parentMatrix * nodeLocalMatrix;
         }
 
@@ -303,18 +303,18 @@ public class ModelRenderer : MonoBehaviour
             Mesh mesh = modelMesh.Mesh;
 
             // Transform ray to this mesh's local space
-            Double4x4 worldToLocalMatrix = nodeWorldMatrix.Invert();
+            Float4x4 worldToLocalMatrix = nodeWorldMatrix.Invert();
 
-            Double3 localOrigin = Double4x4.TransformPoint(ray.Origin, worldToLocalMatrix);
-            Double3 localDirection = Double4x4.TransformNormal(ray.Direction, worldToLocalMatrix);
+            Float3 localOrigin = Float4x4.TransformPoint(ray.Origin, worldToLocalMatrix);
+            Float3 localDirection = Float4x4.TransformNormal(ray.Direction, worldToLocalMatrix);
             Ray localRay = new(localOrigin, localDirection);
 
-            if (mesh.Raycast(localRay, out double localDistance))
+            if (mesh.Raycast(localRay, out float localDistance))
             {
                 // Calculate world space distance
-                Double3 localHitPoint = localOrigin + localDirection * localDistance;
-                Double3 worldHitPoint = Double4x4.TransformPoint(localHitPoint, nodeWorldMatrix);
-                double worldDistance = Double3.Distance(ray.Origin, worldHitPoint);
+                Float3 localHitPoint = localOrigin + localDirection * localDistance;
+                Float3 worldHitPoint = Float4x4.TransformPoint(localHitPoint, nodeWorldMatrix);
+                float worldDistance = Float3.Distance(ray.Origin, worldHitPoint);
 
                 if (worldDistance < closestDistance)
                 {

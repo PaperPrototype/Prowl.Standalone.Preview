@@ -18,22 +18,22 @@ namespace Prowl.Runtime;
 /// </summary>
 public class PointOnLineConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 lineAxis = Double3.UnitX;
-    [SerializeField] private Double3 anchor1 = Double3.Zero;
-    [SerializeField] private Double3 anchor2 = Double3.Zero;
-    [SerializeField] private double minDistance = double.NegativeInfinity;
-    [SerializeField] private double maxDistance = double.PositiveInfinity;
-    [SerializeField] private double softness = 0.00001;
-    [SerializeField] private double limitSoftness = 0.0001;
-    [SerializeField] private double biasFactor = 0.01;
-    [SerializeField] private double limitBias = 0.2;
+    [SerializeField] private Float3 lineAxis = Float3.UnitX;
+    [SerializeField] private Float3 anchor1 = Float3.Zero;
+    [SerializeField] private Float3 anchor2 = Float3.Zero;
+    [SerializeField] private float minDistance = float.NegativeInfinity;
+    [SerializeField] private float maxDistance = float.PositiveInfinity;
+    [SerializeField] private float softness = 0.00001f;
+    [SerializeField] private float limitSoftness = 0.0001f;
+    [SerializeField] private float biasFactor = 0.01f;
+    [SerializeField] private float limitBias = 0.2f;
 
     private PointOnLine constraint;
 
     /// <summary>
     /// The line axis in local space of the first rigidbody.
     /// </summary>
-    public Double3 LineAxis
+    public Float3 LineAxis
     {
         get => lineAxis;
         set
@@ -46,7 +46,7 @@ public class PointOnLineConstraint : PhysicsConstraint
     /// <summary>
     /// Anchor point on the first body that defines the line.
     /// </summary>
-    public Double3 Anchor1
+    public Float3 Anchor1
     {
         get => anchor1;
         set
@@ -59,7 +59,7 @@ public class PointOnLineConstraint : PhysicsConstraint
     /// <summary>
     /// Anchor point on the second body that is constrained to the line.
     /// </summary>
-    public Double3 Anchor2
+    public Float3 Anchor2
     {
         get => anchor2;
         set
@@ -70,9 +70,9 @@ public class PointOnLineConstraint : PhysicsConstraint
     }
 
     /// <summary>
-    /// Minimum allowed distance along the line axis. Use double.NegativeInfinity for no minimum.
+    /// Minimum allowed distance along the line axis. Use float.NegativeInfinity for no minimum.
     /// </summary>
-    public double MinDistance
+    public float MinDistance
     {
         get => minDistance;
         set
@@ -83,9 +83,9 @@ public class PointOnLineConstraint : PhysicsConstraint
     }
 
     /// <summary>
-    /// Maximum allowed distance along the line axis. Use double.PositiveInfinity for no maximum.
+    /// Maximum allowed distance along the line axis. Use float.PositiveInfinity for no maximum.
     /// </summary>
-    public double MaxDistance
+    public float MaxDistance
     {
         get => maxDistance;
         set
@@ -98,7 +98,7 @@ public class PointOnLineConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the constraint. Higher values make the constraint softer.
     /// </summary>
-    public double Softness
+    public float Softness
     {
         get => softness;
         set
@@ -111,7 +111,7 @@ public class PointOnLineConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the distance limit. Higher values make the limit softer.
     /// </summary>
-    public double LimitSoftness
+    public float LimitSoftness
     {
         get => limitSoftness;
         set
@@ -124,7 +124,7 @@ public class PointOnLineConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for error correction. Higher values correct errors faster.
     /// </summary>
-    public double BiasFactor
+    public float BiasFactor
     {
         get => biasFactor;
         set
@@ -137,7 +137,7 @@ public class PointOnLineConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for limit error correction.
     /// </summary>
-    public double LimitBias
+    public float LimitBias
     {
         get => limitBias;
         set
@@ -150,18 +150,18 @@ public class PointOnLineConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the current distance along the line axis.
     /// </summary>
-    public double Distance => constraint?.Distance ?? 0.0;
+    public float Distance => constraint?.Distance ?? 0.0f;
 
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public Double3 Impulse
+    public Float3 Impulse
     {
         get
         {
-            if (constraint == null) return Double3.Zero;
+            if (constraint == null) return Float3.Zero;
             JVector impulse = constraint.Impulse;
-            return new Double3(impulse.X, impulse.Y, impulse.Z);
+            return new Float3(impulse.X, impulse.Y, impulse.Z);
         }
     }
 

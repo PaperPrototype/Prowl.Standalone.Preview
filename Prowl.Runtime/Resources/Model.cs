@@ -16,10 +16,10 @@ public class Model : EngineObject
     public List<Material> Materials { get; set; } = [];
     public List<ModelMesh> Meshes { get; set; } = [];
     public List<AnimationClip> Animations { get; set; } = [];
-    public double UnitScale { get; set; } = 1.0f;
+    public float UnitScale { get; set; } = 1.0f;
 
     // This transforms from world space back to mesh/model space
-    public Double4x4 GlobalInverseTransform { get; set; } = Double4x4.Identity;
+    public Float4x4 GlobalInverseTransform { get; set; } = Float4x4.Identity;
 
     public Model(string name)
     {
@@ -81,9 +81,9 @@ public class Model : EngineObject
 public class ModelNode
 {
     public string Name { get; set; }
-    public Double3 LocalPosition { get; set; }
+    public Float3 LocalPosition { get; set; }
     public Quaternion LocalRotation { get; set; }
-    public Double3 LocalScale { get; set; } = Double3.One;
+    public Float3 LocalScale { get; set; } = Float3.One;
     public List<ModelNode> Children { get; set; } = [];
 
     // For single mesh per node

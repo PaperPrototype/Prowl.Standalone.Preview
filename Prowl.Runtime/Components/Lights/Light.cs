@@ -17,10 +17,10 @@ public abstract class Light : MonoBehaviour, IRenderableLight
 {
 
     public Color Color = Color.White;
-    public double Intensity = 8.0f;
-    public double ShadowStrength = 1.0f;
-    public double ShadowBias = 0.001f;
-    public double ShadowNormalBias = 0.0f;
+    public float Intensity = 8.0f;
+    public float ShadowStrength = 1.0f;
+    public float ShadowBias = 0.001f;
+    public float ShadowNormalBias = 0.0f;
     public bool CastShadows = true;
     public ShadowQuality ShadowQuality = ShadowQuality.Hard;
 
@@ -33,8 +33,8 @@ public abstract class Light : MonoBehaviour, IRenderableLight
     public virtual int GetLayer() => GameObject.LayerIndex;
     public virtual int GetLightID() => InstanceID;
     public abstract LightType GetLightType();
-    public virtual Double3 GetLightPosition() => Transform.Position;
-    public virtual Double3 GetLightDirection() => Transform.Forward;
+    public virtual Float3 GetLightPosition() => Transform.Position;
+    public virtual Float3 GetLightDirection() => Transform.Forward;
     public virtual bool DoCastShadows() => CastShadows;
 
     /// <summary>
@@ -44,7 +44,7 @@ public abstract class Light : MonoBehaviour, IRenderableLight
     /// <param name="pipeline">The current render pipeline</param>
     /// <param name="cameraPosition">Position of the camera in world space</param>
     /// <param name="renderables">List of all renderables that could cast shadows</param>
-    public abstract void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables);
+    public abstract void RenderShadows(RenderPipeline pipeline, Float3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables);
 
     public abstract void OnRenderLight(RenderTexture gBuffer, RenderTexture destination, RenderPipeline.CameraSnapshot css);
 }

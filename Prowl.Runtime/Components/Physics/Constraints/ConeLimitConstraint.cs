@@ -16,18 +16,18 @@ namespace Prowl.Runtime;
 /// </summary>
 public class ConeLimitConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 axis = Double3.UnitY;
-    [SerializeField] private double minAngle = 0.0;
-    [SerializeField] private double maxAngle = 45.0;
-    [SerializeField] private double softness = 0.001;
-    [SerializeField] private double biasFactor = 0.2;
+    [SerializeField] private Float3 axis = Float3.UnitY;
+    [SerializeField] private float minAngle = 0.0f;
+    [SerializeField] private float maxAngle = 45.0f;
+    [SerializeField] private float softness = 0.001f;
+    [SerializeField] private float biasFactor = 0.2f;
 
     private ConeLimit constraint;
 
     /// <summary>
     /// The cone axis in local space of this rigidbody.
     /// </summary>
-    public Double3 Axis
+    public Float3 Axis
     {
         get => axis;
         set
@@ -40,7 +40,7 @@ public class ConeLimitConstraint : PhysicsConstraint
     /// <summary>
     /// Minimum cone angle in degrees. Default is 0.
     /// </summary>
-    public double MinAngle
+    public float MinAngle
     {
         get => minAngle;
         set
@@ -54,7 +54,7 @@ public class ConeLimitConstraint : PhysicsConstraint
     /// Maximum cone angle in degrees. Default is 45.
     /// This defines the cone's opening angle from the axis.
     /// </summary>
-    public double MaxAngle
+    public float MaxAngle
     {
         get => maxAngle;
         set
@@ -67,7 +67,7 @@ public class ConeLimitConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the constraint. Higher values make the constraint softer.
     /// </summary>
-    public double Softness
+    public float Softness
     {
         get => softness;
         set
@@ -80,7 +80,7 @@ public class ConeLimitConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for error correction. Higher values correct errors faster.
     /// </summary>
-    public double BiasFactor
+    public float BiasFactor
     {
         get => biasFactor;
         set
@@ -93,11 +93,11 @@ public class ConeLimitConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the current angle between the axes in degrees.
     /// </summary>
-    public double Angle
+    public float Angle
     {
         get
         {
-            if (constraint == null) return 0.0;
+            if (constraint == null) return 0.0f;
             return constraint.Angle.Degree;
         }
     }
@@ -105,7 +105,7 @@ public class ConeLimitConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public double Impulse => constraint?.Impulse ?? 0.0;
+    public float Impulse => constraint?.Impulse ?? 0.0f;
 
     protected override Constraint GetConstraint() => constraint;
 

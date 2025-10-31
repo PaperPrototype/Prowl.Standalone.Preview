@@ -15,14 +15,14 @@ namespace Prowl.Runtime;
 public class LineRenderer : MonoBehaviour, IRenderable
 {
     public Material Material;
-    public double StartWidth = 0.1f;
-    public double EndWidth = 0.1f;
-    public List<Double3> Points = [];
+    public float StartWidth = 0.1f;
+    public float EndWidth = 0.1f;
+    public List<Float3> Points = [];
     public bool Loop = false;
     public Color StartColor = Color.White;
     public Color EndColor = Color.White;
     public TextureWrapMode TextureMode = TextureWrapMode.Stretch;
-    public double TextureTiling = 1.0f; // Controls UV tiling for Tile mode
+    public float TextureTiling = 1.0f; // Controls UV tiling for Tile mode
     public bool RecalculateNormals = false;
 
     private Mesh? _cachedMesh;
@@ -30,14 +30,14 @@ public class LineRenderer : MonoBehaviour, IRenderable
     private AABB _bounds;
 
     // Cached state for change detection
-    private List<Double3> _lastPoints;
-    private double _lastStartWidth;
-    private double _lastEndWidth;
+    private List<Float3> _lastPoints;
+    private float _lastStartWidth;
+    private float _lastEndWidth;
     private bool _lastLoop;
     private Color _lastStartColor;
     private Color _lastEndColor;
     private TextureWrapMode _lastTextureMode;
-    private double _lastTextureTiling;
+    private float _lastTextureTiling;
 
     public override void OnEnable()
     {
@@ -63,7 +63,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
                                !StartColor.Equals(_lastStartColor) ||
                                !EndColor.Equals(_lastEndColor) ||
                                TextureMode != _lastTextureMode ||
-                               Math.Abs(TextureTiling - _lastTextureTiling) > 0.001f ||
+                               Maths.Abs(TextureTiling - _lastTextureTiling) > 0.001f ||
                                !PointsEqual(_lastPoints, Points);
 
             if (needsUpdate)
@@ -87,7 +87,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
         }
     }
 
-    private bool PointsEqual(List<Double3> a, List<Double3> b)
+    private bool PointsEqual(List<Float3> a, List<Float3> b)
     {
         if (a.Count != b.Count) return false;
 
@@ -108,19 +108,19 @@ public class LineRenderer : MonoBehaviour, IRenderable
         }
 
         // Transform points to world space for bounds calculation
-        Double3 min = Transform.TransformPoint(Points[0]);
-        Double3 max = min;
+        Float3 min = Transform.TransformPoint(Points[0]);
+        Float3 max = min;
 
-        foreach (Double3 point in Points)
+        foreach (Float3 point in Points)
         {
-            Double3 worldPoint = Transform.TransformPoint(point);
+            Float3 worldPoint = Transform.TransformPoint(point);
             min = Maths.Min(min, worldPoint);
             max = Maths.Max(max, worldPoint);
         }
 
         // Expand bounds by maximum line width
-        double maxWidth = Math.Max(StartWidth, EndWidth);
-        Double3 expansion = new(maxWidth, maxWidth, maxWidth);
+        float maxWidth = Maths.Max(StartWidth, EndWidth);
+        Float3 expansion = new(maxWidth, maxWidth, maxWidth);
         min -= expansion;
         max += expansion;
 
@@ -133,7 +133,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
     }
 
     // Helper methods for point manipulation
-    public void SetPosition(int index, Double3 position)
+    public void SetPosition(int index, Float3 position)
     {
         if (index >= 0 && index < Points.Count)
         {
@@ -142,20 +142,20 @@ public class LineRenderer : MonoBehaviour, IRenderable
         }
     }
 
-    public Double3 GetPosition(int index)
+    public Float3 GetPosition(int index)
     {
         if (index >= 0 && index < Points.Count)
             return Points[index];
-        return Double3.Zero;
+        return Float3.Zero;
     }
 
-    public void SetPositions(List<Double3> positions)
+    public void SetPositions(List<Float3> positions)
     {
         Points = [.. positions];
         _isDirty = true;
     }
 
-    public void SetPositions(Double3[] positions)
+    public void SetPositions(Float3[] positions)
     {
         Points = [.. positions];
         _isDirty = true;
@@ -173,7 +173,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
     public Material GetMaterial() => Material;
     public int GetLayer() => GameObject.LayerIndex;
 
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Double4x4 model, out InstanceData[]? instanceData)
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Float4x4 model, out InstanceData[]? instanceData)
     {
         // Create mesh only once
         if (_cachedMesh.IsNotValid())
@@ -193,7 +193,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
         properties.SetColor("_EndColor", EndColor);
 
         drawData = _cachedMesh!;
-        model = Double4x4.Identity; // Vertices are already in world space
+        model = Float4x4.Identity; // Vertices are already in world space
         instanceData = null; // Single instance rendering
     }
 
@@ -211,8 +211,8 @@ public class LineRenderer : MonoBehaviour, IRenderable
             return;
 
         // Transform points to world space
-        List<Double3> worldPoints = new(Points.Count);
-        foreach (Double3 point in Points)
+        List<Float3> worldPoints = new(Points.Count);
+        foreach (Float3 point in Points)
         {
             worldPoints.Add(Transform.TransformPoint(point));
         }
@@ -240,7 +240,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
         {
             for (int i = 0; i < segmentCount; i++)
             {
-                float length = (float)Double3.Distance(worldPoints[i], worldPoints[i + 1]);
+                float length = (float)Float3.Distance(worldPoints[i], worldPoints[i + 1]);
                 segmentLengths[i] = length;
                 totalLength += length;
             }
@@ -251,31 +251,31 @@ public class LineRenderer : MonoBehaviour, IRenderable
 
         for (int i = 0; i < worldPoints.Count; i++)
         {
-            Double3 point = worldPoints[i];
+            Float3 point = worldPoints[i];
 
             // Calculate line direction
-            Double3 lineDir;
+            Float3 lineDir;
             if (i == 0)
             {
-                lineDir = Double3.Normalize(worldPoints[i + 1] - point);
+                lineDir = Float3.Normalize(worldPoints[i + 1] - point);
             }
             else if (i == worldPoints.Count - 1)
             {
-                lineDir = Double3.Normalize(point - worldPoints[i - 1]);
+                lineDir = Float3.Normalize(point - worldPoints[i - 1]);
             }
             else
             {
-                lineDir = Double3.Normalize((worldPoints[i + 1] - worldPoints[i - 1]) * 0.5);
+                lineDir = Float3.Normalize((worldPoints[i + 1] - worldPoints[i - 1]) * 0.5f);
             }
 
             // Calculate perpendicular vector (billboard direction towards camera)
-            Double3 toCamera = Double3.Normalize(viewer.Position - point);
-            Double3 right = Double3.Normalize(Double3.Cross(toCamera, lineDir));
+            Float3 toCamera = Float3.Normalize(viewer.Position - point);
+            Float3 right = Float3.Normalize(Float3.Cross(toCamera, lineDir));
 
             // If cross product is near zero (line points at camera), use camera up vector
-            if (Double3.LengthSquared(right) < 0.001)
+            if (Float3.LengthSquared(right) < 0.001)
             {
-                right = Double3.Normalize(Double3.Cross(viewer.Up, lineDir));
+                right = Float3.Normalize(Float3.Cross(viewer.Up, lineDir));
             }
 
             // Interpolate width along the line
@@ -284,7 +284,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
             float halfWidth = width * 0.5f;
 
             // Create offset vertices
-            Double3 offset = right * halfWidth;
+            Float3 offset = right * halfWidth;
 
             vertices[i * 2] = (Float3)(point - offset);
             vertices[i * 2 + 1] = (Float3)(point + offset);

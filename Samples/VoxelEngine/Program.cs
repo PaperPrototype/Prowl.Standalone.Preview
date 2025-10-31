@@ -33,8 +33,8 @@ public sealed class VoxelGame : Game
         // Create directional light
         GameObject lightGO = new("Directional Light");
         DirectionalLight light = lightGO.AddComponent<DirectionalLight>();
-        lightGO.Transform.Position = new Double3(0, 64, 0);
-        lightGO.Transform.LocalEulerAngles = new Double3(-45, 45, 0);
+        lightGO.Transform.Position = new Float3(0, 64, 0);
+        lightGO.Transform.LocalEulerAngles = new Float3(-45, 45, 0);
         light.ShadowResolution = DirectionalLight.Resolution._4096;
         light.ShadowDistance = 100f;
         scene.Add(lightGO);
@@ -76,11 +76,11 @@ public sealed class VoxelGame : Game
     public override void BeginUpdate()
     {
         // WASD movement
-        Double2 movement = Double2.Zero;
-        if (Input.GetKey(KeyCode.W)) movement += Double2.UnitY;
-        if (Input.GetKey(KeyCode.S)) movement -= Double2.UnitY;
-        if (Input.GetKey(KeyCode.A)) movement -= Double2.UnitX;
-        if (Input.GetKey(KeyCode.D)) movement += Double2.UnitX;
+        Float2 movement = Float2.Zero;
+        if (Input.GetKey(KeyCode.W)) movement += Float2.UnitY;
+        if (Input.GetKey(KeyCode.S)) movement -= Float2.UnitY;
+        if (Input.GetKey(KeyCode.A)) movement -= Float2.UnitX;
+        if (Input.GetKey(KeyCode.D)) movement += Float2.UnitX;
 
         float speed = Input.GetKey(KeyCode.ShiftLeft) ? 20f : 10f;
 
@@ -93,24 +93,24 @@ public sealed class VoxelGame : Game
         float upDown = 0;
         if (Input.GetKey(KeyCode.E)) upDown += 1;
         if (Input.GetKey(KeyCode.Q)) upDown -= 1;
-        cameraGO.Transform.Position += Double3.UnitY * upDown * speed * Time.DeltaTime;
+        cameraGO.Transform.Position += Float3.UnitY * upDown * speed * Time.DeltaTime;
 
         // rotate with mouse
         if (Input.GetMouseButton(1))
         {
-            Double2 delta = Input.MouseDelta;
-            cameraGO.Transform.LocalEulerAngles += new Double3(delta.Y, delta.X, 0) * 0.1f;
+            Float2 delta = Input.MouseDelta;
+            cameraGO.Transform.LocalEulerAngles += new Float3(delta.Y, delta.X, 0) * 0.1f;
         }
 
         // Voxel editing
         if (Input.GetMouseButtonDown(0)) // Left click to destroy
         {
-            Ray ray = camera.ScreenPointToRay((Double2)Input.MousePosition, new Double2(Window.Size.X, Window.Size.Y));
+            Ray ray = camera.ScreenPointToRay((Float2)Input.MousePosition, new Float2(Window.Size.X, Window.Size.Y));
             world.RaycastVoxel(ray, 10f, true);
         }
         else if (Input.GetMouseButtonDown(2)) // Middle click to place
         {
-            Ray ray = camera.ScreenPointToRay((Double2)Input.MousePosition, new Double2(Window.Size.X, Window.Size.Y));
+            Ray ray = camera.ScreenPointToRay((Float2)Input.MousePosition, new Float2(Window.Size.X, Window.Size.Y));
             world.RaycastVoxel(ray, 10f, false);
         }
 
@@ -146,7 +146,7 @@ public class VoxelWorld : MonoBehaviour
     private void CreateChunk(Int3 chunkPos)
     {
         GameObject chunkGO = new($"Chunk_{chunkPos.X}_{chunkPos.Y}_{chunkPos.Z}");
-        chunkGO.Transform.Position = new Double3(
+        chunkGO.Transform.Position = new Float3(
             chunkPos.X * ChunkWidth,
             chunkPos.Y * ChunkHeight,
             chunkPos.Z * ChunkDepth
@@ -193,14 +193,14 @@ public class VoxelWorld : MonoBehaviour
     public bool RaycastVoxel(Ray ray, float maxDistance, bool destroy)
     {
         // DDA Voxel Traversal
-        Double3 rayPos = ray.Origin;
-        Double3 rayDir = Double3.Normalize(ray.Direction);
+        Float3 rayPos = ray.Origin;
+        Float3 rayDir = Float3.Normalize(ray.Direction);
 
         // Current voxel position
         Int3 voxelPos = new(
-            (int)Math.Floor(rayPos.X),
-            (int)Math.Floor(rayPos.Y),
-            (int)Math.Floor(rayPos.Z)
+            (int)Maths.Floor(rayPos.X),
+            (int)Maths.Floor(rayPos.Y),
+            (int)Maths.Floor(rayPos.Z)
         );
 
         // Step direction for each axis
@@ -211,20 +211,20 @@ public class VoxelWorld : MonoBehaviour
         );
 
         // Distance to next voxel boundary on each axis
-        Double3 tDelta = new(
-            Math.Abs(1.0 / rayDir.X),
-            Math.Abs(1.0 / rayDir.Y),
-            Math.Abs(1.0 / rayDir.Z)
+        Float3 tDelta = new(
+            Maths.Abs(1.0 / rayDir.X),
+            Maths.Abs(1.0 / rayDir.Y),
+            Maths.Abs(1.0 / rayDir.Z)
         );
 
         // Initial t values to reach next voxel boundary
-        Double3 tMax = new(
+        Float3 tMax = new(
             rayDir.X > 0 ? (voxelPos.X + 1 - rayPos.X) / rayDir.X : (rayPos.X - voxelPos.X) / -rayDir.X,
             rayDir.Y > 0 ? (voxelPos.Y + 1 - rayPos.Y) / rayDir.Y : (rayPos.Y - voxelPos.Y) / -rayDir.Y,
             rayDir.Z > 0 ? (voxelPos.Z + 1 - rayPos.Z) / rayDir.Z : (rayPos.Z - voxelPos.Z) / -rayDir.Z
         );
 
-        double distance = 0;
+        float distance = 0;
         Int3 previousVoxel = voxelPos;
 
         while (distance < maxDistance)
@@ -354,8 +354,8 @@ public class VoxelChunk : MonoBehaviour
 
                 // Create a simple height map
                 int baseHeight = 64;
-                int heightVariation = (int)(Math.Sin(worldX * 0.1) * 10 + Math.Cos(worldZ * 0.1) * 10 +
-                                           Math.Sin(worldX * 0.05) * 5 + Math.Cos(worldZ * 0.05) * 5);
+                int heightVariation = (int)(Maths.Sin(worldX * 0.1) * 10 + Maths.Cos(worldZ * 0.1) * 10 +
+                                           Maths.Sin(worldX * 0.05) * 5 + Maths.Cos(worldZ * 0.05) * 5);
                 int height = baseHeight + heightVariation;
 
                 for (int y = 0; y < ChunkHeight; y++)
@@ -390,7 +390,7 @@ public class VoxelChunk : MonoBehaviour
 
     private void GenerateMesh()
     {
-        List<Double3> vertices = [];
+        List<Float3> vertices = [];
         List<int> triangles = [];
         List<Color> colors = [];
 
@@ -466,55 +466,55 @@ public class VoxelChunk : MonoBehaviour
         };
     }
 
-    private void AddFace(List<Double3> vertices, List<int> triangles, List<Color> colors,
+    private void AddFace(List<Float3> vertices, List<int> triangles, List<Color> colors,
                         int x, int y, int z, int face, Color color)
     {
         int vertexIndex = vertices.Count;
 
         // Define the 4 vertices of the face based on face direction
-        Double3[] faceVertices = face switch
+        Float3[] faceVertices = face switch
         {
             0 => [ // Top (+Y)
-                new Double3(x, y + 1, z),
-                new Double3(x, y + 1, z + 1),
-                new Double3(x + 1, y + 1, z + 1),
-                new Double3(x + 1, y + 1, z)
+                new Float3(x, y + 1, z),
+                new Float3(x, y + 1, z + 1),
+                new Float3(x + 1, y + 1, z + 1),
+                new Float3(x + 1, y + 1, z)
             ],
             1 => [ // Bottom (-Y)
-                new Double3(x, y, z + 1),
-                new Double3(x, y, z),
-                new Double3(x + 1, y, z),
-                new Double3(x + 1, y, z + 1),
+                new Float3(x, y, z + 1),
+                new Float3(x, y, z),
+                new Float3(x + 1, y, z),
+                new Float3(x + 1, y, z + 1),
             ],
             2 => [ // Front (+Z)
-                new Double3(x, y, z + 1),
-                new Double3(x + 1, y, z + 1),
-                new Double3(x + 1, y + 1, z + 1),
-                new Double3(x, y + 1, z + 1)
+                new Float3(x, y, z + 1),
+                new Float3(x + 1, y, z + 1),
+                new Float3(x + 1, y + 1, z + 1),
+                new Float3(x, y + 1, z + 1)
             ],
             3 => [ // Back (-Z)
-                new Double3(x + 1, y, z),
-                new Double3(x, y, z),
-                new Double3(x, y + 1, z),
-                new Double3(x + 1, y + 1, z)
+                new Float3(x + 1, y, z),
+                new Float3(x, y, z),
+                new Float3(x, y + 1, z),
+                new Float3(x + 1, y + 1, z)
             ],
             4 => [ // Right (+X)
-                new Double3(x + 1, y, z + 1),
-                new Double3(x + 1, y, z),
-                new Double3(x + 1, y + 1, z),
-                new Double3(x + 1, y + 1, z + 1)
+                new Float3(x + 1, y, z + 1),
+                new Float3(x + 1, y, z),
+                new Float3(x + 1, y + 1, z),
+                new Float3(x + 1, y + 1, z + 1)
             ],
             5 => [ // Left (-X)
-                new Double3(x, y, z),
-                new Double3(x, y, z + 1),
-                new Double3(x, y + 1, z + 1),
-                new Double3(x, y + 1, z)
+                new Float3(x, y, z),
+                new Float3(x, y, z + 1),
+                new Float3(x, y + 1, z + 1),
+                new Float3(x, y + 1, z)
             ],
             _ => throw new ArgumentException("Invalid face index")
         };
 
         // Add vertices
-        foreach (Double3 vertex in faceVertices)
+        foreach (Float3 vertex in faceVertices)
         {
             vertices.Add(vertex);
             colors.Add(color);

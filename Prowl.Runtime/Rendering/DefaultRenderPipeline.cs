@@ -20,10 +20,10 @@ namespace Prowl.Runtime.Rendering;
 
 public struct ViewerData
 {
-    public Double3 Position;
-    public Double3 Forward;
-    public Double3 Up;
-    public Double3 Right;
+    public Float3 Position;
+    public Float3 Forward;
+    public Float3 Up;
+    public Float3 Right;
 
     public ViewerData(DefaultRenderPipeline.CameraSnapshot css)
     {
@@ -33,7 +33,7 @@ public struct ViewerData
         Right = css.CameraRight;
     }
 
-    public ViewerData(Double3 position, Double3 forward, Double3 right, Double3 up) : this()
+    public ViewerData(Float3 position, Float3 forward, Float3 right, Float3 up) : this()
     {
         Position = position;
         Forward = forward;
@@ -297,14 +297,14 @@ public class DefaultRenderPipeline : RenderPipeline
 
         // Set fog parameters
         Scene.FogParams fog = css.Scene.Fog;
-        Double4 fogParams = Double4.Zero;
-        fogParams.X = fog.Density / 1.2011224; // density/sqrt(ln(2))
-        fogParams.Y = fog.Density / 0.693147181; // ln(2)
-        fogParams.Z = -1.0 / (fog.End - fog.Start);
+        Float4 fogParams = Float4.Zero;
+        fogParams.X = fog.Density / 1.2011224f; // density/sqrt(ln(2))
+        fogParams.Y = fog.Density / 0.693147181f; // ln(2)
+        fogParams.Z = -1.0f / (fog.End - fog.Start);
         fogParams.W = fog.End / (fog.End - fog.Start);
         s_deferredCompose.SetColor("_FogColor", fog.Color);
         s_deferredCompose.SetVector("_FogParams", fogParams);
-        s_deferredCompose.SetVector("_FogStates", new Double3(
+        s_deferredCompose.SetVector("_FogStates", new Float3(
             fog.Mode == Scene.FogParams.FogMode.Linear ? 1 : 0,
             fog.Mode == Scene.FogParams.FogMode.Exponential ? 1 : 0,
             fog.Mode == Scene.FogParams.FogMode.ExponentialSquared ? 1 : 0
@@ -312,7 +312,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
         // Set ambient lighting parameters
         Scene.AmbientLightParams ambient = css.Scene.Ambient;
-        s_deferredCompose.SetVector("_AmbientMode", new Double2(
+        s_deferredCompose.SetVector("_AmbientMode", new Float2(
             ambient.Mode == Scene.AmbientLightParams.AmbientMode.Uniform ? 1 : 0,
             ambient.Mode == Scene.AmbientLightParams.AmbientMode.Hemisphere ? 1 : 0
         ));
@@ -442,7 +442,7 @@ public class DefaultRenderPipeline : RenderPipeline
 
     private void RenderGizmos(CameraSnapshot css)
     {
-        Double4x4 vp = css.Projection * css.View;
+        Float4x4 vp = css.Projection * css.View;
         (Mesh? wire, Mesh? solid) = Debug.GetGizmoDrawData();
 
         if (wire.IsValid() || solid.IsValid())

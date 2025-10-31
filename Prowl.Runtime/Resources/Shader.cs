@@ -6,6 +6,7 @@ using System.Collections.Generic;
 
 using Prowl.Echo;
 using Prowl.Runtime.Rendering.Shaders;
+using Prowl.Vector;
 
 namespace Prowl.Runtime.Resources;
 
@@ -61,7 +62,7 @@ public sealed class Shader : EngineObject, ISerializationCallbackReceiver
 
     public ShaderPass GetPass(int passIndex)
     {
-        passIndex = Math.Clamp(passIndex, 0, _passes.Length - 1);
+        passIndex = Maths.Clamp(passIndex, 0, _passes.Length - 1);
         return _passes[passIndex];
     }
 

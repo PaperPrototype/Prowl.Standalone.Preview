@@ -23,12 +23,12 @@ public sealed class PhysicsTesterDemo : Game
     private Scene? scene;
     private Material? standardMaterial;
     private GameObject? testCase5Child; // For test case 6 (removing child rigidbody)
-    private double timeSinceStart = 0;
+    private float timeSinceStart = 0;
 
     // Click-and-drag functionality
     private Rigidbody3D? grabbedRigidbody;
-    private Double3 grabOffset;
-    private double grabDistance;
+    private Float3 grabOffset;
+    private float grabDistance;
 
     public override void Initialize()
     {
@@ -39,14 +39,14 @@ public sealed class PhysicsTesterDemo : Game
         DirectionalLight light = lightGO.AddComponent<DirectionalLight>();
         light.ShadowQuality = ShadowQuality.Soft;
         light.ShadowBias = 0.5f;
-        lightGO.Transform.LocalEulerAngles = new Double3(-45, 45, 0);
+        lightGO.Transform.LocalEulerAngles = new Float3(-45, 45, 0);
         scene.Add(lightGO);
 
         // Create camera
         GameObject cam = new("Main Camera");
         cam.Tag = "Main Camera";
         cam.Transform.Position = new(0, 10, -30);
-        cam.Transform.LocalEulerAngles = new Double3(15, 0, 0);
+        cam.Transform.LocalEulerAngles = new Float3(15, 0, 0);
         Camera camera = cam.AddComponent<Camera>();
         camera.Depth = -1;
         camera.HDR = true;
@@ -98,14 +98,14 @@ public sealed class PhysicsTesterDemo : Game
 
         GameObject floor = new("Test1_Floor");
         MeshRenderer floorRenderer = floor.AddComponent<MeshRenderer>();
-        floorRenderer.Mesh = Mesh.CreateCube(new Double3(40, 1, 40));
+        floorRenderer.Mesh = Mesh.CreateCube(new Float3(40, 1, 40));
         floorRenderer.Material = standardMaterial;
         floorRenderer.MainColor = new Color(0.7f, 0.7f, 0.7f, 1.0f);
-        floor.Transform.Position = new Double3(0, -0.5f, 0);
+        floor.Transform.Position = new Float3(0, -0.5f, 0);
 
         // Just add a collider - NO Rigidbody3D
         BoxCollider floorCollider = floor.AddComponent<BoxCollider>();
-        floorCollider.Size = new Double3(40, 1, 40);
+        floorCollider.Size = new Float3(40, 1, 40);
 
         scene.Add(floor);
         Debug.Log("  ✓ Floor created with collider only - should attach to static rigidbody automatically");
@@ -116,21 +116,21 @@ public sealed class PhysicsTesterDemo : Game
         Debug.Log("TEST CASE 2: Creating walls with just colliders (no Rigidbody3D)");
 
         // North wall
-        CreateWall("Test2_Wall_North", new Double3(0, 2.5f, 20), new Double3(40, 5, 1), new Color(0.6f, 0.6f, 0.8f, 1.0f));
+        CreateWall("Test2_Wall_North", new Float3(0, 2.5f, 20), new Float3(40, 5, 1), new Color(0.6f, 0.6f, 0.8f, 1.0f));
 
         // South wall
-        CreateWall("Test2_Wall_South", new Double3(0, 2.5f, -20), new Double3(40, 5, 1), new Color(0.6f, 0.6f, 0.8f, 1.0f));
+        CreateWall("Test2_Wall_South", new Float3(0, 2.5f, -20), new Float3(40, 5, 1), new Color(0.6f, 0.6f, 0.8f, 1.0f));
 
         // East wall
-        CreateWall("Test2_Wall_East", new Double3(20, 2.5f, 0), new Double3(1, 5, 40), new Color(0.6f, 0.8f, 0.6f, 1.0f));
+        CreateWall("Test2_Wall_East", new Float3(20, 2.5f, 0), new Float3(1, 5, 40), new Color(0.6f, 0.8f, 0.6f, 1.0f));
 
         // West wall
-        CreateWall("Test2_Wall_West", new Double3(-20, 2.5f, 0), new Double3(1, 5, 40), new Color(0.6f, 0.8f, 0.6f, 1.0f));
+        CreateWall("Test2_Wall_West", new Float3(-20, 2.5f, 0), new Float3(1, 5, 40), new Color(0.6f, 0.8f, 0.6f, 1.0f));
 
         Debug.Log("  ✓ 4 walls created with colliders only - should attach to static rigidbody automatically");
     }
 
-    private void CreateWall(string name, Double3 position, Double3 size, Color color)
+    private void CreateWall(string name, Float3 position, Float3 size, Color color)
     {
         GameObject wall = new(name);
         MeshRenderer wallRenderer = wall.AddComponent<MeshRenderer>();
@@ -152,10 +152,10 @@ public sealed class PhysicsTesterDemo : Game
 
         GameObject cube = new("Test3_RigidbodyFirst");
         MeshRenderer cubeRenderer = cube.AddComponent<MeshRenderer>();
-        cubeRenderer.Mesh = Mesh.CreateCube(new Double3(2, 2, 2));
+        cubeRenderer.Mesh = Mesh.CreateCube(new Float3(2, 2, 2));
         cubeRenderer.Material = standardMaterial;
         cubeRenderer.MainColor = new Color(1.0f, 0.5f, 0.5f, 1.0f);
-        cube.Transform.Position = new Double3(-10, 10, 0);
+        cube.Transform.Position = new Float3(-10, 10, 0);
 
         // Add Rigidbody3D FIRST
         Rigidbody3D rb = cube.AddComponent<Rigidbody3D>();
@@ -163,7 +163,7 @@ public sealed class PhysicsTesterDemo : Game
 
         // Then add Collider
         BoxCollider collider = cube.AddComponent<BoxCollider>();
-        collider.Size = new Double3(2, 2, 2);
+        collider.Size = new Float3(2, 2, 2);
 
         scene.Add(cube);
         Debug.Log("  ✓ Cube created with Rigidbody3D first - should fall");
@@ -175,14 +175,14 @@ public sealed class PhysicsTesterDemo : Game
 
         GameObject cube = new("Test4_ColliderFirst");
         MeshRenderer cubeRenderer = cube.AddComponent<MeshRenderer>();
-        cubeRenderer.Mesh = Mesh.CreateCube(new Double3(2, 2, 2));
+        cubeRenderer.Mesh = Mesh.CreateCube(new Float3(2, 2, 2));
         cubeRenderer.Material = standardMaterial;
         cubeRenderer.MainColor = new Color(0.5f, 1.0f, 0.5f, 1.0f);
-        cube.Transform.Position = new Double3(-5, 10, 0);
+        cube.Transform.Position = new Float3(-5, 10, 0);
 
         // Add Collider FIRST (will attach to static rigidbody)
         BoxCollider collider = cube.AddComponent<BoxCollider>();
-        collider.Size = new Double3(2, 2, 2);
+        collider.Size = new Float3(2, 2, 2);
 
         // Then add Rigidbody3D (should claim the collider from static rigidbody)
         Rigidbody3D rb = cube.AddComponent<Rigidbody3D>();
@@ -199,10 +199,10 @@ public sealed class PhysicsTesterDemo : Game
         // Create parent
         GameObject parent = new("Test5_Parent");
         MeshRenderer parentRenderer = parent.AddComponent<MeshRenderer>();
-        parentRenderer.Mesh = Mesh.CreateCube(new Double3(3, 1, 3));
+        parentRenderer.Mesh = Mesh.CreateCube(new Float3(3, 1, 3));
         parentRenderer.Material = standardMaterial;
         parentRenderer.MainColor = new Color(0.5f, 0.5f, 1.0f, 1.0f);
-        parent.Transform.Position = new Double3(5, 10, 0);
+        parent.Transform.Position = new Float3(5, 10, 0);
 
         // Add Rigidbody3D to parent
         Rigidbody3D parentRb = parent.AddComponent<Rigidbody3D>();
@@ -210,18 +210,18 @@ public sealed class PhysicsTesterDemo : Game
 
         // Add collider to parent
         BoxCollider parentCollider = parent.AddComponent<BoxCollider>();
-        parentCollider.Size = new Double3(3, 1, 3);
+        parentCollider.Size = new Float3(3, 1, 3);
 
         scene.Add(parent);
 
         // Create child
         GameObject child = new("Test5_Child");
         MeshRenderer childRenderer = child.AddComponent<MeshRenderer>();
-        childRenderer.Mesh = Mesh.CreateCube(new Double3(1, 1, 1));
+        childRenderer.Mesh = Mesh.CreateCube(new Float3(1, 1, 1));
         childRenderer.Material = standardMaterial;
         childRenderer.MainColor = new Color(1.0f, 1.0f, 0.5f, 1.0f);
         child.Transform.Parent = parent.Transform;
-        child.Transform.LocalPosition = new Double3(0, 2, 0);
+        child.Transform.LocalPosition = new Float3(0, 2, 0);
 
         // Add Rigidbody3D to child (should claim its own collider)
         Rigidbody3D childRb = child.AddComponent<Rigidbody3D>();
@@ -229,7 +229,7 @@ public sealed class PhysicsTesterDemo : Game
 
         // Add collider to child
         BoxCollider childCollider = child.AddComponent<BoxCollider>();
-        childCollider.Size = new Double3(1, 1, 1);
+        childCollider.Size = new Float3(1, 1, 1);
 
         scene.Add(child);
 
@@ -250,8 +250,8 @@ public sealed class PhysicsTesterDemo : Game
         if (Input.GetMouseButtonDown(0))
         {
             // Cast a ray from the mouse position
-            Double2 mousePos = (Float2)Input.MousePosition;
-            Ray ray = camera.ScreenPointToRay(mousePos, new Double2(Window.Size.X, Window.Size.Y));
+            Float2 mousePos = (Float2)Input.MousePosition;
+            Ray ray = camera.ScreenPointToRay(mousePos, new Float2(Window.Size.X, Window.Size.Y));
 
             // Raycast to find a rigidbody
             if (scene.Physics.Raycast(ray.Origin, ray.Direction, out RaycastHit hitInfo))
@@ -260,10 +260,10 @@ public sealed class PhysicsTesterDemo : Game
                 if (hitInfo.Rigidbody.IsValid() && !hitInfo.Rigidbody.IsStatic)
                 {
                     grabbedRigidbody = hitInfo.Rigidbody;
-                    grabDistance = Double3.Distance(ray.Origin, hitInfo.Point);
+                    grabDistance = Float3.Distance(ray.Origin, hitInfo.Point);
 
                     // Calculate offset from rigidbody center to hit point
-                    Double3 hitWorldPos = hitInfo.Point;
+                    Float3 hitWorldPos = hitInfo.Point;
                     grabOffset = hitWorldPos - grabbedRigidbody.Transform.Position;
 
                     Debug.Log($"Grabbed rigidbody: {grabbedRigidbody.GameObject.Name}");
@@ -275,24 +275,24 @@ public sealed class PhysicsTesterDemo : Game
         if (Input.GetMouseButton(0) && grabbedRigidbody.IsValid())
         {
             // Cast a ray to get the target position
-            Double2 mousePos = (Float2)Input.MousePosition;
-            Ray ray = camera.ScreenPointToRay(mousePos, new Double2(Window.Size.X, Window.Size.Y));
+            Float2 mousePos = (Float2)Input.MousePosition;
+            Ray ray = camera.ScreenPointToRay(mousePos, new Float2(Window.Size.X, Window.Size.Y));
 
             // Calculate target position at the original grab distance
-            Double3 targetPos = ray.Origin + ray.Direction * grabDistance;
+            Float3 targetPos = ray.Origin + ray.Direction * grabDistance;
 
             // Account for the grab offset
             targetPos -= grabOffset;
 
             // Calculate force to apply (spring-like force)
-            Double3 currentPos = grabbedRigidbody.Transform.Position;
-            Double3 force = (targetPos - currentPos) * 50.0; // Spring constant
+            Float3 currentPos = grabbedRigidbody.Transform.Position;
+            Float3 force = (targetPos - currentPos) * 50.0; // Spring constant
 
             // Apply force
             grabbedRigidbody.AddForce(force);
 
             // Add damping to prevent oscillation
-            Double3 velocity = grabbedRigidbody.LinearVelocity;
+            Float3 velocity = grabbedRigidbody.LinearVelocity;
             grabbedRigidbody.AddForce(-velocity * 5.0); // Damping
         }
 
@@ -331,11 +331,11 @@ public sealed class PhysicsTesterDemo : Game
         HandleRigidbodyDragging();
 
         // Camera movement
-        Double2 movement = Double2.Zero;
-        if (Input.GetKey(KeyCode.W)) movement += Double2.UnitY;
-        if (Input.GetKey(KeyCode.S)) movement -= Double2.UnitY;
-        if (Input.GetKey(KeyCode.A)) movement -= Double2.UnitX;
-        if (Input.GetKey(KeyCode.D)) movement += Double2.UnitX;
+        Float2 movement = Float2.Zero;
+        if (Input.GetKey(KeyCode.W)) movement += Float2.UnitY;
+        if (Input.GetKey(KeyCode.S)) movement -= Float2.UnitY;
+        if (Input.GetKey(KeyCode.A)) movement -= Float2.UnitX;
+        if (Input.GetKey(KeyCode.D)) movement += Float2.UnitX;
 
         // forward/back
         cameraGO.Transform.Position += cameraGO.Transform.Forward * movement.Y * 10f * Time.DeltaTime;
@@ -346,13 +346,13 @@ public sealed class PhysicsTesterDemo : Game
         float upDown = 0;
         if (Input.GetKey(KeyCode.E)) upDown += 1;
         if (Input.GetKey(KeyCode.Q)) upDown -= 1;
-        cameraGO.Transform.Position += Double3.UnitY * upDown * 10f * Time.DeltaTime;
+        cameraGO.Transform.Position += Float3.UnitY * upDown * 10f * Time.DeltaTime;
 
         // rotate with mouse
         if (Input.GetMouseButton(1))
         {
-            Double2 delta = Input.MouseDelta;
-            cameraGO.Transform.LocalEulerAngles += new Double3(delta.Y, delta.X, 0) * 0.1f;
+            Float2 delta = Input.MouseDelta;
+            cameraGO.Transform.LocalEulerAngles += new Float3(delta.Y, delta.X, 0) * 0.1f;
         }
 
         // Reset scene with R key

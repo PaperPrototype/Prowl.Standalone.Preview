@@ -182,9 +182,9 @@ public class GameObject : EngineObject, ISerializable
         }
 
         // Save the old position in worldspace
-        Double3 worldPosition = new();
+        Float3 worldPosition = new();
         Quaternion worldRotation = new();
-        Double4x4 worldScale = new();
+        Float4x4 worldScale = new();
 
         if (worldPositionStays)
         {
@@ -218,9 +218,9 @@ public class GameObject : EngineObject, ISerializable
                 Transform.LocalRotation = Quaternion.NormalizeSafe(worldRotation);
             }
 
-            Transform.LocalScale = Double3.One;
-            Double4x4 inverseRS = Transform.GetWorldRotationAndScale().Invert() * worldScale;
-            Transform.LocalScale = new Double3(inverseRS[0, 0], inverseRS[1, 1], inverseRS[2, 2]);
+            Transform.LocalScale = Float3.One;
+            Float4x4 inverseRS = Transform.GetWorldRotationAndScale().Invert() * worldScale;
+            Transform.LocalScale = new Float3(inverseRS[0, 0], inverseRS[1, 1], inverseRS[2, 2]);
         }
 
         HierarchyStateChanged();
@@ -294,7 +294,7 @@ public class GameObject : EngineObject, ISerializable
     {
         if (Children == null) return [];
 
-        int startCapacity = Math.Max(Children.Count * 2, 8);
+        int startCapacity = Maths.Max(Children.Count * 2, 8);
         List<GameObject> result = new(startCapacity);
         GetChildrenDeep(result);
         return result;
@@ -395,7 +395,7 @@ public class GameObject : EngineObject, ISerializable
         Parent.Children.Remove(this);
 
         // Ensure index is within bounds
-        index = Math.Max(0, Math.Min(index, Parent.Children.Count));
+        index = Maths.Max(0, Maths.Min(index, Parent.Children.Count));
 
         // Insert at new position
         Parent.Children.Insert(index, this);
@@ -1008,7 +1008,7 @@ public class GameObject : EngineObject, ISerializable
         }
     }
 
-    private string FormatVector(Double3 v)
+    private string FormatVector(Float3 v)
     {
         return $"({v.X:F2}, {v.Y:F2}, {v.Z:F2})";
     }

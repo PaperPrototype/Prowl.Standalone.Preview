@@ -64,7 +64,7 @@ public sealed class MyGame : Game
         // Create directional light
         GameObject lightGO = new("Directional Light");
         lightGO.AddComponent<DirectionalLight>();
-        lightGO.Transform.LocalEulerAngles = new Double3(-80, 5, 0);
+        lightGO.Transform.LocalEulerAngles = new Float3(-80, 5, 0);
         scene.Add(lightGO);
 
         // Create camera
@@ -85,7 +85,7 @@ public sealed class MyGame : Game
         // Create ground plane
         GameObject groundGO = new("Ground");
         MeshRenderer mr = groundGO.AddComponent<MeshRenderer>();
-        mr.Mesh = Mesh.CreateCube(Double3.One);
+        mr.Mesh = Mesh.CreateCube(Float3.One);
         mr.Material = new Material(Shader.LoadDefault(DefaultShader.Standard));
         groundGO.Transform.Position = new(0, -3, 0);
         groundGO.Transform.LocalScale = new(20, 1, 20);
@@ -123,13 +123,13 @@ public sealed class MyGame : Game
         {
             float t = i / 80f;
             float angle = t * MathF.PI * 4;
-            helix.Points.Add(new Double3(
+            helix.Points.Add(new Float3(
                 MathF.Cos(angle) * 0.8f,
                 t * 3f - 1.5f,
                 MathF.Sin(angle) * 0.8f
             ));
         }
-        helixGO.Transform.Position = new Double3(-4, 0, 0);
+        helixGO.Transform.Position = new Float3(-4, 0, 0);
         scene.Add(helixGO);
 
         // 2. Animated Sine Wave
@@ -146,13 +146,13 @@ public sealed class MyGame : Game
         for (int i = 0; i <= 60; i++)
         {
             float t = i / 60f;
-            sineWave.Points.Add(new Double3(
+            sineWave.Points.Add(new Float3(
                 t * 5f - 2.5f,
                 MathF.Sin(t * MathF.PI * 3) * 0.8f,
                 0
             ));
         }
-        sineGO.Transform.Position = new Double3(0, 1, 3);
+        sineGO.Transform.Position = new Float3(0, 1, 3);
         scene.Add(sineGO);
 
         // 3. Looping Orbital Ring
@@ -170,14 +170,14 @@ public sealed class MyGame : Game
         for (int i = 0; i < 48; i++)
         {
             float angle = (i / 48f) * MathF.PI * 2;
-            orbitalRing.Points.Add(new Double3(
+            orbitalRing.Points.Add(new Float3(
                 MathF.Cos(angle) * 1.2f,
                 MathF.Sin(angle) * 0.3f,
                 MathF.Sin(angle) * 1.2f
             ));
         }
-        ringGO.Transform.Position = new Double3(4, 1, 0);
-        ringGO.Transform.LocalEulerAngles = new Double3(30, 45, 0);
+        ringGO.Transform.Position = new Float3(4, 1, 0);
+        ringGO.Transform.LocalEulerAngles = new Float3(30, 45, 0);
         scene.Add(ringGO);
     }
 
@@ -187,7 +187,7 @@ public sealed class MyGame : Game
 
         // Movement (WASD + Gamepad)
         moveAction = cameraMap.AddAction("Move", InputActionType.Value);
-        moveAction.ExpectedValueType = typeof(Double2);
+        moveAction.ExpectedValueType = typeof(Float2);
         moveAction.AddBinding(new Vector2CompositeBinding(
             InputBinding.CreateKeyBinding(KeyCode.W),
             InputBinding.CreateKeyBinding(KeyCode.S),
@@ -206,7 +206,7 @@ public sealed class MyGame : Game
 
         // Look (Mouse + Gamepad)
         lookAction = cameraMap.AddAction("Look", InputActionType.Value);
-        lookAction.ExpectedValueType = typeof(Double2);
+        lookAction.ExpectedValueType = typeof(Float2);
         var mouse = new DualAxisCompositeBinding(
             InputBinding.CreateMouseAxisBinding(0),
             InputBinding.CreateMouseAxisBinding(1));
@@ -241,7 +241,7 @@ public sealed class MyGame : Game
         // Animate helix rotation
         if (helix.IsValid())
         {
-            helix.GameObject.Transform.LocalEulerAngles = new Double3(0, time * 25, 0);
+            helix.GameObject.Transform.LocalEulerAngles = new Float3(0, time * 25, 0);
         }
 
         // Animate sine wave
@@ -251,7 +251,7 @@ public sealed class MyGame : Game
             for (int i = 0; i <= 60; i++)
             {
                 float t = i / 60f;
-                sineWave.Points.Add(new Double3(
+                sineWave.Points.Add(new Float3(
                     t * 5f - 2.5f,
                     MathF.Sin(t * MathF.PI * 3 + time * 2) * 0.8f,
                     0
@@ -263,7 +263,7 @@ public sealed class MyGame : Game
         // Animate orbital ring rotation
         if (orbitalRing.IsValid())
         {
-            orbitalRing.GameObject.Transform.LocalEulerAngles += new Double3(
+            orbitalRing.GameObject.Transform.LocalEulerAngles += new Float3(
                 10 * Time.DeltaTime,
                 20 * Time.DeltaTime,
                 15 * Time.DeltaTime
@@ -271,7 +271,7 @@ public sealed class MyGame : Game
         }
 
         // Camera controls
-        Double2 movement = moveAction.ReadValue<Double2>();
+        Float2 movement = moveAction.ReadValue<Float2>();
         float speedMultiplier = sprintAction.IsPressed() ? 2.5f : 1.0f;
         float moveSpeed = 5f * speedMultiplier * (float)Time.DeltaTime;
 
@@ -281,12 +281,12 @@ public sealed class MyGame : Game
         float upDown = 0;
         if (flyUpAction.IsPressed()) upDown += 1;
         if (flyDownAction.IsPressed()) upDown -= 1;
-        cameraGO.Transform.Position += Double3.UnitY * upDown * moveSpeed;
+        cameraGO.Transform.Position += Float3.UnitY * upDown * moveSpeed;
 
-        Double2 lookInput = lookAction.ReadValue<Double2>();
-        if (lookEnableAction.IsPressed() || Math.Abs(lookInput.X) > 0.01f || Math.Abs(lookInput.Y) > 0.01f)
+        Float2 lookInput = lookAction.ReadValue<Float2>();
+        if (lookEnableAction.IsPressed() || Maths.Abs(lookInput.X) > 0.01f || Maths.Abs(lookInput.Y) > 0.01f)
         {
-            cameraGO.Transform.LocalEulerAngles += new Double3(lookInput.Y, lookInput.X, 0);
+            cameraGO.Transform.LocalEulerAngles += new Float3(lookInput.Y, lookInput.X, 0);
         }
 
         if (Input.GetKeyDown(KeyCode.Escape))

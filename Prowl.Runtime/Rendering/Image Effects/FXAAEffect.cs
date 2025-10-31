@@ -25,7 +25,7 @@ public sealed class FXAAEffect : ImageEffect
         _mat.SetFloat("_EdgeThresholdMax", EdgeThresholdMax);
         _mat.SetFloat("_EdgeThresholdMin", EdgeThresholdMin);
         _mat.SetFloat("_SubpixelQuality", SubpixelQuality);
-        _mat.SetVector("_Resolution", new Double2(context.Width, context.Height));
+        _mat.SetVector("_Resolution", new Float2(context.Width, context.Height));
 
         // Apply FXAA (in-place)
         RenderPipeline.Blit(context.SceneColor, context.SceneColor, _mat, 0);

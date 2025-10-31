@@ -72,7 +72,7 @@ public class ModelImporter
 
             if (scene->MNumMeshes == 0) Failed("Model has no Meshes.");
 
-            double scale = GetScale(settings.Value, extension);
+            float scale = GetScale(settings.Value, extension);
 
             return BuildModel(scene, filePath, parentDir, scale, settings.Value);
         }
@@ -117,7 +117,7 @@ public class ModelImporter
 
             if (scene->MNumMeshes == 0) Failed("Model has no Meshes.");
 
-            double scale = GetScale(settings.Value, extension);
+            float scale = GetScale(settings.Value, extension);
 
             return BuildModel(scene, virtualPath, parentDir, scale, settings.Value);
         }
@@ -145,16 +145,16 @@ public class ModelImporter
         return steps;
     }
 
-    private double GetScale(ModelImporterSettings settings, string extension)
+    private float GetScale(ModelImporterSettings settings, string extension)
     {
-        double scale = settings.UnitScale;
+        float scale = settings.UnitScale;
         // FBX's are usually in cm, so scale them to meters
         if (extension.Equals(".fbx", StringComparison.OrdinalIgnoreCase))
-            scale *= 0.01;
+            scale *= 0.01f;
         return scale;
     }
 
-    private unsafe Model BuildModel(Scene* scene, string assetPath, DirectoryInfo? parentDir, double scale, ModelImporterSettings settings)
+    private unsafe Model BuildModel(Scene* scene, string assetPath, DirectoryInfo? parentDir, float scale, ModelImporterSettings settings)
     {
         var model = new Model(Path.GetFileNameWithoutExtension(assetPath));
         model.UnitScale = settings.UnitScale;
@@ -163,7 +163,7 @@ public class ModelImporter
         model.RootNode = BuildModelNode(scene->MRootNode, scale);
 
         System.Numerics.Matrix4x4 rootTransform = scene->MRootNode->MTransformation;
-        Double4x4 rootMatrix = new(
+        Float4x4 rootMatrix = new(
             rootTransform.M11, rootTransform.M12, rootTransform.M13, rootTransform.M14,
             rootTransform.M21, rootTransform.M22, rootTransform.M23, rootTransform.M24,
             rootTransform.M31, rootTransform.M32, rootTransform.M33, rootTransform.M34,
@@ -300,7 +300,7 @@ public class ModelImporter
         }
     }
 
-    private unsafe void LoadMeshes(string assetPath, ModelImporterSettings settings, Scene* scene, double scale, List<Material> mats, List<ModelMesh> meshMats)
+    private unsafe void LoadMeshes(string assetPath, ModelImporterSettings settings, Scene* scene, float scale, List<Material> mats, List<ModelMesh> meshMats)
     {
         for (uint meshIndex = 0; meshIndex < scene->MNumMeshes; meshIndex++)
         {
@@ -489,7 +489,7 @@ public class ModelImporter
         }
     }
 
-    private unsafe ModelNode BuildModelNode(Silk.NET.Assimp.Node* assimpNode, double scale)
+    private unsafe ModelNode BuildModelNode(Silk.NET.Assimp.Node* assimpNode, float scale)
     {
         var modelNode = new ModelNode(assimpNode->MName.AsString);
 
@@ -497,9 +497,9 @@ public class ModelImporter
         System.Numerics.Matrix4x4 t = assimpNode->MTransformation;
         System.Numerics.Matrix4x4.Decompose(t, out System.Numerics.Vector3 aSca, out System.Numerics.Quaternion aRot, out System.Numerics.Vector3 aPos);
 
-        modelNode.LocalPosition = new Vector.Double3(aPos.X, aPos.Y, aPos.Z) * scale;
+        modelNode.LocalPosition = new Vector.Float3(aPos.X, aPos.Y, aPos.Z) * scale;
         modelNode.LocalRotation = new(aRot.X, aRot.Y, aRot.Z, aRot.W);
-        modelNode.LocalScale = new Vector.Double3(aSca.X, aSca.Y, aSca.Z);
+        modelNode.LocalScale = new Vector.Float3(aSca.X, aSca.Y, aSca.Z);
 
         // Assign mesh indices
         if (assimpNode->MNumMeshes > 0)
@@ -524,7 +524,7 @@ public class ModelImporter
         return modelNode;
     }
 
-    private static unsafe void LoadAnimations(Scene* scene, double scale, List<AnimationClip> animations)
+    private static unsafe void LoadAnimations(Scene* scene, float scale, List<AnimationClip> animations)
     {
         for (uint animIndex = 0; animIndex < scene->MNumAnimations; animIndex++)
         {
@@ -533,9 +533,9 @@ public class ModelImporter
             // Create Animation
             AnimationClip animation = new();
             animation.Name = anim->MName.AsString;
-            animation.Duration = anim->MDuration / (anim->MTicksPerSecond != 0 ? anim->MTicksPerSecond : 25.0);
-            animation.TicksPerSecond = anim->MTicksPerSecond;
-            animation.DurationInTicks = anim->MDuration;
+            animation.Duration = (float)(anim->MDuration / (anim->MTicksPerSecond != 0 ? anim->MTicksPerSecond : 25.0f));
+            animation.TicksPerSecond = (float)anim->MTicksPerSecond;
+            animation.DurationInTicks = (float)anim->MDuration;
 
             for (uint chanIndex = 0; chanIndex < anim->MNumChannels; chanIndex++)
             {
@@ -558,7 +558,7 @@ public class ModelImporter
                     for (uint i = 0; i < channel->MNumPositionKeys; i++)
                     {
                         VectorKey posKey = channel->MPositionKeys[i];
-                        double time = (posKey.MTime / anim->MDuration) * animation.Duration;
+                        float time = (float)(posKey.MTime / anim->MDuration) * animation.Duration;
                         xCurve.Keys.Add(new KeyFrame(time, posKey.MValue.X * scale));
                         yCurve.Keys.Add(new KeyFrame(time, posKey.MValue.Y * scale));
                         zCurve.Keys.Add(new KeyFrame(time, posKey.MValue.Z * scale));
@@ -583,7 +583,7 @@ public class ModelImporter
                     for (uint i = 0; i < channel->MNumRotationKeys; i++)
                     {
                         QuatKey rotKey = channel->MRotationKeys[i];
-                        double time = (rotKey.MTime / anim->MDuration) * animation.Duration;
+                        float time = (float)(rotKey.MTime / anim->MDuration) * animation.Duration;
                         xCurve.Keys.Add(new KeyFrame(time, rotKey.MValue.X));
                         yCurve.Keys.Add(new KeyFrame(time, rotKey.MValue.Y));
                         zCurve.Keys.Add(new KeyFrame(time, rotKey.MValue.Z));
@@ -608,7 +608,7 @@ public class ModelImporter
                     for (uint i = 0; i < channel->MNumScalingKeys; i++)
                     {
                         VectorKey scaleKey = channel->MScalingKeys[i];
-                        double time = (scaleKey.MTime / anim->MDuration) * animation.Duration;
+                        float time = (float)(scaleKey.MTime / anim->MDuration) * animation.Duration;
                         xCurve.Keys.Add(new KeyFrame(time, scaleKey.MValue.X));
                         yCurve.Keys.Add(new KeyFrame(time, scaleKey.MValue.Y));
                         zCurve.Keys.Add(new KeyFrame(time, scaleKey.MValue.Z));

@@ -91,7 +91,7 @@ public class TerrainCollider : MonoBehaviour, ITerrainHeightProvider
         base.OnValidate();
 
         // Clamp resolution to reasonable values
-        HeightmapResolution = Math.Clamp(HeightmapResolution, 32, 4096);
+        HeightmapResolution = Maths.Clamp(HeightmapResolution, 32, 4096);
 
         if (Enabled)
         {
@@ -147,10 +147,10 @@ public class TerrainCollider : MonoBehaviour, ITerrainHeightProvider
                     float py = v * (texHeight - 1);
 
                     // Bilinear interpolation
-                    int x0 = (int)Math.Floor(px);
-                    int y0 = (int)Math.Floor(py);
-                    int x1 = Math.Min(x0 + 1, texWidth - 1);
-                    int y1 = Math.Min(y0 + 1, texHeight - 1);
+                    int x0 = (int)Maths.Floor(px);
+                    int y0 = (int)Maths.Floor(py);
+                    int x1 = Maths.Min(x0 + 1, texWidth - 1);
+                    int y1 = Maths.Min(y0 + 1, texHeight - 1);
 
                     float fx = px - x0;
                     float fy = py - y0;
@@ -191,8 +191,8 @@ public class TerrainCollider : MonoBehaviour, ITerrainHeightProvider
         var physics = GameObject.Scene.Physics;
 
         // Calculate bounding box in world space
-        Double3 terrainPos = Transform.Position;
-        double terrainSize = _terrain.TerrainSize;
+        Float3 terrainPos = Transform.Position;
+        float terrainSize = _terrain.TerrainSize;
         float terrainHeight = _terrain.TerrainHeight;
 
         // Calculate cell size in world units
@@ -256,22 +256,22 @@ public class TerrainCollider : MonoBehaviour, ITerrainHeightProvider
     /// <param name="worldX">World X coordinate.</param>
     /// <param name="worldZ">World Z coordinate.</param>
     /// <returns>The world-space height at this position, or 0 if outside terrain bounds.</returns>
-    public float GetWorldHeight(double worldX, double worldZ)
+    public float GetWorldHeight(float worldX, float worldZ)
     {
         if (_terrain == null || _heightCache == null)
             return 0;
 
         // Convert world position to local terrain coordinates
-        Double3 localPos = Transform.InverseTransformPoint(new Double3(worldX, 0, worldZ));
+        Float3 localPos = Transform.InverseTransformPoint(new Float3(worldX, 0, worldZ));
 
         // Convert to grid coordinates
-        double terrainSize = _terrain.TerrainSize;
+        float terrainSize = _terrain.TerrainSize;
         float gridX = (float)(localPos.X / terrainSize * (_cacheWidth - 1));
         float gridZ = (float)(localPos.Z / terrainSize * (_cacheHeight - 1));
 
         // Bilinear interpolation
-        int x0 = (int)Math.Floor(gridX);
-        int z0 = (int)Math.Floor(gridZ);
+        int x0 = (int)Maths.Floor(gridX);
+        int z0 = (int)Maths.Floor(gridZ);
         int x1 = x0 + 1;
         int z1 = z0 + 1;
 

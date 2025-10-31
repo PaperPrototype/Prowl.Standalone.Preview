@@ -54,8 +54,8 @@ public static class ShadowAtlas
     public static Int2? ReserveTiles(int width, int height, int lightID)
     {
         // Clamp to min/max bounds
-        width = Math.Max(width, 32);
-        height = Math.Max(height, 32);
+        width = Maths.Max(width, 32);
+        height = Maths.Max(height, 32);
 
         if (width > size || height > size)
             return null;
@@ -74,8 +74,8 @@ public static class ShadowAtlas
             {
                 int leftoverX = rect.Width - width;
                 int leftoverY = rect.Height - height;
-                int shortSideFit = Math.Min(leftoverX, leftoverY);
-                int longSideFit = Math.Max(leftoverX, leftoverY);
+                int shortSideFit = Maths.Min(leftoverX, leftoverY);
+                int longSideFit = Maths.Max(leftoverX, leftoverY);
 
                 if (shortSideFit < bestShortSideFit ||
                     (shortSideFit == bestShortSideFit && longSideFit < bestLongSideFit))

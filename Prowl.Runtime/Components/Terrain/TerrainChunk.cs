@@ -12,15 +12,15 @@ namespace Prowl.Runtime.Terrain;
 /// </summary>
 public class TerrainChunk
 {
-    public Double3 Position;      // World position of chunk
-    public double Size;           // Size of this chunk
+    public Float3 Position;      // World position of chunk
+    public float Size;           // Size of this chunk
     public int LODLevel;          // LOD level (0 = highest detail)
     public bool IsVisible;        // Whether this chunk should be rendered
 
     // Children for quadtree (null if leaf node)
     public TerrainChunk[] Children;
 
-    public TerrainChunk(Double3 position, double size, int lodLevel)
+    public TerrainChunk(Float3 position, float size, int lodLevel)
     {
         Position = position;
         Size = size;
@@ -37,14 +37,14 @@ public class TerrainChunk
         if (Children != null)
             return; // Already subdivided
 
-        double childSize = Size * 0.5;
+        float childSize = Size * 0.5f;
         int childLOD = LODLevel + 1;
 
         Children = new TerrainChunk[4];
         Children[0] = new TerrainChunk(Position, childSize, childLOD);
-        Children[1] = new TerrainChunk(Position + new Double3(childSize, 0, 0), childSize, childLOD);
-        Children[2] = new TerrainChunk(Position + new Double3(0, 0, childSize), childSize, childLOD);
-        Children[3] = new TerrainChunk(Position + new Double3(childSize, 0, childSize), childSize, childLOD);
+        Children[1] = new TerrainChunk(Position + new Float3(childSize, 0, 0), childSize, childLOD);
+        Children[2] = new TerrainChunk(Position + new Float3(0, 0, childSize), childSize, childLOD);
+        Children[3] = new TerrainChunk(Position + new Float3(childSize, 0, childSize), childSize, childLOD);
     }
 
     /// <summary>
@@ -57,14 +57,14 @@ public class TerrainChunk
         IsVisible = false;
     }
 
-    public void DrawGizmos(Double3 offset)
+    public void DrawGizmos(Float3 offset)
     {
         var min = offset + Position;
-        var max = offset + Position + new Double3(Size, 0, Size);
-        Debug.DrawLine(min, new Double3(max.X, min.Y, min.Z), Color.Green);
-        Debug.DrawLine(min, new Double3(min.X, min.Y, max.Z), Color.Green);
-        Debug.DrawLine(new Double3(max.X, min.Y, min.Z), max, Color.Green);
-        Debug.DrawLine(new Double3(min.X, min.Y, max.Z), max, Color.Green);
+        var max = offset + Position + new Float3(Size, 0, Size);
+        Debug.DrawLine(min, new Float3(max.X, min.Y, min.Z), Color.Green);
+        Debug.DrawLine(min, new Float3(min.X, min.Y, max.Z), Color.Green);
+        Debug.DrawLine(new Float3(max.X, min.Y, min.Z), max, Color.Green);
+        Debug.DrawLine(new Float3(min.X, min.Y, max.Z), max, Color.Green);
 
         if (Children != null)
         {

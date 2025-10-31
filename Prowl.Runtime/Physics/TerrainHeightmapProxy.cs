@@ -46,7 +46,7 @@ public class TerrainHeightmapProxy : IDynamicTreeProxy, IRayCastable
     /// Performs a raycast against the terrain heightmap using grid traversal.
     /// Based on Jitter Physics 2 Demo 25 heightmap raycasting implementation.
     /// </summary>
-    public bool RayCast(in JVector origin, in JVector direction, out JVector normal, out double lambda)
+    public bool RayCast(in JVector origin, in JVector direction, out JVector normal, out float lambda)
     {
         const float maxDistance = 10000.0f;
 
@@ -63,20 +63,20 @@ public class TerrainHeightmapProxy : IDynamicTreeProxy, IRayCastable
         gridDirection.Z = direction.Z / _cellSize;
 
         // Only traverse on the XZ plane
-        double dirX = gridDirection.X;
-        double dirZ = gridDirection.Z;
+        float dirX = gridDirection.X;
+        float dirZ = gridDirection.Z;
 
-        double len2 = dirX * dirX + dirZ * dirZ;
+        float len2 = dirX * dirX + dirZ * dirZ;
 
         // Ray is vertical or nearly vertical - check the cell directly below
         if (len2 < 1e-6f)
         {
             normal = JVector.Zero;
-            lambda = 0.0;
+            lambda = 0.0f;
             return false;
         }
 
-        double ilen = 1.0f / Maths.Sqrt(len2);
+        float ilen = 1.0f / Maths.Sqrt(len2);
 
         dirX *= ilen;
         dirZ *= ilen;
@@ -87,16 +87,16 @@ public class TerrainHeightmapProxy : IDynamicTreeProxy, IRayCastable
         int stepX = dirX > 0 ? 1 : -1;
         int stepZ = dirZ > 0 ? 1 : -1;
 
-        double nextX = dirX > 0 ? (x + 1) - gridOrigin.X : gridOrigin.X - x;
-        double nextZ = dirZ > 0 ? (z + 1) - gridOrigin.Z : gridOrigin.Z - z;
+        float nextX = dirX > 0 ? (x + 1) - gridOrigin.X : gridOrigin.X - x;
+        float nextZ = dirZ > 0 ? (z + 1) - gridOrigin.Z : gridOrigin.Z - z;
 
-        double tMaxX = dirX != 0 ? nextX / Maths.Abs(dirX) : double.PositiveInfinity;
-        double tMaxZ = dirZ != 0 ? nextZ / Maths.Abs(dirZ) : double.PositiveInfinity;
+        float tMaxX = dirX != 0 ? nextX / Maths.Abs(dirX) : float.PositiveInfinity;
+        float tMaxZ = dirZ != 0 ? nextZ / Maths.Abs(dirZ) : float.PositiveInfinity;
 
-        double tDeltaX = gridDirection.X != 0 ? 1f / Maths.Abs(dirX) : double.PositiveInfinity;
-        double tDeltaZ = gridDirection.Z != 0 ? 1f / Maths.Abs(dirZ) : double.PositiveInfinity;
+        float tDeltaX = gridDirection.X != 0 ? 1f / Maths.Abs(dirX) : float.PositiveInfinity;
+        float tDeltaZ = gridDirection.Z != 0 ? 1f / Maths.Abs(dirZ) : float.PositiveInfinity;
 
-        double t = 0f;
+        float t = 0f;
 
         while (t <= maxDistance)
         {
@@ -126,13 +126,13 @@ public class TerrainHeightmapProxy : IDynamicTreeProxy, IRayCastable
                 JTriangle tri0 = new JTriangle(a, c, b);
                 JTriangle tri1 = new JTriangle(a, d, c);
 
-                tri0.RayIntersect(origin, direction, JTriangle.CullMode.BackFacing, out JVector normal0, out double lambda0Float);
-                tri1.RayIntersect(origin, direction, JTriangle.CullMode.BackFacing, out JVector normal1, out double lambda1Float);
+                tri0.RayIntersect(origin, direction, JTriangle.CullMode.BackFacing, out JVector normal0, out float lambda0Float);
+                tri1.RayIntersect(origin, direction, JTriangle.CullMode.BackFacing, out JVector normal1, out float lambda1Float);
 
-                double lambda0 = lambda0Float;
-                double lambda1 = lambda1Float;
+                float lambda0 = lambda0Float;
+                float lambda1 = lambda1Float;
 
-                if (lambda0 < double.MaxValue || lambda1 < double.MaxValue)
+                if (lambda0 < float.MaxValue || lambda1 < float.MaxValue)
                 {
                     if (lambda0 <= lambda1)
                     {
@@ -166,7 +166,7 @@ public class TerrainHeightmapProxy : IDynamicTreeProxy, IRayCastable
         }
 
         normal = JVector.Zero;
-        lambda = 0.0;
+        lambda = 0.0f;
         return false;
     }
 }

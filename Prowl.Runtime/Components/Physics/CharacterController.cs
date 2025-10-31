@@ -21,24 +21,24 @@ public class CharacterController : MonoBehaviour
     }
 
     public ColliderShape Shape = ColliderShape.Cylinder;
-    public double Radius = 0.5;
-    public double Height = 1.8;
-    public double SkinWidth = 0.02;
+    public float Radius = 0.5f;
+    public float Height = 1.8f;
+    public float SkinWidth = 0.02f;
 
     /// <summary>
     /// Maximum angle in degrees for a surface to be considered walkable (default: 45 degrees)
     /// </summary>
-    public double MaxSlopeAngle = 55.0;
+    public float MaxSlopeAngle = 55.0f;
 
     /// <summary>
     /// Distance to snap down to ground when walking off slopes (default: 0.5)
     /// </summary>
-    public double SnapDownDistance = 0.5;
+    public float SnapDownDistance = 0.5f;
 
     /// <summary>
     /// Maximum height the character can step up onto (default: 0.3)
     /// </summary>
-    public double StepSize = 0.3;
+    public float StepSize = 0.3f;
 
     /// <summary>
     /// Whether the character controller is currently grounded.
@@ -46,28 +46,28 @@ public class CharacterController : MonoBehaviour
     public bool IsGrounded { get; private set; }
 
     private ShapeCastHit lastGroundHit;
-    private Double3 lastVelocity;
+    private Float3 lastVelocity;
 
     // Debug visualization for failed height attempts
     private bool failedHeightAttempt = false;
-    private double failedAttemptHeight;
-    private double failedAttemptRadius;
+    private float failedAttemptHeight;
+    private float failedAttemptRadius;
 
     /// <summary>
     /// Moves the character controller by the specified motion vector.
     /// This handles collision detection and sliding.
     /// Also updates the IsGrounded state.
     /// </summary>
-    public void Move(Double3 motion)
+    public void Move(Float3 motion)
     {
-        Double3 position = GameObject.Transform.Position;
+        Float3 position = GameObject.Transform.Position;
         lastVelocity = motion;
 
         // Update grounded state before moving
         UpdateGroundedState(position);
 
         // Perform movement with collision
-        Double3 finalPosition = CollideAndSlide(position, motion, 0);
+        Float3 finalPosition = CollideAndSlide(position, motion, 0);
 
         // Snap down to ground if moving horizontally on slopes
         if (IsGrounded && motion.Y <= 0)
@@ -81,9 +81,9 @@ public class CharacterController : MonoBehaviour
     /// <summary>
     /// Updates the grounded state by performing a ground check.
     /// </summary>
-    private void UpdateGroundedState(Double3 position)
+    private void UpdateGroundedState(Float3 position)
     {
-        double groundCheckDistance = 0.1;
+        float groundCheckDistance = 0.1f;
         IsGrounded = PerformGroundCheck(position, groundCheckDistance, out lastGroundHit);
     }
 
@@ -91,15 +91,15 @@ public class CharacterController : MonoBehaviour
     /// Performs a ground check using shape casting.
     /// Only considers the character grounded if the surface angle is walkable.
     /// </summary>
-    private bool PerformGroundCheck(Double3 position, double distance, out ShapeCastHit hitInfo)
+    private bool PerformGroundCheck(Float3 position, float distance, out ShapeCastHit hitInfo)
     {
-        bool hit = PerformShapeCast(position, new Double3(0, -1, 0), distance, out hitInfo);
+        bool hit = PerformShapeCast(position, new Float3(0, -1, 0), distance, out hitInfo);
 
         if (!hit)
             return false;
 
         // Check if the surface is walkable
-        double slopeAngle = GetSlopeAngle(hitInfo.Normal);
+        float slopeAngle = GetSlopeAngle(hitInfo.Normal);
         return slopeAngle <= MaxSlopeAngle;
     }
 
@@ -107,16 +107,16 @@ public class CharacterController : MonoBehaviour
     /// Attempts to set the height of the collider.
     /// Returns true if successful, false if the new size would collide with something.
     /// </summary>
-    public bool TrySetHeight(double newHeight)
+    public bool TrySetHeight(float newHeight)
     {
-        double minHeight = Shape == ColliderShape.Capsule ? Radius * 2 : 0.1;
+        float minHeight = Shape == ColliderShape.Capsule ? Radius * 2 : 0.1f;
         if (newHeight <= minHeight)
         {
             failedHeightAttempt = false;
             return false;
         }
 
-        Double3 position = GameObject.Transform.Position;
+        Float3 position = GameObject.Transform.Position;
         bool wouldCollide = CheckShapeOverlap(position, newHeight, Radius);
 
         if (!wouldCollide)
@@ -138,7 +138,7 @@ public class CharacterController : MonoBehaviour
     /// Attempts to set the radius of the collider.
     /// Returns true if successful, false if the new size would collide with something.
     /// </summary>
-    public bool TrySetRadius(double newRadius)
+    public bool TrySetRadius(float newRadius)
     {
         if (newRadius <= 0)
             return false;
@@ -146,7 +146,7 @@ public class CharacterController : MonoBehaviour
         if (Shape == ColliderShape.Capsule && newRadius * 2 >= Height)
             return false;
 
-        Double3 position = GameObject.Transform.Position;
+        Float3 position = GameObject.Transform.Position;
         bool wouldCollide = CheckShapeOverlap(position, Height, newRadius);
 
         if (!wouldCollide)
@@ -161,42 +161,42 @@ public class CharacterController : MonoBehaviour
     /// <summary>
     /// Checks if a shape with the given dimensions would overlap with anything.
     /// </summary>
-    private bool CheckShapeOverlap(Double3 position, double height, double radius)
+    private bool CheckShapeOverlap(Float3 position, float height, float radius)
     {
-        double effectiveRadius = radius - SkinWidth;
+        float effectiveRadius = radius - SkinWidth;
 
         if (Shape == ColliderShape.Capsule)
         {
-            Double3 bottom = position + new Double3(0, radius, 0);
-            Double3 top = position + new Double3(0, height - radius, 0);
+            Float3 bottom = position + new Float3(0, radius, 0);
+            Float3 top = position + new Float3(0, height - radius, 0);
             return GameObject.Scene.Physics.CheckCapsule(bottom, top, effectiveRadius);
         }
         else // Cylinder
         {
-            Double3 center = position + new Double3(0, height * 0.5, 0);
+            Float3 center = position + new Float3(0, height * 0.5f, 0);
             return GameObject.Scene.Physics.CheckCylinder(center, effectiveRadius, height, Quaternion.Identity);
         }
     }
 
-    private Double3 GetShapeCenter(Double3 position)
+    private Float3 GetShapeCenter(Float3 position)
     {
         if (Shape == ColliderShape.Capsule)
-            return position + new Double3(0, Height * 0.5, 0);
+            return position + new Float3(0, Height * 0.5f, 0);
         else // Cylinder
-            return position + new Double3(0, Height * 0.5, 0);
+            return position + new Float3(0, Height * 0.5f, 0);
     }
 
-    private Double3 GetCapsuleBottom(Double3 position)
+    private Float3 GetCapsuleBottom(Float3 position)
     {
-        return position + new Double3(0, Radius, 0);
+        return position + new Float3(0, Radius, 0);
     }
 
-    private Double3 GetCapsuleTop(Double3 position)
+    private Float3 GetCapsuleTop(Float3 position)
     {
-        return position + new Double3(0, Height - Radius, 0);
+        return position + new Float3(0, Height - Radius, 0);
     }
 
-    private double GetEffectiveRadius()
+    private float GetEffectiveRadius()
     {
         return Radius - SkinWidth;
     }
@@ -204,7 +204,7 @@ public class CharacterController : MonoBehaviour
     /// <summary>
     /// Performs a shape cast based on the current shape type.
     /// </summary>
-    private bool PerformShapeCast(Double3 position, Double3 direction, double distance, out ShapeCastHit hitInfo)
+    private bool PerformShapeCast(Float3 position, Float3 direction, float distance, out ShapeCastHit hitInfo)
     {
         if (Shape == ColliderShape.Capsule)
         {
@@ -231,17 +231,17 @@ public class CharacterController : MonoBehaviour
         }
     }
 
-    private Double3 CollideAndSlide(Double3 position, Double3 velocity, int depth)
+    private Float3 CollideAndSlide(Float3 position, Float3 velocity, int depth)
     {
         const int MaxDepth = 5;
         if (depth >= MaxDepth)
             return position;
 
-        double moveDistance = Double3.Length(velocity);
+        float moveDistance = Float3.Length(velocity);
         if (moveDistance < 0.0001)
             return position;
 
-        Double3 moveDirection = Double3.Normalize(velocity);
+        Float3 moveDirection = Float3.Normalize(velocity);
 
         bool hit = PerformShapeCast(
             position,
@@ -253,26 +253,26 @@ public class CharacterController : MonoBehaviour
         if (hit)
         {
             // Move to safe distance from hit point
-            double safeDistance = (moveDistance * hitInfo.Fraction - SkinWidth);
+            float safeDistance = (moveDistance * hitInfo.Fraction - SkinWidth);
             position += moveDirection * safeDistance;
 
             // Calculate remaining movement after hitting surface
-            double remainingDistance = moveDistance - safeDistance;
-            Double3 remainingMove = moveDirection * remainingDistance;
+            float remainingDistance = moveDistance - safeDistance;
+            Float3 remainingMove = moveDirection * remainingDistance;
 
             // Check if this is a step we can climb
             // Only attempt step-up if we're grounded and moving mostly horizontally
-            double horizontalSpeed = System.Math.Sqrt(velocity.X * velocity.X + velocity.Z * velocity.Z);
+            float horizontalSpeed = Maths.Sqrt(velocity.X * velocity.X + velocity.Z * velocity.Z);
             if (IsGrounded && horizontalSpeed > 0.0001 && StepSize > 0)
             {
-                if (TryStepUp(position, moveDirection, remainingDistance, out Double3 steppedPosition))
+                if (TryStepUp(position, moveDirection, remainingDistance, out Float3 steppedPosition))
                 {
                     return steppedPosition;
                 }
             }
 
             // Project remaining movement onto the hit surface (slide)
-            Double3 slideMove = ProjectOntoSurface(remainingMove, hitInfo.Normal);
+            Float3 slideMove = ProjectOntoSurface(remainingMove, hitInfo.Normal);
 
             // Recurse with remaining slide movement
             return CollideAndSlide(position, slideMove, depth + 1);
@@ -289,24 +289,24 @@ public class CharacterController : MonoBehaviour
     /// Attempts to step up onto an obstacle.
     /// Returns true if step-up was successful, with the new position.
     /// </summary>
-    private bool TryStepUp(Double3 position, Double3 moveDirection, double moveDistance, out Double3 newPosition)
+    private bool TryStepUp(Float3 position, Float3 moveDirection, float moveDistance, out Float3 newPosition)
     {
         newPosition = position;
 
         // Step 1: Extract horizontal direction
-        Double3 forwardDirection = new(moveDirection.X, 0, moveDirection.Z);
-        if (Double3.LengthSquared(forwardDirection) < 0.0001)
+        Float3 forwardDirection = new(moveDirection.X, 0, moveDirection.Z);
+        if (Float3.LengthSquared(forwardDirection) < 0.0001)
             return false; // No horizontal movement
 
-        forwardDirection = Double3.Normalize(forwardDirection);
+        forwardDirection = Float3.Normalize(forwardDirection);
 
         // Step 2: Move up by StepSize
-        Double3 upPosition = position + new Double3(0, StepSize, 0);
+        Float3 upPosition = position + new Float3(0, StepSize, 0);
 
         // Step 3: Check if there's clearance at the elevated position
         bool hasOverheadClearance = !PerformShapeCast(
             position,
-            new Double3(0, 1, 0),
+            new Float3(0, 1, 0),
             StepSize + SkinWidth,
             out _
         );
@@ -327,14 +327,14 @@ public class CharacterController : MonoBehaviour
             return false;
 
         // Step 5: Move forward at elevated height
-        Double3 forwardPosition = upPosition + forwardDirection * moveDistance;
+        Float3 forwardPosition = upPosition + forwardDirection * moveDistance;
 
         // Step 6: Cast down to find the actual step surface
         // Search from StepSize height down to slightly below original position for reliability sake
-        double maxStepDownDistance = StepSize + SkinWidth + 0.1;
+        float maxStepDownDistance = StepSize + SkinWidth + 0.1f;
         bool hasGroundBelow = PerformShapeCast(
             forwardPosition,
-            new Double3(0, -1, 0),
+            new Float3(0, -1, 0),
             maxStepDownDistance,
             out ShapeCastHit downHit
         );
@@ -342,20 +342,20 @@ public class CharacterController : MonoBehaviour
         if (hasGroundBelow)
         {
             // Verify the surface is walkable dont want to perform steps on steep surfaces or walls
-            double slopeAngle = GetSlopeAngle(downHit.Normal);
+            float slopeAngle = GetSlopeAngle(downHit.Normal);
             if (slopeAngle > MaxSlopeAngle)
                 return false; // Surface is too steep
 
             // Calculate the actual step height
-            double actualStepHeight = StepSize - (downHit.Fraction * maxStepDownDistance - SkinWidth);
+            float actualStepHeight = StepSize - (downHit.Fraction * maxStepDownDistance - SkinWidth);
 
             // Only accept if we're actually stepping up (not down)
             if (actualStepHeight < 0.0)
                 return false;
 
             // Step down onto the surface
-            double stepDownDistance = downHit.Fraction * maxStepDownDistance - SkinWidth;
-            newPosition = forwardPosition - new Double3(0, stepDownDistance, 0);
+            float stepDownDistance = downHit.Fraction * maxStepDownDistance - SkinWidth;
+            newPosition = forwardPosition - new Float3(0, stepDownDistance, 0);
             return true;
         }
 
@@ -363,36 +363,36 @@ public class CharacterController : MonoBehaviour
         return false;
     }
 
-    private Double3 ProjectOntoSurface(Double3 movement, Double3 surfaceNormal)
+    private Float3 ProjectOntoSurface(Float3 movement, Float3 surfaceNormal)
     {
         // Project remaining movement onto the hit surface
-        return Double3.ProjectOntoPlane(movement, surfaceNormal);
+        return Float3.ProjectOntoPlane(movement, surfaceNormal);
     }
 
     /// <summary>
     /// Calculates the angle of a surface in degrees from horizontal.
     /// </summary>
-    private double GetSlopeAngle(Double3 normal)
+    private float GetSlopeAngle(Float3 normal)
     {
         // Angle between surface normal and up vector
-        return System.Math.Acos(normal.Y) * (180.0 / System.Math.PI);
+        return Maths.Acos(normal.Y) * (180.0f / Maths.PI);
     }
 
     /// <summary>
     /// Snaps the character down to the ground when walking on slopes.
     /// This prevents the character from "floating" when transitioning between slopes.
     /// </summary>
-    private Double3 SnapToGround(Double3 position)
+    private Float3 SnapToGround(Float3 position)
     {
         // Only snap if we have horizontal velocity
-        double horizontalSpeed = System.Math.Sqrt(lastVelocity.X * lastVelocity.X + lastVelocity.Z * lastVelocity.Z);
-        if (horizontalSpeed < 0.0001)
+        float horizontalSpeed = Maths.Sqrt(lastVelocity.X * lastVelocity.X + lastVelocity.Z * lastVelocity.Z);
+        if (horizontalSpeed < 0.0001f)
             return position;
 
         // Check if there's ground below us within snap distance
         bool hit = PerformShapeCast(
             position,
-            new Double3(0, -1, 0),
+            new Float3(0, -1, 0),
             SnapDownDistance,
             out ShapeCastHit hitInfo
         );
@@ -400,11 +400,11 @@ public class CharacterController : MonoBehaviour
         if (hit)
         {
             // Check if the surface is walkable
-            double slopeAngle = GetSlopeAngle(hitInfo.Normal);
+            float slopeAngle = GetSlopeAngle(hitInfo.Normal);
             if (slopeAngle <= MaxSlopeAngle)
             {
                 // Snap down to the surface
-                double snapDistance = hitInfo.Fraction * SnapDownDistance - SkinWidth;
+                float snapDistance = hitInfo.Fraction * SnapDownDistance - SkinWidth;
                 if (snapDistance > 0)
                 {
                     position.Y -= snapDistance;
@@ -419,7 +419,7 @@ public class CharacterController : MonoBehaviour
     {
         if (GameObject.Scene.Physics == null) return;
 
-        Double3 position = GameObject.Transform.Position;
+        Float3 position = GameObject.Transform.Position;
 
         if (Shape == ColliderShape.Capsule)
         {
@@ -441,13 +441,13 @@ public class CharacterController : MonoBehaviour
         {
             if (Shape == ColliderShape.Capsule)
             {
-                Double3 bottom = position + new Double3(0, failedAttemptRadius, 0);
-                Double3 top = position + new Double3(0, failedAttemptHeight - failedAttemptRadius, 0);
+                Float3 bottom = position + new Float3(0, failedAttemptRadius, 0);
+                Float3 top = position + new Float3(0, failedAttemptHeight - failedAttemptRadius, 0);
                 Debug.DrawWireCapsule(bottom, top, failedAttemptRadius, Color.Red, 16);
             }
             else // Cylinder
             {
-                Double3 center = position + new Double3(0, failedAttemptHeight * 0.5, 0);
+                Float3 center = position + new Float3(0, failedAttemptHeight * 0.5f, 0);
                 Debug.DrawWireCylinder(center, Quaternion.Identity, failedAttemptRadius, failedAttemptHeight, Color.Red, 16);
             }
         }

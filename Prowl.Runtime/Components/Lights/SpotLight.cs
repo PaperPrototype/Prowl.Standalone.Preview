@@ -22,13 +22,13 @@ public class SpotLight : Light
     }
 
     public Resolution ShadowResolution = Resolution._512;
-    public double Range = 8.0;
-    public double SpotAngle = 45.0; // Outer cone angle in degrees
-    public double InnerSpotAngle = 30.0; // Inner cone angle in degrees for smooth falloff
+    public float Range = 8.0f;
+    public float SpotAngle = 45.0f; // Outer cone angle in degrees
+    public float InnerSpotAngle = 30.0f; // Inner cone angle in degrees for smooth falloff
 
     private Material? _lightMaterial;
-    private Double4x4 _shadowMatrix;
-    private Double4 _shadowAtlasParams; // xy = atlas pos, z = atlas size, w = 1.0
+    private Float4x4 _shadowMatrix;
+    private Float4 _shadowAtlasParams; // xy = atlas pos, z = atlas size, w = 1.0
 
     public override void Update()
     {
@@ -40,18 +40,18 @@ public class SpotLight : Light
         Debug.DrawArrow(Transform.Position, Transform.Forward, Color.Yellow);
 
         // Draw cone to visualize spot light
-        double outerAngleRad = SpotAngle * Maths.Deg2Rad;
-        double radius = Maths.Tan(outerAngleRad) * Range;
-        Double3 endPosition = Transform.Position + Transform.Forward * Range;
+        float outerAngleRad = SpotAngle * Maths.Deg2Rad;
+        float radius = Maths.Tan(outerAngleRad) * Range;
+        Float3 endPosition = Transform.Position + Transform.Forward * Range;
 
         // Draw cone outline
         int segments = 4;
-        Double3 prevPoint = Double3.Zero;
+        Float3 prevPoint = Float3.Zero;
         for (int i = 0; i <= segments; i++)
         {
-            double angle = (i / (double)segments) * Maths.PI * 2.0;
-            Double3 offset = (Transform.Right * Maths.Cos(angle) + Transform.Up * Maths.Sin(angle)) * radius;
-            Double3 point = endPosition + offset;
+            float angle = (i / (float)segments) * Maths.PI * 2.0f;
+            Float3 offset = (Transform.Right * Maths.Cos(angle) + Transform.Up * Maths.Sin(angle)) * radius;
+            Float3 point = endPosition + offset;
 
             // Draw line from light position to cone edge
             Debug.DrawLine(Transform.Position, point, Color.Yellow);
@@ -65,24 +65,24 @@ public class SpotLight : Light
 
     public override LightType GetLightType() => LightType.Spot;
 
-    private void GetShadowMatrix(out Double4x4 view, out Double4x4 projection)
+    private void GetShadowMatrix(out Float4x4 view, out Float4x4 projection)
     {
-        Double3 forward = Transform.Forward;
-        Double3 position = Transform.Position;
+        Float3 forward = Transform.Forward;
+        Float3 position = Transform.Position;
 
         // Use perspective projection for spot light
-        double fov = SpotAngle * 2.0; // Full cone angle
-        projection = Double4x4.CreatePerspectiveFov(fov * Maths.Deg2Rad, 1.0, 0.1, Range);
+        float fov = SpotAngle * 2.0f; // Full cone angle
+        projection = Float4x4.CreatePerspectiveFov(fov * Maths.Deg2Rad, 1.0f, 0.1f, Range);
 
-        view = Double4x4.CreateLookTo(position, forward, Transform.Up);
+        view = Float4x4.CreateLookTo(position, forward, Transform.Up);
     }
 
-    public override void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
+    public override void RenderShadows(RenderPipeline pipeline, Float3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
     {
         if (!DoCastShadows())
         {
             // No shadows
-            _shadowAtlasParams = new Double4(-1, -1, 0, 0);
+            _shadowAtlasParams = new Float4(-1, -1, 0, 0);
             return;
         }
 
@@ -100,13 +100,13 @@ public class SpotLight : Light
             Graphics.Device.Viewport(atlasX, atlasY, (uint)res, (uint)res);
 
             // Calculate shadow matrices
-            GetShadowMatrix(out Double4x4 view, out Double4x4 proj);
+            GetShadowMatrix(out Float4x4 view, out Float4x4 proj);
 
             Frustum frustum = Frustum.FromMatrix(proj * view);
 
-            Double3 forward = Transform.Forward;
-            Double3 right = Transform.Right;
-            Double3 up = Transform.Up;
+            Float3 forward = Transform.Forward;
+            Float3 right = Transform.Right;
+            Float3 up = Transform.Up;
 
             // Cull and render shadow casters
             System.Collections.Generic.HashSet<int> culledRenderableIndices = pipeline.CullRenderables(renderables, frustum, LayerMask.Everything);
@@ -115,12 +115,12 @@ public class SpotLight : Light
 
             // Store shadow data for shader
             _shadowMatrix = proj * view;
-            _shadowAtlasParams = new Double4(atlasX, atlasY, res, 1.0);
+            _shadowAtlasParams = new Float4(atlasX, atlasY, res, 1.0f);
         }
         else
         {
             // Failed to reserve atlas space
-            _shadowAtlasParams = new Double4(-1, -1, 0, 0);
+            _shadowAtlasParams = new Float4(-1, -1, 0, 0);
         }
     }
 
@@ -168,9 +168,9 @@ public class SpotLight : Light
 
 #warning TODO: Use Cone and fit properly!
         // Combine transformations
-        Double4x4 model = this.Transform.LocalToWorldMatrix;
+        Float4x4 model = this.Transform.LocalToWorldMatrix;
         // scale by range
-        Double4x4 scale = Double4x4.CreateScale(new Double3(Range, Range, Range));
+        Float4x4 scale = Float4x4.CreateScale(new Float3(Range, Range, Range));
         model = model * scale;
 
         // Set transform matrices

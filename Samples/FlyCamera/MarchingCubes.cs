@@ -44,9 +44,9 @@ public abstract class Marching
     /// <param name="maxBounds">Maximum bounds in world space</param>
     /// <param name="verts">Output vertex list</param>
     /// <param name="indices">Output index list</param>
-    public virtual void Generate(Func<Double3, float> sampleFunc, int width, int height, int depth, Double3 minBounds, Double3 maxBounds, IList<Float3> verts, IList<uint> indices)
+    public virtual void Generate(Func<Float3, float> sampleFunc, int width, int height, int depth, Float3 minBounds, Float3 maxBounds, IList<Float3> verts, IList<uint> indices)
     {
-        Double3 size = maxBounds - minBounds;
+        Float3 size = maxBounds - minBounds;
 
         int x, y, z, i;
         int ix, iy, iz;
@@ -64,12 +64,12 @@ public abstract class Marching
                         iz = z + VertexOffset[i, 2];
 
                         // Calculate world position for this voxel
-                        Double3 localPos = new Double3(
-                            (double)ix / (width - 1),
-                            (double)iy / (height - 1),
-                            (double)iz / (depth - 1)
+                        Float3 localPos = new Float3(
+                            (float)ix / (width - 1),
+                            (float)iy / (height - 1),
+                            (float)iz / (depth - 1)
                         );
-                        Double3 worldPos = minBounds + localPos * size;
+                        Float3 worldPos = minBounds + localPos * size;
 
                         // Sample voxel directly
                         Cube[i] = sampleFunc(worldPos);
@@ -98,7 +98,7 @@ public abstract class Marching
         float delta = v2 - v1;
 
         // If both values are equal, return 0.5 (midpoint)
-        if (Math.Abs(delta) < 0.00001f)
+        if (Maths.Abs(delta) < 0.00001f)
             return 0.5f;
 
         // Linear interpolation: find where the surface crosses between v1 and v2
@@ -106,7 +106,7 @@ public abstract class Marching
         float t = (Surface - v1) / delta;
 
         // Clamp to [0, 1] to ensure vertex stays on the edge
-        return Math.Clamp(t, 0.0f, 1.0f);
+        return Maths.Clamp(t, 0.0f, 1.0f);
     }
 
     /// <summary>

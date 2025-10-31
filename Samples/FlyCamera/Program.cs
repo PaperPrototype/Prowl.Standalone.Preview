@@ -60,7 +60,7 @@ public sealed class MyGame : Game
         // Create directional light
         GameObject lightGO = new("Directional Light");
         lightGO.AddComponent<DirectionalLight>();
-        lightGO.Transform.LocalEulerAngles = new Double3(-45, 45, 0);
+        lightGO.Transform.LocalEulerAngles = new Float3(-45, 45, 0);
         scene.Add(lightGO);
 
         // Create camera
@@ -82,7 +82,7 @@ public sealed class MyGame : Game
         // Create cube
         cubeGO = new("Cube");
         MeshRenderer mr = cubeGO.AddComponent<MeshRenderer>();
-        mr.Mesh = Mesh.CreateCube(Double3.One);
+        mr.Mesh = Mesh.CreateCube(Float3.One);
         mr.Material = new Material(Shader.LoadDefault(DefaultShader.Standard));
         mr.Material.SetColor("_BaseColor", new Color(0.8f, 0.3f, 0.3f, 1.0f));
         cubeGO.Transform.Position = new(0, 1, 0);
@@ -106,7 +106,7 @@ public sealed class MyGame : Game
 
         // Movement (WASD + Gamepad)
         moveAction = cameraMap.AddAction("Move", InputActionType.Value);
-        moveAction.ExpectedValueType = typeof(Double2);
+        moveAction.ExpectedValueType = typeof(Float2);
         moveAction.AddBinding(new Vector2CompositeBinding(
             InputBinding.CreateKeyBinding(KeyCode.W),
             InputBinding.CreateKeyBinding(KeyCode.S),
@@ -125,7 +125,7 @@ public sealed class MyGame : Game
 
         // Look (Mouse + Gamepad)
         lookAction = cameraMap.AddAction("Look", InputActionType.Value);
-        lookAction.ExpectedValueType = typeof(Double2);
+        lookAction.ExpectedValueType = typeof(Float2);
         var mouse = new DualAxisCompositeBinding(
             InputBinding.CreateMouseAxisBinding(0),
             InputBinding.CreateMouseAxisBinding(1));
@@ -158,11 +158,11 @@ public sealed class MyGame : Game
         // Rotate the cube
         if (cubeGO.IsValid())
         {
-            cubeGO.Transform.LocalEulerAngles += new Double3(25, 50, 15) * Time.DeltaTime;
+            cubeGO.Transform.LocalEulerAngles += new Float3(25, 50, 15) * Time.DeltaTime;
         }
 
         // Camera controls
-        Double2 movement = moveAction.ReadValue<Double2>();
+        Float2 movement = moveAction.ReadValue<Float2>();
         float speedMultiplier = sprintAction.IsPressed() ? 2.5f : 1.0f;
         float moveSpeed = 5f * speedMultiplier * (float)Time.DeltaTime;
 
@@ -172,12 +172,12 @@ public sealed class MyGame : Game
         float upDown = 0;
         if (flyUpAction.IsPressed()) upDown += 1;
         if (flyDownAction.IsPressed()) upDown -= 1;
-        cameraGO.Transform.Position += Double3.UnitY * upDown * moveSpeed;
+        cameraGO.Transform.Position += Float3.UnitY * upDown * moveSpeed;
 
-        Double2 lookInput = lookAction.ReadValue<Double2>();
-        if (lookEnableAction.IsPressed() || Math.Abs(lookInput.X) > 0.01f || Math.Abs(lookInput.Y) > 0.01f)
+        Float2 lookInput = lookAction.ReadValue<Float2>();
+        if (lookEnableAction.IsPressed() || Maths.Abs(lookInput.X) > 0.01f || Maths.Abs(lookInput.Y) > 0.01f)
         {
-            cameraGO.Transform.LocalEulerAngles += new Double3(lookInput.Y, lookInput.X, 0);
+            cameraGO.Transform.LocalEulerAngles += new Float3(lookInput.Y, lookInput.X, 0);
         }
 
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -187,23 +187,23 @@ public sealed class MyGame : Game
 
 public interface IBrush
 {
-    void Apply(Double3 position, ref float voxel);
+    void Apply(Float3 position, ref float voxel);
 }
 
 public sealed class SphereBrush : IBrush
 {
-    public Double3 center;
-    public double radius;
+    public Float3 center;
+    public float radius;
 
-    public SphereBrush(Double3 position, double radius)
+    public SphereBrush(Float3 position, float radius)
     {
         this.center = position;
         this.radius = radius;
     }
 
-    public void Apply(Double3 position, ref float voxel)
+    public void Apply(Float3 position, ref float voxel)
     {
-        double dist = Double3.Distance(position, center);
+        float dist = Float3.Distance(position, center);
         float sdf = (float)(dist - radius);
         voxel = MathF.Min(voxel, sdf);
     }
@@ -219,13 +219,13 @@ public sealed class VoxelPlanet : MonoBehaviour
 
     public override void OnEnable()
     {
-        AABB rootAABB = AABB.FromCenterAndSize(Double3.Zero, new Double3(20, 20, 20));
+        AABB rootAABB = AABB.FromCenterAndSize(Float3.Zero, new Float3(20, 20, 20));
         rootNode = new PlanetNode(rootAABB, null!, this, 0);
 
-        brushes.Add(new SphereBrush(Double3.Zero, 7.5f));
+        brushes.Add(new SphereBrush(Float3.Zero, 7.5f));
     }
 
-    public float SampleVoxel(Double3 position)
+    public float SampleVoxel(Float3 position)
     {
         float voxelValue = float.MaxValue;
         foreach (var brush in brushes)
@@ -239,7 +239,7 @@ public sealed class VoxelPlanet : MonoBehaviour
     {
         if (camera != null && camera.GameObject != null && rootNode != null)
         {
-            Double3 cameraPos = camera.GameObject.Transform.Position;
+            Float3 cameraPos = camera.GameObject.Transform.Position;
             rootNode.Update(cameraPos);
         }
     }
@@ -248,7 +248,7 @@ public sealed class VoxelPlanet : MonoBehaviour
     {
         if (camera != null && camera.GameObject != null && rootNode != null)
         {
-            Double3 cameraPos = camera.GameObject.Transform.Position;
+            Float3 cameraPos = camera.GameObject.Transform.Position;
             rootNode.LateUpdate(cameraPos);
         }
     }
@@ -287,15 +287,15 @@ public sealed class PlanetNode
         this.depth = depth;
     }
 
-    public bool ShouldSubdivide(Double3 cameraCenter)
+    public bool ShouldSubdivide(Float3 cameraCenter)
     {
         // Subdivide if camera is close enough (distance squared < size squared)
-        double distance = AABB.GetSqrDistanceToPoint(cameraCenter);
-        double threshold = Double3.LengthSquared(AABB.Size) * 0.5;
+        float distance = AABB.GetSqrDistanceToPoint(cameraCenter);
+        float threshold = Float3.LengthSquared(AABB.Size) * 0.5;
         return distance < threshold;
     }
 
-    public void Update(Double3 cameraPos)
+    public void Update(Float3 cameraPos)
     {
         if (children == null)
         {
@@ -325,7 +325,7 @@ public sealed class PlanetNode
         }
     }
 
-    public void LateUpdate(Double3 cameraPos)
+    public void LateUpdate(Float3 cameraPos)
     {
         if (children == null)
         {
@@ -356,12 +356,12 @@ public sealed class PlanetNode
                 for (int i = 0; i < verts.Count; i++)
                 {
                     Float3 localPos = verts[i];
-                    Double3 normalizedPos = new Double3(
+                    Float3 normalizedPos = new Float3(
                         localPos.X / (RESOLUTION - 1),
                         localPos.Y / (RESOLUTION - 1),
                         localPos.Z / (RESOLUTION - 1)
                     );
-                    Double3 worldPos = AABB.Min + normalizedPos * AABB.Size;
+                    Float3 worldPos = AABB.Min + normalizedPos * AABB.Size;
                     verts[i] = new Float3((float)worldPos.X, (float)worldPos.Y, (float)worldPos.Z);
                 }
 
@@ -375,7 +375,7 @@ public sealed class PlanetNode
 
         if (mesh != null && mesh.VertexCount > 0)
         {
-            this.planet.GameObject.Scene.PushRenderable(new MeshRenderable(mesh, this.planet.material, Double4x4.Identity, this.planet.GameObject.LayerIndex));
+            this.planet.GameObject.Scene.PushRenderable(new MeshRenderable(mesh, this.planet.material, Float4x4.Identity, this.planet.GameObject.LayerIndex));
         }
     }
 
@@ -387,20 +387,20 @@ public sealed class PlanetNode
         children = new PlanetNode[8];
 
         // Calculate half size for the children
-        Double3 halfSize = AABB.Size * 0.5;
-        Double3 quarterSize = AABB.Size * 0.25;
+        Float3 halfSize = AABB.Size * 0.5;
+        Float3 quarterSize = AABB.Size * 0.25;
 
         // Create 8 children octants
         for (int i = 0; i < 8; i++)
         {
             // Calculate offset for this octant
-            Double3 offset = new Double3(
+            Float3 offset = new Float3(
                 (i & 1) == 0 ? -quarterSize.X : quarterSize.X,
                 (i & 2) == 0 ? -quarterSize.Y : quarterSize.Y,
                 (i & 4) == 0 ? -quarterSize.Z : quarterSize.Z
             );
 
-            Double3 childCenter = AABB.Center + offset;
+            Float3 childCenter = AABB.Center + offset;
             AABB childAABB = AABB.FromCenterAndSize(childCenter, halfSize);
 
             children[i] = new PlanetNode(childAABB, this, planet, depth + 1);
@@ -429,7 +429,7 @@ public sealed class PlanetNode
 
             // Leaf node - draw this node's bounds
             Color color = GetColorForDepth(depth);
-            Double3 halfExtents = AABB.Size * 0.5;
+            Float3 halfExtents = AABB.Size * 0.5;
             Debug.DrawWireCube(AABB.Center, halfExtents, color);
         }
         else

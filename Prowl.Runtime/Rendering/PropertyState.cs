@@ -140,13 +140,13 @@ public partial class PropertyState
 
     // Setters
     public void SetColor(string name, Color value) => _colors[name] = value;
-    public void SetVector(string name, Double2 value) => _vectors2[name] = (Float2)value;
-    public void SetVector(string name, Double3 value) => _vectors3[name] = (Float3)value;
-    public void SetVector(string name, Double4 value) => _vectors4[name] = (Float4)value;
+    public void SetVector(string name, Float2 value) => _vectors2[name] = (Float2)value;
+    public void SetVector(string name, Float3 value) => _vectors3[name] = (Float3)value;
+    public void SetVector(string name, Float4 value) => _vectors4[name] = (Float4)value;
     public void SetFloat(string name, float value) => _floats[name] = value;
     public void SetInt(string name, int value) => _ints[name] = value;
-    public void SetMatrix(string name, Double4x4 value) => _matrices[name] = (Float4x4)value;
-    public void SetMatrices(string name, Double4x4[] value) => _matrixArr[name] = [.. value.Select(x => (Float4x4)x)];
+    public void SetMatrix(string name, Float4x4 value) => _matrices[name] = (Float4x4)value;
+    public void SetMatrices(string name, Float4x4[] value) => _matrixArr[name] = [.. value.Select(x => (Float4x4)x)];
     public void SetTexture(string name, Texture2D value) => _textures[name] = value;
     public void SetBuffer(string name, GraphicsBuffer value, uint bindingPoint = 0)
     {
@@ -156,12 +156,12 @@ public partial class PropertyState
 
     // Getters
     public Color GetColor(string name) => _colors.TryGetValue(name, out Color value) ? value : Color.White;
-    public Double2 GetVector2(string name) => _vectors2.TryGetValue(name, out Float2 value) ? value : Double2.Zero;
-    public Double3 GetVector3(string name) => _vectors3.TryGetValue(name, out Float3 value) ? value : Double3.Zero;
-    public Double4 GetVector4(string name) => _vectors4.TryGetValue(name, out Float4 value) ? value : Double4.Zero;
+    public Float2 GetVector2(string name) => _vectors2.TryGetValue(name, out Float2 value) ? value : Float2.Zero;
+    public Float3 GetVector3(string name) => _vectors3.TryGetValue(name, out Float3 value) ? value : Float3.Zero;
+    public Float4 GetVector4(string name) => _vectors4.TryGetValue(name, out Float4 value) ? value : Float4.Zero;
     public float GetFloat(string name) => _floats.TryGetValue(name, out float value) ? value : 0;
     public int GetInt(string name) => _ints.TryGetValue(name, out int value) ? value : 0;
-    public Double4x4 GetMatrix(string name) => _matrices.TryGetValue(name, out Float4x4 value) ? (Double4x4)value : Double4x4.Identity;
+    public Float4x4 GetMatrix(string name) => _matrices.TryGetValue(name, out Float4x4 value) ? (Float4x4)value : Float4x4.Identity;
     public Texture2D? GetTexture(string name) => _textures.TryGetValue(name, out Texture2D value) ? value : null;
     public GraphicsBuffer GetBuffer(string name) => _buffers.TryGetValue(name, out GraphicsBuffer value) ? value : null;
     public uint GetBufferBinding(string name) => _bufferBindings.TryGetValue(name, out uint value) ? value : 0;
@@ -557,7 +557,7 @@ public partial class PropertyState
             }
         }
 
-        foreach (KeyValuePair<string, Double2> item in s_globalVectors2)
+        foreach (KeyValuePair<string, Float2> item in s_globalVectors2)
         {
             Float2 value = (Float2)item.Value;
             if (!cache.vectors2.TryGetValue(item.Key, out Float2 cachedValue) || !cachedValue.Equals(value))
@@ -567,7 +567,7 @@ public partial class PropertyState
             }
         }
 
-        foreach (KeyValuePair<string, Double3> item in s_globalVectors3)
+        foreach (KeyValuePair<string, Float3> item in s_globalVectors3)
         {
             Float3 value = (Float3)item.Value;
             if (!cache.vectors3.TryGetValue(item.Key, out Float3 cachedValue) || !cachedValue.Equals(value))
@@ -577,7 +577,7 @@ public partial class PropertyState
             }
         }
 
-        foreach (KeyValuePair<string, Double4> item in s_globalVectors4)
+        foreach (KeyValuePair<string, Float4> item in s_globalVectors4)
         {
             Float4 value = (Float4)item.Value;
             if (!cache.vectors4.TryGetValue(item.Key, out Float4 cachedValue) || !cachedValue.Equals(value))
@@ -597,7 +597,7 @@ public partial class PropertyState
             }
         }
 
-        foreach (KeyValuePair<string, Double4x4> item in s_globalMatrices)
+        foreach (KeyValuePair<string, Float4x4> item in s_globalMatrices)
         {
             Float4x4 value = (Float4x4)item.Value;
             if (!cache.matrices.TryGetValue(item.Key, out Float4x4 cachedValue) || !cachedValue.Equals(value))
@@ -649,12 +649,12 @@ public partial class PropertyState
 {
     // Global static dictionaries
     private static Dictionary<string, Color> s_globalColors = [];
-    private static Dictionary<string, Double2> s_globalVectors2 = [];
-    private static Dictionary<string, Double3> s_globalVectors3 = [];
-    private static Dictionary<string, Double4> s_globalVectors4 = [];
+    private static Dictionary<string, Float2> s_globalVectors2 = [];
+    private static Dictionary<string, Float3> s_globalVectors3 = [];
+    private static Dictionary<string, Float4> s_globalVectors4 = [];
     private static Dictionary<string, float> s_globalFloats = [];
     private static Dictionary<string, int> s_globalInts = [];
-    private static Dictionary<string, Double4x4> s_globalMatrices = [];
+    private static Dictionary<string, Float4x4> s_globalMatrices = [];
     private static Dictionary<string, System.Numerics.Matrix4x4[]> s_globalMatrixArr = [];
     private static Dictionary<string, Texture2D> s_globalTextures = [];
     private static Dictionary<string, GraphicsBuffer> s_globalBuffers = [];
@@ -662,13 +662,13 @@ public partial class PropertyState
 
     // Global setters
     public static void SetGlobalColor(string name, Color value) => s_globalColors[name] = value;
-    public static void SetGlobalVector(string name, Double2 value) => s_globalVectors2[name] = value;
-    public static void SetGlobalVector(string name, Double3 value) => s_globalVectors3[name] = value;
-    public static void SetGlobalVector(string name, Double4 value) => s_globalVectors4[name] = value;
-    public static void SetGlobalFloat(string name, double value) => s_globalFloats[name] = (float)value;
+    public static void SetGlobalVector(string name, Float2 value) => s_globalVectors2[name] = value;
+    public static void SetGlobalVector(string name, Float3 value) => s_globalVectors3[name] = value;
+    public static void SetGlobalVector(string name, Float4 value) => s_globalVectors4[name] = value;
+    public static void SetGlobalFloat(string name, float value) => s_globalFloats[name] = (float)value;
     public static void SetGlobalInt(string name, int value) => s_globalInts[name] = value;
-    public static void SetGlobalMatrix(string name, Double4x4 value) => s_globalMatrices[name] = value;
-    public static void SetGlobalMatrices(string name, Double4x4[] value) => s_globalMatrixArr[name] = [.. value.Select(x => (System.Numerics.Matrix4x4)(Float4x4)x)];
+    public static void SetGlobalMatrix(string name, Float4x4 value) => s_globalMatrices[name] = value;
+    public static void SetGlobalMatrices(string name, Float4x4[] value) => s_globalMatrixArr[name] = [.. value.Select(x => (System.Numerics.Matrix4x4)(Float4x4)x)];
     public static void SetGlobalTexture(string name, Texture2D value) => s_globalTextures[name] = value;
     public static void SetGlobalBuffer(string name, GraphicsBuffer value, uint bindingPoint = 0)
     {
@@ -678,12 +678,12 @@ public partial class PropertyState
 
     // Global getters
     public static Color GetGlobalColor(string name) => s_globalColors.TryGetValue(name, out Color value) ? value : Color.White;
-    public static Double2 GetGlobalVector2(string name) => s_globalVectors2.TryGetValue(name, out Double2 value) ? value : Double2.Zero;
-    public static Double3 GetGlobalVector3(string name) => s_globalVectors3.TryGetValue(name, out Double3 value) ? value : Double3.Zero;
-    public static Double4 GetGlobalVector4(string name) => s_globalVectors4.TryGetValue(name, out Double4 value) ? value : Double4.Zero;
+    public static Float2 GetGlobalVector2(string name) => s_globalVectors2.TryGetValue(name, out Float2 value) ? value : Float2.Zero;
+    public static Float3 GetGlobalVector3(string name) => s_globalVectors3.TryGetValue(name, out Float3 value) ? value : Float3.Zero;
+    public static Float4 GetGlobalVector4(string name) => s_globalVectors4.TryGetValue(name, out Float4 value) ? value : Float4.Zero;
     public static float GetGlobalFloat(string name) => s_globalFloats.TryGetValue(name, out float value) ? value : 0;
     public static int GetGlobalInt(string name) => s_globalInts.TryGetValue(name, out int value) ? value : 0;
-    public static Double4x4 GetGlobalMatrix(string name) => s_globalMatrices.TryGetValue(name, out Double4x4 value) ? value : Double4x4.Identity;
+    public static Float4x4 GetGlobalMatrix(string name) => s_globalMatrices.TryGetValue(name, out Float4x4 value) ? value : Float4x4.Identity;
     public static Texture2D? GetGlobalTexture(string name) => s_globalTextures.TryGetValue(name, out Texture2D value) ? value : null;
     public static GraphicsBuffer GetGlobalBuffer(string name) => s_globalBuffers.TryGetValue(name, out GraphicsBuffer value) ? value : null;
     public static uint GetGlobalBufferBinding(string name) => s_globalBufferBindings.TryGetValue(name, out uint value) ? value : 0;

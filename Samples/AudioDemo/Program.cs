@@ -69,7 +69,7 @@ public sealed class AudioDemoGame : Game
         // Create directional light
         GameObject lightGO = new("Directional Light");
         lightGO.AddComponent<DirectionalLight>();
-        lightGO.Transform.LocalEulerAngles = new Double3(-45, -30, 0);
+        lightGO.Transform.LocalEulerAngles = new Float3(-45, -30, 0);
         scene.Add(lightGO);
 
         // Create camera with audio listener
@@ -91,7 +91,7 @@ public sealed class AudioDemoGame : Game
         // Create ground plane
         GameObject groundGO = new("Ground");
         MeshRenderer groundMr = groundGO.AddComponent<MeshRenderer>();
-        groundMr.Mesh = Mesh.CreateCube(Double3.One);
+        groundMr.Mesh = Mesh.CreateCube(Float3.One);
         groundMr.Material = new Material(Shader.LoadDefault(DefaultShader.Standard));
         groundMr.Material.SetColor("_Color", new Color(0.3f, 0.3f, 0.35f, 1));
         groundGO.Transform.Position = new(0, -1, 0);
@@ -180,7 +180,7 @@ public sealed class AudioDemoGame : Game
         // 1. Static source with no effects (center)
         var staticSource = CreateAudioSourceAt(
             "Static Sound",
-            new Double3(0, 2, 0),
+            new Float3(0, 2, 0),
             Color.White,
             looping: true,
             volume: 0.8,
@@ -193,7 +193,7 @@ public sealed class AudioDemoGame : Game
         // 2. Moving source with Doppler effect (orbiting far out)
         var moving = CreateAudioSourceAt(
             "Moving Doppler",
-            new Double3(30, 2, 0),
+            new Float3(30, 2, 0),
             Color.Red,
             looping: true,
             volume: 0.7,
@@ -205,7 +205,7 @@ public sealed class AudioDemoGame : Game
         // 6. High pitched moving source (separate orbit area)
         var highPitch = CreateAudioSourceAt(
             "High Pitch Mover",
-            new Double3(-30, 2, 30),
+            new Float3(-30, 2, 30),
             Color.Green,
             looping: true,
             volume: 0.5,
@@ -217,7 +217,7 @@ public sealed class AudioDemoGame : Game
         // 7. Low pitched source (front left, far)
         var lowPitch = CreateAudioSourceAt(
             "Low Pitch",
-            new Double3(-30, 2, -30),
+            new Float3(-30, 2, -30),
             Color.Blue,
             looping: true,
             volume: 0.6,
@@ -229,8 +229,8 @@ public sealed class AudioDemoGame : Game
         Debug.Log($"Created {audioSources.Count} audio sources");
     }
 
-    private AudioSource CreateAudioSourceAt(string name, Double3 position, Color color, bool looping = false,
-        double volume = 1.0, double pitch = 1.0, double maxDistance = 20)
+    private AudioSource CreateAudioSourceAt(string name, Float3 position, Color color, bool looping = false,
+        float volume = 1.0, float pitch = 1.0, float maxDistance = 20)
     {
         GameObject go = new(name);
         go.Transform.Position = position;
@@ -256,7 +256,7 @@ public sealed class AudioDemoGame : Game
         {
             GameObject markerGO = new($"{audioSource.GameObject.Name} Marker");
             MeshRenderer mr = markerGO.AddComponent<MeshRenderer>();
-            mr.Mesh = Mesh.CreateCube(Double3.One);
+            mr.Mesh = Mesh.CreateCube(Float3.One);
             mr.Material = markerMat;
 
             // Color based on audio source type
@@ -274,7 +274,7 @@ public sealed class AudioDemoGame : Game
                 mr.Material.SetColor("_Color", new Color(0.8f, 0.8f, 0.8f, 1));
 
             markerGO.Transform.Position = audioSource.GameObject.Transform.Position;
-            markerGO.Transform.LocalScale = new Double3(0.5, 0.5, 0.5);
+            markerGO.Transform.LocalScale = new Float3(0.5, 0.5, 0.5);
             markerGO.Transform.Parent = audioSource.GameObject.Transform;
             scene.Add(markerGO);
         }
@@ -286,7 +286,7 @@ public sealed class AudioDemoGame : Game
 
         // Movement (WASD + Gamepad)
         moveAction = inputMap.AddAction("Move", InputActionType.Value);
-        moveAction.ExpectedValueType = typeof(Double2);
+        moveAction.ExpectedValueType = typeof(Float2);
         moveAction.AddBinding(new Vector2CompositeBinding(
             InputBinding.CreateKeyBinding(KeyCode.W),
             InputBinding.CreateKeyBinding(KeyCode.S),
@@ -305,7 +305,7 @@ public sealed class AudioDemoGame : Game
 
         // Look (Mouse + Gamepad)
         lookAction = inputMap.AddAction("Look", InputActionType.Value);
-        lookAction.ExpectedValueType = typeof(Double2);
+        lookAction.ExpectedValueType = typeof(Float2);
         var mouse = new DualAxisCompositeBinding(
             InputBinding.CreateMouseAxisBinding(0),
             InputBinding.CreateMouseAxisBinding(1));
@@ -370,20 +370,20 @@ public sealed class AudioDemoGame : Game
             {
                 // Large circular orbit on right side
                 float angle = time * 0.5f;
-                audioSource.GameObject.Transform.Position = new Double3(
-                    30 + Math.Cos(angle) * 10,
+                audioSource.GameObject.Transform.Position = new Float3(
+                    30 + Maths.Cos(angle) * 10,
                     2,
-                    Math.Sin(angle) * 10
+                    Maths.Sin(angle) * 10
                 );
             }
             else if (audioSource.GameObject.Name.Contains("High Pitch Mover"))
             {
                 // Orbit in back-left corner
                 float angle = time * 4.2f;
-                audioSource.GameObject.Transform.Position = new Double3(
-                    -30 + Math.Cos(angle) * 8,
-                    2 + Math.Sin(time * 2) * 0.5,
-                    30 + Math.Sin(angle) * 8
+                audioSource.GameObject.Transform.Position = new Float3(
+                    -30 + Maths.Cos(angle) * 8,
+                    2 + Maths.Sin(time * 2) * 0.5,
+                    30 + Maths.Sin(angle) * 8
                 );
             }
         }
@@ -391,7 +391,7 @@ public sealed class AudioDemoGame : Game
 
     private void HandleCameraInput()
     {
-        Double2 movement = moveAction.ReadValue<Double2>();
+        Float2 movement = moveAction.ReadValue<Float2>();
         float speedMultiplier = sprintAction.IsPressed() ? 2.5f : 1.0f;
         float moveSpeed = 8f * speedMultiplier * (float)Time.DeltaTime;
         
@@ -401,12 +401,12 @@ public sealed class AudioDemoGame : Game
         float upDown = 0;
         if (flyUpAction.IsPressed()) upDown += 1;
         if (flyDownAction.IsPressed()) upDown -= 1;
-        cameraGO.Transform.Position += Double3.UnitY * upDown * moveSpeed;
+        cameraGO.Transform.Position += Float3.UnitY * upDown * moveSpeed;
 
-        Double2 lookInput = lookAction.ReadValue<Double2>();
-        if (lookEnableAction.IsPressed() || Math.Abs(lookInput.X) > 0.01f || Math.Abs(lookInput.Y) > 0.01f)
+        Float2 lookInput = lookAction.ReadValue<Float2>();
+        if (lookEnableAction.IsPressed() || Maths.Abs(lookInput.X) > 0.01f || Maths.Abs(lookInput.Y) > 0.01f)
         {
-            cameraGO.Transform.LocalEulerAngles += new Double3(lookInput.Y, lookInput.X, 0);
+            cameraGO.Transform.LocalEulerAngles += new Float3(lookInput.Y, lookInput.X, 0);
         }
     }
 }

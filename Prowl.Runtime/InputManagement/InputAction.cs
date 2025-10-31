@@ -14,10 +14,10 @@ namespace Prowl.Runtime;
 /// </summary>
 public class InputAction
 {
-    private object _currentValue = 0.0;
-    private object _previousValue = 0.0;
+    private object _currentValue = 0.0f;
+    private object _previousValue = 0.0f;
     private InputActionPhase _phase = InputActionPhase.Disabled;
-    private double _startTime;
+    private float _startTime;
     private List<InputCompositeBinding> _composites = [];
     private Dictionary<InputBinding, InteractionState> _interactionStates = [];
 
@@ -31,19 +31,19 @@ public class InputAction
     /// </summary>
     public InputActionType ActionType { get; set; } = InputActionType.Button;
 
-    private Type _expectedValueType = typeof(double);
+    private Type _expectedValueType = typeof(float);
 
     /// <summary>
-    /// The expected value type for this action (typeof(double), typeof(Double2)).
+    /// The expected value type for this action (typeof(float), typeof(Float2)).
     /// </summary>
     public Type ExpectedValueType
     {
         get => _expectedValueType;
         set
         {
-            // Type must be either Double or Double2
-            if (value != typeof(double) && value != typeof(Double2))
-                throw new ArgumentException("ExpectedValueType must be either typeof(double) or typeof(Double2).");
+            // Type must be either Double or Float2
+            if (value != typeof(float) && value != typeof(Float2))
+                throw new ArgumentException("ExpectedValueType must be either typeof(float) or typeof(Float2).");
 
             _expectedValueType = value;
             // Re-initialize values with correct type
@@ -94,7 +94,7 @@ public class InputAction
     {
         Name = name;
         ActionType = type;
-        ExpectedValueType = type == InputActionType.Button ? typeof(double) : typeof(double);
+        ExpectedValueType = type == InputActionType.Button ? typeof(float) : typeof(float);
 
         // Initialize with proper default value based on type
         _currentValue = GetDefaultValue();
@@ -160,7 +160,7 @@ public class InputAction
 
     /// <summary>
     /// Adds a composite binding that combines multiple inputs into one value.
-    /// Example: WASD keys → Vector2, or two triggers → double axis
+    /// Example: WASD keys → Vector2, or two triggers → float axis
     /// </summary>
     public InputAction AddBinding(InputCompositeBinding composite)
     {
@@ -228,7 +228,7 @@ public class InputAction
     /// Internal method to update the action state based on input.
     /// Called by the input system each frame.
     /// </summary>
-    internal void UpdateState(IInputHandler inputHandler, double currentTime)
+    internal void UpdateState(IInputHandler inputHandler, float currentTime)
     {
         if (!Enabled)
             return;
@@ -263,20 +263,20 @@ public class InputAction
 
             // Action is performing
             _phase = InputActionPhase.Performed;
-            double duration = currentTime - _startTime;
+            float duration = currentTime - _startTime;
             InvokeCallback(Performed, InputActionPhase.Performed, currentTime, duration);
         }
         else if (_phase == InputActionPhase.Performed || _phase == InputActionPhase.Started)
         {
             // Action was canceled
             _phase = InputActionPhase.Canceled;
-            double duration = currentTime - _startTime;
+            float duration = currentTime - _startTime;
             InvokeCallback(Canceled, InputActionPhase.Canceled, currentTime, duration);
             _phase = InputActionPhase.Waiting;
         }
     }
 
-    private object ReadValueFromBindings(IInputHandler inputHandler, double currentTime)
+    private object ReadValueFromBindings(IInputHandler inputHandler, float currentTime)
     {
         // Check composites first - return the first actuated composite
         foreach (InputCompositeBinding composite in _composites)
@@ -287,9 +287,9 @@ public class InputAction
                 // Apply processors from the composite
                 foreach (IInputProcessor processor in composite.Processors)
                 {
-                    if (compositeValue is double doubleValue)
-                        compositeValue = processor.Process(doubleValue);
-                    else if (compositeValue is Double2 vectorValue)
+                    if (compositeValue is float floatValue)
+                        compositeValue = processor.Process(floatValue);
+                    else if (compositeValue is Float2 vectorValue)
                         compositeValue = processor.Process(vectorValue);
                 }
                 return compositeValue;
@@ -308,9 +308,9 @@ public class InputAction
             // Apply processors from THIS binding only
             foreach (IInputProcessor processor in binding.Processors)
             {
-                if (rawValue is double doubleValue)
-                    rawValue = processor.Process(doubleValue);
-                else if (rawValue is Double2 vectorValue)
+                if (rawValue is float floatValue)
+                    rawValue = processor.Process(floatValue);
+                else if (rawValue is Float2 vectorValue)
                     rawValue = processor.Process(vectorValue);
             }
 
@@ -326,7 +326,7 @@ public class InputAction
         return GetDefaultValue();
     }
 
-    private bool EvaluateInteraction(InputBinding binding, object rawValue, bool isActuated, double currentTime, out object value)
+    private bool EvaluateInteraction(InputBinding binding, object rawValue, bool isActuated, float currentTime, out object value)
     {
         InteractionState state = _interactionStates[binding];
         value = GetDefaultValue();
@@ -384,7 +384,7 @@ public class InputAction
                     else if (!state.HoldTriggered)
                     {
                         // Check if hold duration met
-                        double heldDuration = currentTime - state.PressStartTime;
+                        float heldDuration = currentTime - state.PressStartTime;
                         if (heldDuration >= binding.HoldDuration)
                         {
                             value = GetActuatedValue();
@@ -413,7 +413,7 @@ public class InputAction
                     else
                     {
                         // Check if held too long
-                        double heldDuration = currentTime - state.PressStartTime;
+                        float heldDuration = currentTime - state.PressStartTime;
                         if (heldDuration > binding.MaxTapDuration)
                         {
                             state.TapCompleted = true; // Cancel tap
@@ -423,7 +423,7 @@ public class InputAction
                 else if (state.WasActuated && !state.TapCompleted)
                 {
                     // Released quickly enough
-                    double heldDuration = currentTime - state.PressStartTime;
+                    float heldDuration = currentTime - state.PressStartTime;
                     if (heldDuration <= binding.MaxTapDuration)
                     {
                         value = GetActuatedValue();
@@ -439,7 +439,7 @@ public class InputAction
                 if (isActuated && !state.WasActuated)
                 {
                     // New tap
-                    double timeSinceLastTap = currentTime - state.LastTapTime;
+                    float timeSinceLastTap = currentTime - state.LastTapTime;
 
                     if (timeSinceLastTap <= binding.TapWindow)
                     {
@@ -492,9 +492,9 @@ public class InputAction
     {
         return binding.BindingType switch
         {
-            InputBindingType.Key => binding.Key.HasValue && inputHandler.GetKey(binding.Key.Value) ? 1.0 : 0.0,
-            InputBindingType.MouseButton => binding.MouseButton.HasValue && inputHandler.GetMouseButton((int)binding.MouseButton.Value) ? 1.0 : 0.0,
-            InputBindingType.GamepadButton => binding.GamepadButton.HasValue && inputHandler.GetGamepadButton(binding.RequiredDeviceIndex ?? 0, binding.GamepadButton.Value) ? 1.0 : 0.0,
+            InputBindingType.Key => binding.Key.HasValue && inputHandler.GetKey(binding.Key.Value) ? 1.0f : 0.0f,
+            InputBindingType.MouseButton => binding.MouseButton.HasValue && inputHandler.GetMouseButton((int)binding.MouseButton.Value) ? 1.0f : 0.0f,
+            InputBindingType.GamepadButton => binding.GamepadButton.HasValue && inputHandler.GetGamepadButton(binding.RequiredDeviceIndex ?? 0, binding.GamepadButton.Value) ? 1.0f : 0.0f,
             InputBindingType.GamepadAxis => inputHandler.GetGamepadAxis(binding.RequiredDeviceIndex ?? 0, binding.AxisIndex ?? 0),
             InputBindingType.GamepadTrigger => inputHandler.GetGamepadTrigger(binding.RequiredDeviceIndex ?? 0, binding.AxisIndex ?? 0),
             InputBindingType.MouseAxis => binding.AxisIndex switch
@@ -502,7 +502,7 @@ public class InputAction
                 0 => inputHandler.MouseDelta.X,
                 1 => inputHandler.MouseDelta.Y,
                 2 => inputHandler.MouseWheelDelta,
-                _ => 0.0
+                _ => 0.0f
             },
             _ => GetDefaultValue()
         };
@@ -510,28 +510,28 @@ public class InputAction
 
     private bool IsValueActuated(object value)
     {
-        if (value is double doubleValue)
-            return Math.Abs(doubleValue) > 0.0001;
-        if (value is Double2 vectorValue)
-            return Math.Abs(vectorValue.X) > 0.0001f || Math.Abs(vectorValue.Y) > 0.0001;
+        if (value is float floatValue)
+            return Maths.Abs(floatValue) > 0.0001;
+        if (value is Float2 vectorValue)
+            return Maths.Abs(vectorValue.X) > 0.0001f || Maths.Abs(vectorValue.Y) > 0.0001;
         return false;
     }
 
     private object GetDefaultValue()
     {
-        if (ExpectedValueType == typeof(Double2))
-            return Double2.Zero;
-        return 0.0;
+        if (ExpectedValueType == typeof(Float2))
+            return Float2.Zero;
+        return 0.0f;
     }
 
     private object GetActuatedValue()
     {
-        if (ExpectedValueType == typeof(Double2))
-            return new Double2(1.0, 1.0);
-        return 1.0;
+        if (ExpectedValueType == typeof(Float2))
+            return new Float2(1.0f, 1.0f);
+        return 1.0f;
     }
 
-    private void InvokeCallback(Action<InputActionContext>? callback, InputActionPhase phase, double time, double duration)
+    private void InvokeCallback(Action<InputActionContext>? callback, InputActionPhase phase, float time, float duration)
     {
         if (callback == null)
             return;

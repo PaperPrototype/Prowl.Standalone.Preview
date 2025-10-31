@@ -19,9 +19,9 @@ public enum AnimationWrapMode
 
 public sealed class AnimationClip : EngineObject, ISerializable
 {
-    public double Duration;
-    public double TicksPerSecond;
-    public double DurationInTicks;
+    public float Duration;
+    public float TicksPerSecond;
+    public float DurationInTicks;
 
     public AnimationWrapMode Wrap;
 
@@ -70,8 +70,8 @@ public sealed class AnimationClip : EngineObject, ISerializable
                 Quaternion midQ = (prev + cur) * 0.5f;
                 Quaternion midQFlipped = (prev + (-cur)) * 0.5f;
 
-                double angle = Quaternion.Angle(prev, midQ);
-                double angleFlipped = Quaternion.Angle(prev, midQFlipped);
+                float angle = Quaternion.Angle(prev, midQ);
+                float angleFlipped = Quaternion.Angle(prev, midQFlipped);
                 Quaternion continuous = angleFlipped < angle ? (-cur) : cur;
 
                 // Update the keyframe values with the continuous quaternion
@@ -89,9 +89,9 @@ public sealed class AnimationClip : EngineObject, ISerializable
     public void Deserialize(EchoObject value, SerializationContext ctx)
     {
         Name = value.Get("Name").StringValue;
-        Duration = value.Get("Duration").DoubleValue;
-        TicksPerSecond = value.Get("TicksPerSecond").DoubleValue;
-        DurationInTicks = value.Get("DurationInTicks").DoubleValue;
+        Duration = value.Get("Duration").FloatValue;
+        TicksPerSecond = value.Get("TicksPerSecond").FloatValue;
+        DurationInTicks = value.Get("DurationInTicks").FloatValue;
         Wrap = (AnimationWrapMode)value.Get("Wrap").IntValue;
 
         EchoObject? boneList = value.Get("Bones");
@@ -161,10 +161,10 @@ public sealed class AnimationClip : EngineObject, ISerializable
         public AnimationCurve RotX, RotY, RotZ, RotW;
         public AnimationCurve ScaleX, ScaleY, ScaleZ;
 
-        public Double3 EvaluatePositionAt(double time)
+        public Float3 EvaluatePositionAt(float time)
             => new(PosX.Evaluate(time), PosY.Evaluate(time), PosZ.Evaluate(time));
 
-        public Quaternion EvaluateRotationAt(double time)
+        public Quaternion EvaluateRotationAt(float time)
         {
             // Use SLERP for smooth quaternion interpolation
             if (RotX.Keys.Count == 0)
@@ -229,17 +229,17 @@ public sealed class AnimationClip : EngineObject, ISerializable
                 RotW.Keys[idx1].Value
             );
 
-            double t = 0;
+            float t = 0;
             if (key1.Position != key0.Position)
             {
                 t = ((time - key0.Position) / (key1.Position - key0.Position));
-                t = Math.Clamp(t, 0f, 1f);
+                t = Maths.Clamp(t, 0f, 1f);
             }
 
             return Quaternion.Slerp(q0, q1, t);
         }
 
-        public Double3 EvaluateScaleAt(double time)
+        public Float3 EvaluateScaleAt(float time)
             => new(ScaleX.Evaluate(time), ScaleY.Evaluate(time), ScaleZ.Evaluate(time));
 
         /// <summary>
@@ -247,12 +247,12 @@ public sealed class AnimationClip : EngineObject, ISerializable
         /// </summary>
         private static Quaternion NormalizeQuaternion(Quaternion q)
         {
-            double length = Math.Sqrt(q.X * q.X + q.Y * q.Y + q.Z * q.Z + q.W * q.W);
+            float length = Maths.Sqrt(q.X * q.X + q.Y * q.Y + q.Z * q.Z + q.W * q.W);
 
             if (length < 0.0001f)
                 return Quaternion.Identity;
 
-            double invLength = 1.0f / length;
+            float invLength = 1.0f / length;
             return new Quaternion(
                 q.X * invLength,
                 q.Y * invLength,

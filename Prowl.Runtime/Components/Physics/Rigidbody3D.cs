@@ -28,16 +28,16 @@ public sealed class Rigidbody3D : MonoBehaviour
     [SerializeField] private bool isSpeculative;
     [SerializeField] private bool useGravity = true;
     [SerializeField] private bool enableGyroscopicForces = false;
-    [SerializeField] private double mass = 1;
-    [SerializeField] private double linearDamping = 0.0;
-    [SerializeField] private double angularDamping = 0.0;
-    [SerializeField] private double friction = 0.2;
-    [SerializeField] private double restitution = 0;
-    [SerializeField] private double deactivationTime = 1.0;
-    [SerializeField] private double linearSleepThreshold = 0.1;
-    [SerializeField] private double angularSleepThreshold = 0.1;
+    [SerializeField] private float mass = 1;
+    [SerializeField] private float linearDamping = 0.0f;
+    [SerializeField] private float angularDamping = 0.0f;
+    [SerializeField] private float friction = 0.2f;
+    [SerializeField] private float restitution = 0;
+    [SerializeField] private float deactivationTime = 1.0f;
+    [SerializeField] private float linearSleepThreshold = 0.1f;
+    [SerializeField] private float angularSleepThreshold = 0.1f;
 
-    private double interpTimer = 0;
+    private float interpTimer = 0;
 
     /// <summary>
     /// Gets or sets a value indicating whether this Rigidbody3D is static.
@@ -81,7 +81,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets or sets the mass of this Rigidbody3D.
     /// </summary>
-    public double Mass
+    public float Mass
     {
         get => mass;
         set
@@ -97,7 +97,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets or sets the friction of this Rigidbody3D.
     /// </summary>
-    public double Friction
+    public float Friction
     {
         get => friction;
         set
@@ -113,7 +113,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets or sets the restitution of this Rigidbody3D.
     /// </summary>
-    public double Restitution
+    public float Restitution
     {
         get => restitution;
         set
@@ -130,7 +130,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// Gets or sets the linear damping of this Rigidbody3D.
     /// Higher values slow down linear movement faster. Range: 0 to 1.
     /// </summary>
-    public double LinearDamping
+    public float LinearDamping
     {
         get => linearDamping;
         set
@@ -147,7 +147,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// Gets or sets the angular damping of this Rigidbody3D.
     /// Higher values slow down rotation faster. Range: 0 to 1.
     /// </summary>
-    public double AngularDamping
+    public float AngularDamping
     {
         get => angularDamping;
         set
@@ -178,7 +178,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// Gets or sets the deactivation time in seconds.
     /// The body sleeps if velocity stays below threshold for this duration.
     /// </summary>
-    public double DeactivationTime
+    public float DeactivationTime
     {
         get => deactivationTime;
         set
@@ -191,7 +191,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets or sets the linear velocity threshold for sleeping.
     /// </summary>
-    public double LinearSleepThreshold
+    public float LinearSleepThreshold
     {
         get => linearSleepThreshold;
         set
@@ -204,7 +204,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets or sets the angular velocity threshold for sleeping (radians/second).
     /// </summary>
-    public double AngularSleepThreshold
+    public float AngularSleepThreshold
     {
         get => angularSleepThreshold;
         set
@@ -222,7 +222,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets or sets the Linear Velocity of this Rigidbody3D.
     /// </summary>
-    public Double3 LinearVelocity
+    public Float3 LinearVelocity
     {
         get => new(_body.Velocity.X, _body.Velocity.Y, _body.Velocity.Z);
         set => _body.Velocity = new(value.X, value.Y, value.Z);
@@ -231,7 +231,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets or sets the Angular Velocity of this Rigidbody3D.
     /// </summary>
-    public Double3 AngularVelocity
+    public Float3 AngularVelocity
     {
         get => new(_body.AngularVelocity.X, _body.AngularVelocity.Y, _body.AngularVelocity.Z);
         set => _body.AngularVelocity = new(value.X, value.Y, value.Z);
@@ -240,7 +240,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets or sets the Torque of this Rigidbody3D.
     /// </summary>
-    public Double3 Torque
+    public Float3 Torque
     {
         get => new(_body.Torque.X, _body.Torque.Y, _body.Torque.Z);
         set => _body.Torque = new JVector(value.X, value.Y, value.Z);
@@ -261,9 +261,9 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// </summary>
     public struct ContactInfo
     {
-        public Double3 Point;
-        public Double3 Normal;
-        public double ImpulseMagnitude;
+        public Float3 Point;
+        public Float3 Normal;
+        public float ImpulseMagnitude;
     }
 
     [SerializeIgnore]
@@ -309,8 +309,8 @@ public sealed class Rigidbody3D : MonoBehaviour
 
             var contactInfo = new ContactInfo
             {
-                Point = new Double3(worldPos.X, worldPos.Y, worldPos.Z),
-                Normal = new Double3(normal.X, normal.Y, normal.Z),
+                Point = new Float3(worldPos.X, worldPos.Y, worldPos.Z),
+                Normal = new Float3(normal.X, normal.Y, normal.Z),
                 ImpulseMagnitude = contact.Impulse
             };
 
@@ -351,7 +351,7 @@ public sealed class Rigidbody3D : MonoBehaviour
         JVector predictedPosition = _body.Position;
         JQuaternion predictedOrientation = _body.Orientation;
 
-        Transform.Position = new Double3(predictedPosition.X, predictedPosition.Y, predictedPosition.Z);
+        Transform.Position = new Float3(predictedPosition.X, predictedPosition.Y, predictedPosition.Z);
         Transform.Rotation = new Quaternion(predictedOrientation.X, predictedOrientation.Y, predictedOrientation.Z, predictedOrientation.W);
     }
 
@@ -466,17 +466,17 @@ public sealed class Rigidbody3D : MonoBehaviour
         }
     }
 
-    public void AddForce(Double3 velocity)
+    public void AddForce(Float3 velocity)
     {
         _body.AddForce(new JVector(velocity.X, velocity.Y, velocity.Z));
     }
 
-    public void AddForceAtPosition(Double3 velocity, Double3 worldPosition)
+    public void AddForceAtPosition(Float3 velocity, Float3 worldPosition)
     {
         _body.AddForce(new JVector(velocity.X, velocity.Y, velocity.Z), new JVector(worldPosition.X, worldPosition.Y, worldPosition.Z));
     }
 
-    public void AddTorque(Double3 torque)
+    public void AddTorque(Float3 torque)
     {
         Torque += torque;
     }
@@ -493,43 +493,43 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Gets the velocity at a world space point on this rigidbody.
     /// </summary>
-    public Double3 GetPointVelocity(Double3 worldPoint)
+    public Float3 GetPointVelocity(Float3 worldPoint)
     {
-        if (_body == null) return Double3.Zero;
+        if (_body == null) return Float3.Zero;
 
         var point = new JVector(worldPoint.X, worldPoint.Y, worldPoint.Z);
         JVector r = point - _body.Position;
         JVector velocity = _body.Velocity + JVector.Cross(_body.AngularVelocity, r);
 
-        return new Double3(velocity.X, velocity.Y, velocity.Z);
+        return new Float3(velocity.X, velocity.Y, velocity.Z);
     }
 
     /// <summary>
     /// Gets the center of mass in world space.
     /// </summary>
-    public Double3 CenterOfMass
+    public Float3 CenterOfMass
     {
         get
         {
             if (_body == null) return Transform.Position;
             JVector pos = _body.Position;
-            return new Double3(pos.X, pos.Y, pos.Z);
+            return new Float3(pos.X, pos.Y, pos.Z);
         }
     }
 
     /// <summary>
     /// Gets the inertia tensor (inverse) of this rigidbody.
     /// </summary>
-    public Double3 InertiaTensor
+    public Float3 InertiaTensor
     {
         get
         {
-            if (_body == null) return Double3.One;
+            if (_body == null) return Float3.One;
             JMatrix inertia = _body.InverseInertia;
-            return new Double3(
-                inertia.M11 != 0 ? 1.0 / inertia.M11 : 0,
-                inertia.M22 != 0 ? 1.0 / inertia.M22 : 0,
-                inertia.M33 != 0 ? 1.0 / inertia.M33 : 0
+            return new Float3(
+                inertia.M11 != 0 ? 1.0f / inertia.M11 : 0,
+                inertia.M22 != 0 ? 1.0f / inertia.M22 : 0,
+                inertia.M33 != 0 ? 1.0f / inertia.M33 : 0
             );
         }
     }
@@ -537,7 +537,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Applies an impulse at a position, immediately affecting velocity.
     /// </summary>
-    public void ApplyImpulse(Double3 impulse, Double3 worldPosition)
+    public void ApplyImpulse(Float3 impulse, Float3 worldPosition)
     {
         if (_body == null) return;
 
@@ -554,7 +554,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Applies an impulse to the rigidbody, immediately affecting velocity.
     /// </summary>
-    public void ApplyImpulse(Double3 impulse)
+    public void ApplyImpulse(Float3 impulse)
     {
         if (_body == null) return;
 
@@ -567,7 +567,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Applies an angular impulse to the rigidbody, immediately affecting angular velocity.
     /// </summary>
-    public void ApplyAngularImpulse(Double3 angularImpulse)
+    public void ApplyAngularImpulse(Float3 angularImpulse)
     {
         if (_body == null) return;
 
@@ -580,7 +580,7 @@ public sealed class Rigidbody3D : MonoBehaviour
     /// <summary>
     /// Moves the rigidbody to a new position (teleport).
     /// </summary>
-    public void MovePosition(Double3 position)
+    public void MovePosition(Float3 position)
     {
         if (_body != null)
         {

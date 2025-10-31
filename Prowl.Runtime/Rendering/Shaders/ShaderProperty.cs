@@ -18,8 +18,8 @@ public class ShaderProperty
     [field: SerializeField]
     public ShaderPropertyType PropertyType { get; private set; }
 
-    public Double4 Value;
-    public Double4x4 MatrixValue;
+    public Float4 Value;
+    public Float4x4 MatrixValue;
 
     public Texture2D Texture2DValue;
 
@@ -35,52 +35,52 @@ public class ShaderProperty
         Texture2DValue = other.Texture2DValue;
     }
 
-    public ShaderProperty(double value)
+    public ShaderProperty(float value)
     {
         Value = new(value);
         PropertyType = ShaderPropertyType.Float;
     }
 
-    public static implicit operator ShaderProperty(double value)
+    public static implicit operator ShaderProperty(float value)
         => new(value);
 
-    public static implicit operator double(ShaderProperty value)
+    public static implicit operator float(ShaderProperty value)
         => value.Value.X;
 
-    public ShaderProperty(Double2 value)
+    public ShaderProperty(Float2 value)
     {
         Value = new(value, 0, 0);
         PropertyType = ShaderPropertyType.Vector2;
     }
 
-    public static implicit operator ShaderProperty(Double2 value)
+    public static implicit operator ShaderProperty(Float2 value)
         => new(value);
 
-    public static implicit operator Double2(ShaderProperty value)
+    public static implicit operator Float2(ShaderProperty value)
         => new(value.Value.X, value.Value.Y);
 
-    public ShaderProperty(Double3 value)
+    public ShaderProperty(Float3 value)
     {
         Value = new(value, 0);
         PropertyType = ShaderPropertyType.Vector3;
     }
 
-    public static implicit operator ShaderProperty(Double3 value)
+    public static implicit operator ShaderProperty(Float3 value)
         => new(value);
 
-    public static implicit operator Double3(ShaderProperty value)
+    public static implicit operator Float3(ShaderProperty value)
         => new(value.Value.X, value.Value.Y, value.Value.Z);
 
-    public ShaderProperty(Double4 value)
+    public ShaderProperty(Float4 value)
     {
         Value = value;
         PropertyType = ShaderPropertyType.Vector4;
     }
 
-    public static implicit operator ShaderProperty(Double4 value)
+    public static implicit operator ShaderProperty(Float4 value)
         => new(value);
 
-    public static implicit operator Double4(ShaderProperty value)
+    public static implicit operator Float4(ShaderProperty value)
         => value.Value;
 
     public ShaderProperty(Color value)
@@ -95,16 +95,16 @@ public class ShaderProperty
     public static implicit operator Color(ShaderProperty value)
         => new((float)value.Value.X, (float)value.Value.Y, (float)value.Value.Z, (float)value.Value.W);
 
-    public ShaderProperty(Double4x4 value)
+    public ShaderProperty(Float4x4 value)
     {
         MatrixValue = value;
         PropertyType = ShaderPropertyType.Matrix;
     }
 
-    public static implicit operator ShaderProperty(Double4x4 value)
+    public static implicit operator ShaderProperty(Float4x4 value)
         => new(value);
 
-    public static implicit operator Double4x4(ShaderProperty value)
+    public static implicit operator Float4x4(ShaderProperty value)
         => value.MatrixValue;
 
     public ShaderProperty(Texture2D value)

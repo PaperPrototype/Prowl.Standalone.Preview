@@ -10,9 +10,9 @@ namespace Prowl.Runtime;
 
 public sealed class SphereCollider : Collider
 {
-    [SerializeField] private double radius = 0.5f;
+    [SerializeField] private float radius = 0.5f;
 
-    public double Radius
+    public float Radius
     {
         get => radius;
         set
@@ -22,5 +22,5 @@ public sealed class SphereCollider : Collider
         }
     }
 
-    public override RigidBodyShape[] CreateShapes() => [new SphereShape(Maths.Max(radius, 0.01))];
+    public override RigidBodyShape[] CreateShapes() => [new SphereShape(Maths.Max(radius, 0.01f))];
 }

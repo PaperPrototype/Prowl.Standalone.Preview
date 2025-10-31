@@ -29,7 +29,7 @@ public class EchoLogger : IEchoLogger
 public abstract class Game
 {
     private TimeData time = new();
-    private double fixedTimeAccumulator = 0.0;
+    private float fixedTimeAccumulator = 0.0f;
 
     private PaperRenderer _paperRenderer;
     private Paper _paper;
@@ -205,7 +205,7 @@ public abstract class Game
             _paper.SetPointerState(PaperMouseBtn.Middle, mousePos.X, mousePos.Y, false, false);
 
         // Handle mouse wheel
-        double wheelDelta = Input.MouseWheelDelta;
+        float wheelDelta = Input.MouseWheelDelta;
         if (wheelDelta != 0)
             _paper.SetPointerWheel(wheelDelta);
 

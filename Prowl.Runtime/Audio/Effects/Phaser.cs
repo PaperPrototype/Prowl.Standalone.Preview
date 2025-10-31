@@ -20,6 +20,8 @@
 
 using System;
 
+using Prowl.Vector;
+
 namespace Prowl.Runtime.Audio.Effects
 {
 	public sealed class Phaser
@@ -56,10 +58,10 @@ namespace Prowl.Runtime.Audio.Effects
 		public float Process(float x)
 		{
 			// Calculate and update phaser sweep LFO
-			float d = min + (max - min) * ((float)(Math.Sin(lfoPhase) + 1) / 2);
+			float d = min + (max - min) * ((Maths.Sin(lfoPhase) + 1) / 2);
 			lfoPhase += lfoInc;
-			if (lfoPhase >= Math.PI * 2)
-				lfoPhase -= (float)(Math.PI * 2);
+			if (lfoPhase >= Maths.PI * 2)
+				lfoPhase -= Maths.PI * 2;
 
 			// Update filter coeffs
 			for (int i = 0; i < _allpassDelay.Length; i++)
@@ -133,7 +135,7 @@ namespace Prowl.Runtime.Audio.Effects
 			set
 			{
 				rate = value;
-				lfoInc = 2 * (float)Math.PI * (rate / sampleRate);
+				lfoInc = 2 * (float)Maths.PI * (rate / sampleRate);
 			}
 		}
 

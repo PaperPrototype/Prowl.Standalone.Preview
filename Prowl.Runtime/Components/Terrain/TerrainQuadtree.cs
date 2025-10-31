@@ -15,10 +15,10 @@ public class TerrainQuadtree
 {
     public TerrainChunk Root;
     public int MaxLODLevel;
-    public double ChunkSize;
+    public float ChunkSize;
     public List<TerrainChunk> VisibleChunks = new();
 
-    public TerrainQuadtree(Double3 origin, double terrainSize, int maxLOD)
+    public TerrainQuadtree(Float3 origin, float terrainSize, int maxLOD)
     {
         MaxLODLevel = maxLOD;
         ChunkSize = terrainSize;
@@ -30,18 +30,18 @@ public class TerrainQuadtree
     /// Determines which chunks should be visible.
     /// Only recalculates when camera has moved significantly.
     /// </summary>
-    public void Update(Double3 cameraPosition)
+    public void Update(Float3 cameraPosition)
     {
         // Clear visibility and update tree
         VisibleChunks.Clear();
         UpdateNode(Root, cameraPosition);
     }
 
-    private void UpdateNode(TerrainChunk chunk, Double3 cameraPosition)
+    private void UpdateNode(TerrainChunk chunk, Float3 cameraPosition)
     {
         // Calculate distance from camera to chunk center
-        Double3 chunkCenter = chunk.Position + new Double3(chunk.Size * 0.5, 0, chunk.Size * 0.5);
-        double distanceToCamera = Double3.Distance(cameraPosition, chunkCenter);
+        Float3 chunkCenter = chunk.Position + new Float3(chunk.Size * 0.5f, 0, chunk.Size * 0.5f);
+        float distanceToCamera = Float3.Distance(cameraPosition, chunkCenter);
 
         var size = chunk.Size * 1.5;
 
@@ -75,7 +75,7 @@ public class TerrainQuadtree
         }
     }
 
-    public void DrawGizmos(Double3 offset)
+    public void DrawGizmos(Float3 offset)
     {
         Root.DrawGizmos(offset);
     }

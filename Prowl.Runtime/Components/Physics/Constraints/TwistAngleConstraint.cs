@@ -17,19 +17,19 @@ namespace Prowl.Runtime;
 /// </summary>
 public class TwistAngleConstraint : PhysicsConstraint
 {
-    [SerializeField] private Double3 axis1 = Double3.UnitX;
-    [SerializeField] private Double3 axis2 = Double3.UnitX;
-    [SerializeField] private double minAngle = -45.0;
-    [SerializeField] private double maxAngle = 45.0;
-    [SerializeField] private double softness = 0.0001;
-    [SerializeField] private double biasFactor = 0.2;
+    [SerializeField] private Float3 axis1 = Float3.UnitX;
+    [SerializeField] private Float3 axis2 = Float3.UnitX;
+    [SerializeField] private float minAngle = -45.0f;
+    [SerializeField] private float maxAngle = 45.0f;
+    [SerializeField] private float softness = 0.0001f;
+    [SerializeField] private float biasFactor = 0.2f;
 
     private TwistAngle constraint;
 
     /// <summary>
     /// The first twist axis in local space of this rigidbody.
     /// </summary>
-    public Double3 Axis1
+    public Float3 Axis1
     {
         get => axis1;
         set
@@ -43,7 +43,7 @@ public class TwistAngleConstraint : PhysicsConstraint
     /// The second twist axis in local space of the connected rigidbody.
     /// If no connected body is specified, this is in world space.
     /// </summary>
-    public Double3 Axis2
+    public Float3 Axis2
     {
         get => axis2;
         set
@@ -56,7 +56,7 @@ public class TwistAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Minimum twist angle in degrees. Default is -45.
     /// </summary>
-    public double MinAngle
+    public float MinAngle
     {
         get => minAngle;
         set
@@ -69,7 +69,7 @@ public class TwistAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Maximum twist angle in degrees. Default is 45.
     /// </summary>
-    public double MaxAngle
+    public float MaxAngle
     {
         get => maxAngle;
         set
@@ -82,7 +82,7 @@ public class TwistAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Softness of the constraint. Higher values make the constraint softer.
     /// </summary>
-    public double Softness
+    public float Softness
     {
         get => softness;
         set
@@ -95,7 +95,7 @@ public class TwistAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Bias factor for error correction. Higher values correct errors faster.
     /// </summary>
-    public double BiasFactor
+    public float BiasFactor
     {
         get => biasFactor;
         set
@@ -108,11 +108,11 @@ public class TwistAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the current twist angle in degrees.
     /// </summary>
-    public double Angle
+    public float Angle
     {
         get
         {
-            if (constraint == null) return 0.0;
+            if (constraint == null) return 0.0f;
             return constraint.Angle.Degree;
         }
     }
@@ -120,7 +120,7 @@ public class TwistAngleConstraint : PhysicsConstraint
     /// <summary>
     /// Gets the accumulated impulse applied by this constraint.
     /// </summary>
-    public double Impulse => constraint?.Impulse ?? 0.0;
+    public float Impulse => constraint?.Impulse ?? 0.0f;
 
     protected override Constraint GetConstraint() => constraint;
 

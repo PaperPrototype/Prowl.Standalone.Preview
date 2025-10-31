@@ -16,9 +16,9 @@ namespace Prowl.Runtime.Rendering;
 public struct RenderingData
 {
     public bool DisplayGizmo;
-    public Double4x4 GridMatrix;
+    public Float4x4 GridMatrix;
     public Color GridColor;
-    public Double3 GridSizes;
+    public Float3 GridSizes;
 }
 
 /// <summary>
@@ -38,7 +38,7 @@ public interface IRenderable
     /// <param name="mesh">Mesh to render</param>
     /// <param name="model">Model matrix (only used for single-instance rendering)</param>
     /// <param name="instanceData">Instance data array for GPU instancing, or null for single-instance rendering</param>
-    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Double4x4 model, out InstanceData[]? instanceData);
+    public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Float4x4 model, out InstanceData[]? instanceData);
 
     public void GetCullingData(out bool isRenderable, out AABB bounds);
 }
@@ -56,8 +56,8 @@ public interface IRenderableLight
     public int GetLightID();
     public int GetLayer();
     public LightType GetLightType();
-    public Double3 GetLightPosition();
-    public Double3 GetLightDirection();
+    public Float3 GetLightPosition();
+    public Float3 GetLightDirection();
     public bool DoCastShadows();
 
     /// <summary>
@@ -76,28 +76,28 @@ public abstract class RenderPipeline : EngineObject
     {
         public Scene Scene = camera.Scene;
 
-        public Double3 CameraPosition = camera.Transform.Position;
-        public Double3 CameraRight = camera.Transform.Right;
-        public Double3 CameraUp = camera.Transform.Up;
-        public Double3 CameraForward = camera.Transform.Forward;
+        public Float3 CameraPosition = camera.Transform.Position;
+        public Float3 CameraRight = camera.Transform.Right;
+        public Float3 CameraUp = camera.Transform.Up;
+        public Float3 CameraForward = camera.Transform.Forward;
         public LayerMask CullingMask = camera.CullingMask;
         public CameraClearFlags ClearFlags = camera.ClearFlags;
-        public double NearClipPlane = camera.NearClipPlane;
-        public double FarClipPlane = camera.FarClipPlane;
+        public float NearClipPlane = camera.NearClipPlane;
+        public float FarClipPlane = camera.FarClipPlane;
         public uint PixelWidth = camera.PixelWidth;
         public uint PixelHeight = camera.PixelHeight;
-        public double Aspect = camera.Aspect;
-        public Double4x4 View = camera.ViewMatrix;
-        public Double4x4 ViewInverse = camera.ViewMatrix;
-        public Double4x4 Projection = camera.ProjectionMatrix;
-        public Double4x4 PreviousViewProj = camera.PreviousViewProjectionMatrix;
+        public float Aspect = camera.Aspect;
+        public Float4x4 View = camera.ViewMatrix;
+        public Float4x4 ViewInverse = camera.ViewMatrix;
+        public Float4x4 Projection = camera.ProjectionMatrix;
+        public Float4x4 PreviousViewProj = camera.PreviousViewProjectionMatrix;
         public Frustum WorldFrustum = Frustum.FromMatrix(camera.ProjectionMatrix * camera.ViewMatrix);
         public DepthTextureMode DepthTextureMode = camera.DepthTextureMode; // Flags, Can be None, Normals, MotionVectors
     }
 
     public HashSet<int> ActiveObjectIds { get => s_activeObjectIds; set => s_activeObjectIds = value; }
 
-    private Dictionary<int, Double4x4> s_prevModelMatrices = [];
+    private Dictionary<int, Float4x4> s_prevModelMatrices = [];
     private HashSet<int> s_activeObjectIds = [];
     private const int CLEANUP_INTERVAL_FRAMES = 120; // Clean up every 120 frames
     private int s_framesSinceLastCleanup = 0;
@@ -125,13 +125,13 @@ public abstract class RenderPipeline : EngineObject
         ActiveObjectIds.Clear();
     }
 
-    private void TrackModelMatrix(int objectId, Double4x4 currentModel)
+    private void TrackModelMatrix(int objectId, Float4x4 currentModel)
     {
         // Mark this object ID as active this frame
         ActiveObjectIds.Add(objectId);
 
         // Store current model matrix for next frame
-        if (s_prevModelMatrices.TryGetValue(objectId, out Double4x4 prevModel))
+        if (s_prevModelMatrices.TryGetValue(objectId, out Float4x4 prevModel))
             PropertyState.SetGlobalMatrix("prowl_PrevObjectToWorld", prevModel);
         else
             PropertyState.SetGlobalMatrix("prowl_PrevObjectToWorld", currentModel); // First frame, use current matrix
@@ -184,20 +184,20 @@ public abstract class RenderPipeline : EngineObject
         // Setup Default Uniforms for this frame
         // Camera
         GlobalUniforms.SetWorldSpaceCameraPos(css.CameraPosition);
-        GlobalUniforms.SetProjectionParams(new Double4(1.0f, css.NearClipPlane, css.FarClipPlane, 1.0f / css.FarClipPlane));
-        GlobalUniforms.SetScreenParams(new Double4(css.PixelWidth, css.PixelHeight, 1.0f + 1.0f / css.PixelWidth, 1.0f + 1.0f / css.PixelHeight));
+        GlobalUniforms.SetProjectionParams(new Float4(1.0f, css.NearClipPlane, css.FarClipPlane, 1.0f / css.FarClipPlane));
+        GlobalUniforms.SetScreenParams(new Float4(css.PixelWidth, css.PixelHeight, 1.0f + 1.0f / css.PixelWidth, 1.0f + 1.0f / css.PixelHeight));
 
         // Time
-        GlobalUniforms.SetTime(new Double4(Time.TimeSinceStartup * 0.5f, Time.TimeSinceStartup, Time.TimeSinceStartup * 2, Time.FrameCount));
-        GlobalUniforms.SetSinTime(new Double4(Maths.Sin(Time.TimeSinceStartup / 8), Maths.Sin(Time.TimeSinceStartup / 4), Maths.Sin(Time.TimeSinceStartup / 2), Maths.Sin(Time.TimeSinceStartup)));
-        GlobalUniforms.SetCosTime(new Double4(Maths.Cos(Time.TimeSinceStartup / 8), Maths.Cos(Time.TimeSinceStartup / 4), Maths.Cos(Time.TimeSinceStartup / 2), Maths.Cos(Time.TimeSinceStartup)));
-        GlobalUniforms.SetDeltaTime(new Double4(Time.DeltaTime, 1.0f / Time.DeltaTime, Time.SmoothDeltaTime, 1.0f / Time.SmoothDeltaTime));
+        GlobalUniforms.SetTime(new Float4(Time.TimeSinceStartup * 0.5f, Time.TimeSinceStartup, Time.TimeSinceStartup * 2, Time.FrameCount));
+        GlobalUniforms.SetSinTime(new Float4(Maths.Sin(Time.TimeSinceStartup / 8), Maths.Sin(Time.TimeSinceStartup / 4), Maths.Sin(Time.TimeSinceStartup / 2), Maths.Sin(Time.TimeSinceStartup)));
+        GlobalUniforms.SetCosTime(new Float4(Maths.Cos(Time.TimeSinceStartup / 8), Maths.Cos(Time.TimeSinceStartup / 4), Maths.Cos(Time.TimeSinceStartup / 2), Maths.Cos(Time.TimeSinceStartup)));
+        GlobalUniforms.SetDeltaTime(new Float4(Time.DeltaTime, 1.0f / Time.DeltaTime, Time.SmoothDeltaTime, 1.0f / Time.SmoothDeltaTime));
 
         // Upload the global uniform buffer
         GlobalUniforms.Upload();
     }
 
-    public void AssignCameraMatrices(Double4x4 view, Double4x4 projection)
+    public void AssignCameraMatrices(Float4x4 view, Float4x4 projection)
     {
         GlobalUniforms.SetMatrixV(view);
         GlobalUniforms.SetMatrixIV(view.Invert());
@@ -360,7 +360,7 @@ public abstract class RenderPipeline : EngineObject
             if (material.Shader.IsNotValid()) continue;
 
             // Get rendering data to determine if this is instanced or single-instance rendering
-            renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Double4x4 _, out InstanceData[]? instanceData);
+            renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Float4x4 _, out InstanceData[]? instanceData);
             if (mesh == null || mesh.VertexCount <= 0) continue;
 
             // Handle instanced renderables separately (instanceData != null)
@@ -519,7 +519,7 @@ public abstract class RenderPipeline : EngineObject
 
                 // Get per-object data (transform, instance properties)
                 // Note: mesh and instanceData are discarded (we already have them from the batch)
-                renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh _, out Double4x4 model, out InstanceData[]? _);
+                renderable.GetRenderingData(viewer, out PropertyState properties, out Mesh _, out Float4x4 model, out InstanceData[]? _);
 
                 // Track model matrix for motion vectors (used in temporal effects like TAA)
                 int instanceId = properties.GetInt("_ObjectID");
@@ -563,7 +563,7 @@ public abstract class RenderPipeline : EngineObject
     private void DrawInstancedRenderable(IRenderable renderable, string shaderTag, string tagValue, ViewerData viewer, bool hasRenderOrder)
     {
         // Get rendering data (mesh, properties, instance data)
-        renderable.GetRenderingData(viewer, out PropertyState sharedProperties, out Mesh mesh, out Double4x4 _, out InstanceData[]? instanceData);
+        renderable.GetRenderingData(viewer, out PropertyState sharedProperties, out Mesh mesh, out Float4x4 _, out InstanceData[]? instanceData);
 
         if (mesh == null || instanceData == null || instanceData.Length == 0)
             return;

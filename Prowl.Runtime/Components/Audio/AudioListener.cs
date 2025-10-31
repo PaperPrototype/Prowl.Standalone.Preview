@@ -16,7 +16,7 @@ namespace Prowl.Runtime
     public sealed class AudioListener : MonoBehaviour
     {
         private IntPtr handle;
-        private Double3 previousPosition;
+        private Float3 previousPosition;
 
         /// <summary> A handle to the native ma_audio_listener instance. </summary>
         public IntPtr Handle => handle;
@@ -54,16 +54,16 @@ namespace Prowl.Runtime
 
 
             MiniAudioExNative.ma_ex_audio_listener_get_position(handle, out float prevX, out float prevY, out float prevZ);
-            previousPosition = new Double3(prevX, prevY, prevZ);
+            previousPosition = new Float3(prevX, prevY, prevZ);
             MiniAudioExNative.ma_ex_audio_listener_set_position(handle, (float)pos.X, (float)pos.Y, (float)pos.Z);
 
 
-            double deltaTime = AudioContext.DeltaTime;
-            Double3 currentPosition = Transform.Position;
-            double dx = currentPosition.X - previousPosition.X;
-            double dy = currentPosition.Y - previousPosition.Y;
-            double dz = currentPosition.Z - previousPosition.Z;
-            var vel = new Double3(dx / deltaTime, dy / deltaTime, dz / deltaTime);
+            float deltaTime = AudioContext.DeltaTime;
+            Float3 currentPosition = Transform.Position;
+            float dx = currentPosition.X - previousPosition.X;
+            float dy = currentPosition.Y - previousPosition.Y;
+            float dz = currentPosition.Z - previousPosition.Z;
+            var vel = new Float3(dx / deltaTime, dy / deltaTime, dz / deltaTime);
 
             MiniAudioExNative.ma_ex_audio_listener_set_velocity(handle, (float)vel.X, (float)vel.Y, (float)vel.Z);
         }

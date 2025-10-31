@@ -170,7 +170,7 @@ public abstract class MonoBehaviour : EngineObject
         GameObject._components.Remove(this);
 
         // Ensure index is within bounds
-        index = Math.Max(0, Math.Min(index, GameObject._components.Count));
+        index = Maths.Max(0, Maths.Min(index, GameObject._components.Count));
 
         // Insert at new position
         GameObject._components.Insert(index, this);

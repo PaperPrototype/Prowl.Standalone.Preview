@@ -10,10 +10,10 @@ namespace Prowl.Runtime;
 
 public sealed class CapsuleCollider : Collider
 {
-    [SerializeField] private double radius = 0.5f;
-    [SerializeField] private double height = 2;
+    [SerializeField] private float radius = 0.5f;
+    [SerializeField] private float height = 2;
 
-    public double Radius
+    public float Radius
     {
         get => radius;
         set
@@ -23,7 +23,7 @@ public sealed class CapsuleCollider : Collider
         }
     }
 
-    public double Height
+    public float Height
     {
         get => height;
         set
@@ -33,5 +33,5 @@ public sealed class CapsuleCollider : Collider
         }
     }
 
-    public override RigidBodyShape[] CreateShapes() => [new CapsuleShape(Maths.Max(radius, 0.01), Maths.Max(height, 0.01))];
+    public override RigidBodyShape[] CreateShapes() => [new CapsuleShape(Maths.Max(radius, 0.01f), Maths.Max(height, 0.01f))];
 }

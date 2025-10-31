@@ -11,13 +11,13 @@ public interface IInputHandler
 {
     string Clipboard { get; set; }
     bool IsAnyKeyDown { get; }
-    Double2 MouseDelta { get; }
+    Float2 MouseDelta { get; }
     Int2 MousePosition { get; set; }
-    double MouseWheelDelta { get; }
+    float MouseWheelDelta { get; }
     Int2 PrevMousePosition { get; }
 
     event Action<KeyCode, bool> OnKeyEvent;
-    event Action<MouseButton, double, double, bool, bool> OnMouseEvent;
+    event Action<MouseButton, float, float, bool, bool> OnMouseEvent;
 
     // Keyboard methods
     char? GetPressedChar();
@@ -37,7 +37,7 @@ public interface IInputHandler
     bool GetGamepadButton(int gamepadIndex, GamepadButton button);
     bool GetGamepadButtonDown(int gamepadIndex, GamepadButton button);
     bool GetGamepadButtonUp(int gamepadIndex, GamepadButton button);
-    Double2 GetGamepadAxis(int gamepadIndex, int axisIndex);
-    double GetGamepadTrigger(int gamepadIndex, int triggerIndex);
-    void SetGamepadVibration(int gamepadIndex, double leftMotor, double rightMotor);
+    Float2 GetGamepadAxis(int gamepadIndex, int axisIndex);
+    float GetGamepadTrigger(int gamepadIndex, int triggerIndex);
+    void SetGamepadVibration(int gamepadIndex, float leftMotor, float rightMotor);
 }

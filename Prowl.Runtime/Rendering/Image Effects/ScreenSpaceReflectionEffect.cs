@@ -72,12 +72,12 @@ public sealed class ScreenSpaceReflectionEffect : ImageEffect
         RenderPipeline.Blit(context.SceneColor, resolvedRT, _mat, 1);
 
         // Pass 2: Blur Horizontal
-        _mat.SetVector("_BlurDirection", new Double2(1.0, 0.0));
+        _mat.SetVector("_BlurDirection", new Float2(1.0f, 0.0f));
         _mat.SetFloat("_BlurRadius", BlurRadius);
         RenderPipeline.Blit(resolvedRT, blurTempRT, _mat, 2);
 
         // Pass 3: Blur Vertical
-        _mat.SetVector("_BlurDirection", new Double2(0.0, 1.0));
+        _mat.SetVector("_BlurDirection", new Float2(0.0f, 1.0f));
         _mat.SetFloat("_BlurRadius", BlurRadius);
         RenderPipeline.Blit(blurTempRT, resolvedRT, _mat, 2);
 

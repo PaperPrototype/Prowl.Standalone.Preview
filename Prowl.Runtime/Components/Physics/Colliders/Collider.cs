@@ -13,8 +13,8 @@ namespace Prowl.Runtime;
 
 public abstract class Collider : MonoBehaviour
 {
-    public Double3 Center;
-    public Double3 Rotation;
+    public Float3 Center;
+    public Float3 Rotation;
 
     /// <summary>
     /// The Jitter2 rigidbody this collider is currently attached to.
@@ -183,7 +183,7 @@ public abstract class Collider : MonoBehaviour
         if (rb.IsNotValid()) return shapes;
 
         // Get the cumulative scale from this object up to (but not including) the rigidbody
-        Double3 cumulativeScale = Double3.One;
+        Float3 cumulativeScale = Float3.One;
         Transform current = Transform;
         Transform rbTransform = rb.Transform;
 
@@ -193,26 +193,26 @@ public abstract class Collider : MonoBehaviour
             current = current.Parent;
         }
 
-        cumulativeScale = Maths.Max(cumulativeScale, Double3.One * 0.05);
+        cumulativeScale = Maths.Max(cumulativeScale, Float3.One * 0.05f);
 
         // Get the local rotation and position in world space
         Quaternion localRotation = Quaternion.FromEuler(Rotation);
-        Double3 scaledCenter = Center * cumulativeScale;
+        Float3 scaledCenter = Center * cumulativeScale;
 
         // Transform local position and rotation to world space
-        Double3 worldCenter = Transform.TransformPoint(scaledCenter);
+        Float3 worldCenter = Transform.TransformPoint(scaledCenter);
         Quaternion worldRotation = Transform.Rotation * localRotation;
 
         // Transform from world space to rigid body's local space
-        Double3 rbLocalCenter = rb.Transform.InverseTransformPoint(worldCenter);
+        Float3 rbLocalCenter = rb.Transform.InverseTransformPoint(worldCenter);
         Quaternion rbLocalRotation = Quaternion.Inverse(rb.Transform.Rotation) * worldRotation;
 
         // Create a scale transform matrix that includes both rotation and scale
-        Double4x4 scaleMatrix = Double4x4.CreateTRS(Double3.Zero, rbLocalRotation, cumulativeScale);
+        Float4x4 scaleMatrix = Float4x4.CreateTRS(Float3.Zero, rbLocalRotation, cumulativeScale);
 
         // If there's no transformation needed, return the original shape
-        if (rbLocalCenter.Equals(Double3.Zero) &&
-            cumulativeScale.Equals(Double3.One) &&
+        if (rbLocalCenter.Equals(Float3.Zero) &&
+            cumulativeScale.Equals(Float3.One) &&
             rbLocalRotation == Quaternion.Identity)
             return shapes;
 
@@ -249,7 +249,7 @@ public abstract class Collider : MonoBehaviour
             return null;
 
         // Get the cumulative scale
-        Double3 cumulativeScale = Double3.One;
+        Float3 cumulativeScale = Float3.One;
         Transform current = Transform;
 
         while (current != null)
@@ -258,18 +258,18 @@ public abstract class Collider : MonoBehaviour
             current = current.Parent;
         }
 
-        cumulativeScale = Maths.Max(cumulativeScale, Double3.One * 0.05);
+        cumulativeScale = Maths.Max(cumulativeScale, Float3.One * 0.05f);
 
         // Get the local rotation and position
         Quaternion localRotation = Quaternion.FromEuler(Rotation);
-        Double3 scaledCenter = Center * cumulativeScale;
+        Float3 scaledCenter = Center * cumulativeScale;
 
         // Transform to world space
-        Double3 worldCenter = Transform.TransformPoint(scaledCenter);
+        Float3 worldCenter = Transform.TransformPoint(scaledCenter);
         Quaternion worldRotation = Transform.Rotation * localRotation;
 
         // Create a scale transform matrix that includes both rotation and scale
-        Double4x4 scaleMatrix = Double4x4.CreateTRS(Double3.Zero, worldRotation, cumulativeScale);
+        Float4x4 scaleMatrix = Float4x4.CreateTRS(Float3.Zero, worldRotation, cumulativeScale);
 
         // Convert to Jitter types
         var translation = new Jitter2.LinearMath.JVector(
@@ -286,8 +286,8 @@ public abstract class Collider : MonoBehaviour
         );
 
         // If there's no transformation needed, return the original shape
-        if (worldCenter.Equals(Double3.Zero) &&
-            cumulativeScale.Equals(Double3.One) &&
+        if (worldCenter.Equals(Float3.Zero) &&
+            cumulativeScale.Equals(Float3.One) &&
             worldRotation == Quaternion.Identity)
             return shapes;
 

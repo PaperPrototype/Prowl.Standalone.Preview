@@ -29,12 +29,12 @@ public readonly struct InputActionContext
     /// <summary>
     /// The time when the action was triggered.
     /// </summary>
-    public double Time { get; }
+    public float Time { get; }
 
     /// <summary>
     /// The time since the action was started.
     /// </summary>
-    public double Duration { get; }
+    public float Duration { get; }
 
     /// <summary>
     /// The raw value before processing.
@@ -52,8 +52,8 @@ public readonly struct InputActionContext
         InputBinding? binding,
         object rawValue,
         object value,
-        double time,
-        double duration)
+        float time,
+        float duration)
     {
         Action = action;
         Phase = phase;

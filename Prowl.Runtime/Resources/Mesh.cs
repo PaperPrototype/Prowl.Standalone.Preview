@@ -476,7 +476,7 @@ public class Mesh : EngineObject, ISerializable
         for (int i = 0; i < vertices.Length; i++)
         {
             normals[i] = Float3.Normalize(normals[i]);
-            if (double.IsNaN(normals[i].X) || double.IsNaN(normals[i].Y) || double.IsNaN(normals[i].Z))
+            if (float.IsNaN(normals[i].X) || float.IsNaN(normals[i].Y) || float.IsNaN(normals[i].Z))
                 normals[i] = Float3.UnitY;
         }
 
@@ -530,10 +530,10 @@ public class Mesh : EngineObject, ISerializable
     /// <param name="hitDistance">The distance from ray origin to the closest hit point, if any</param>
     /// <param name="hitNormal">The normal vector at the hit point, if any</param>
     /// <returns>True if the ray intersects with the mesh, false otherwise</returns>
-    public bool Raycast(Ray ray, out double hitDistance, out Float3 hitNormal)
+    public bool Raycast(Ray ray, out float hitDistance, out Float3 hitNormal)
     {
         // Initialize out parameters
-        hitDistance = double.MaxValue;
+        hitDistance = float.MaxValue;
         hitNormal = Float3.Zero;
 
         // Make sure we have vertices and indices
@@ -563,7 +563,7 @@ public class Mesh : EngineObject, ISerializable
             Float3 v3 = vertices[i3];
 
             // Test ray-triangle intersection
-            if (ray.Intersects(new Triangle(v1, v2, v3), out double distance, out _, out _) && distance < hitDistance)
+            if (ray.Intersects(new Triangle(v1, v2, v3), out float distance, out _, out _) && distance < hitDistance)
             {
                 hit = true;
                 hitDistance = distance;
@@ -593,7 +593,7 @@ public class Mesh : EngineObject, ISerializable
     /// <param name="ray">The ray to test intersection with</param>
     /// <param name="hitDistance">The distance from ray origin to the hit point, if any</param>
     /// <returns>True if the ray intersects with the mesh, false otherwise</returns>
-    public bool Raycast(Ray ray, out double hitDistance)
+    public bool Raycast(Ray ray, out float hitDistance)
     {
         bool result = Raycast(ray, out hitDistance, out Float3 hitNormal);
         return result;
@@ -606,7 +606,7 @@ public class Mesh : EngineObject, ISerializable
     /// <returns>True if the ray intersects with the mesh, false otherwise</returns>
     public bool Raycast(Ray ray)
     {
-        return Raycast(ray, out double hitDistance);
+        return Raycast(ray, out float hitDistance);
     }
 
     #endregion
@@ -691,7 +691,7 @@ public class Mesh : EngineObject, ISerializable
         return mesh;
     }
 
-    public static Mesh CreateCube(Double3 size)
+    public static Mesh CreateCube(Float3 size)
     {
         Mesh mesh = new();
         float x = (float)size.X / 2f;
@@ -1398,8 +1398,8 @@ public class Mesh : EngineObject, ISerializable
         meshTopology = (Topology)value["MeshType"].IntValue;
         indexFormat = (IndexFormat)value["MeshIndexFormat"].IntValue;
         bounds = new AABB(
-            new Double3(value["BoundsMinX"].DoubleValue, value["BoundsMinY"].DoubleValue, value["BoundsMinZ"].DoubleValue),
-            new Double3(value["BoundsMaxX"].DoubleValue, value["BoundsMaxY"].DoubleValue, value["BoundsMaxZ"].DoubleValue)
+            new Float3(value["BoundsMinX"].FloatValue, value["BoundsMinY"].FloatValue, value["BoundsMinZ"].FloatValue),
+            new Float3(value["BoundsMaxX"].FloatValue, value["BoundsMaxY"].FloatValue, value["BoundsMaxZ"].FloatValue)
         );
 
         using (MemoryStream memoryStream = new(value["MeshData"].ByteArrayValue))

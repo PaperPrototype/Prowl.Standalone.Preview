@@ -16,9 +16,9 @@ public static class Window
     public static IInputContext InternalInput { get; internal set; }
 
     public static event Action? Load;
-    public static event Action<double>? Update;
-    public static event Action<double>? Render;
-    public static event Action<double>? PostRender;
+    public static event Action<float>? Update;
+    public static event Action<float>? Render;
+    public static event Action<float>? PostRender;
     public static event Action<bool>? FocusChanged;
     public static event Action<Vector2D<int>>? Resize;
     public static event Action<Vector2D<int>>? FramebufferResize;
@@ -46,9 +46,9 @@ public static class Window
         set { InternalWindow.VSync = value; }
     }
 
-    public static double FramesPerSecond
+    public static float FramesPerSecond
     {
-        get { return InternalWindow.FramesPerSecond; }
+        get { return (float)InternalWindow.FramesPerSecond; }
         set { InternalWindow.FramesPerSecond = value; InternalWindow.UpdatesPerSecond = value; }
     }
 
@@ -108,8 +108,8 @@ public static class Window
 
     public static void OnRender(double delta)
     {
-        Render?.Invoke(delta);
-        PostRender?.Invoke(delta);
+        Render?.Invoke((float)delta);
+        PostRender?.Invoke((float)delta);
     }
 
     public static void OnFocusChanged(bool focused)
@@ -129,7 +129,7 @@ public static class Window
 
     public static void OnUpdate(double delta)
     {
-        Update?.Invoke(delta);
+        Update?.Invoke((float)delta);
         WindowInputHandler.LateUpdate();
     }
 
