@@ -30,6 +30,7 @@ public class MeshRenderer : MonoBehaviour, IRenderable
 
     public Material GetMaterial() => Material;
     public int GetLayer() => GameObject.LayerIndex;
+    public Float3 GetPosition() => Transform.Position;
 
     public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Float4x4 model, out InstanceData[]? instanceData)
     {

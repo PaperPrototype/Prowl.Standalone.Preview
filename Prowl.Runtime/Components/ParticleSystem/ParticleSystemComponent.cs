@@ -152,6 +152,7 @@ public class ParticleSystemComponent : MonoBehaviour
                 _quadMesh,
                 _transforms,
                 Material,
+                Transform.Position, // Use particle system's transform position for stable depth sorting (prevents flickering)
                 _colors,
                 _customData,
                 GameObject.LayerIndex,

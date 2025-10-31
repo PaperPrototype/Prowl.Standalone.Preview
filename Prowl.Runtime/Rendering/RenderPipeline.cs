@@ -1,6 +1,7 @@
 ﻿// This file is part of the Prowl Game Engine
 // Licensed under the MIT License. See the LICENSE file in the project root for details.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -29,6 +30,12 @@ public interface IRenderable
 {
     public Material GetMaterial();
     public int GetLayer();
+
+    /// <summary>
+    /// Gets the world-space position of this renderable (typically the transform position).
+    /// Used for depth sorting (e.g., back-to-front sorting for transparent objects).
+    /// </summary>
+    public Float3 GetPosition();
 
     /// <summary>
     /// Gets the rendering data for this renderable.
@@ -172,6 +179,53 @@ public abstract class RenderPipeline : EngineObject
         renderable.GetCullingData(out bool isRenderable, out AABB bounds);
 
         return !isRenderable || !cameraFrustum.Intersects(bounds);
+    }
+
+    public enum SortMode
+    {
+        FrontToBack,
+        BackToFront
+    }
+
+    /// <summary>
+    /// Sorts renderables by distance from camera and returns a new sorted list.
+    /// FrontToBack: Nearest objects first (optimal for opaque objects - early Z rejection)
+    /// BackToFront: Farthest objects first (required for transparent objects - correct alpha blending)
+    /// </summary>
+    public List<IRenderable> SortRenderables(IReadOnlyList<IRenderable> renderables, HashSet<int> culledRenderableIndices, Float3 cameraPosition, SortMode mode)
+    {
+        int count = renderables?.Count ?? 0;
+        if (count == 0)
+            return new List<IRenderable>();
+
+        // Preallocate to the maximum possible count to avoid reallocation
+        var pairs = new List<(IRenderable renderable, float distSq)>(count);
+
+        // Collect only non-culled renderables
+        for (int i = 0; i < count; i++)
+        {
+            if (culledRenderableIndices != null && culledRenderableIndices.Contains(i))
+                continue;
+
+            var renderable = renderables[i];
+            float distSq = Float3.DistanceSquared(renderable.GetPosition(), cameraPosition);
+            pairs.Add((renderable, distSq));
+        }
+
+        // Sort by distance squared (avoid sqrt)
+        pairs.Sort((a, b) => mode switch
+        {
+            SortMode.FrontToBack => a.distSq.CompareTo(b.distSq),
+            SortMode.BackToFront => b.distSq.CompareTo(a.distSq),
+            _ => 0
+        });
+
+        // Extract sorted renderables into result list
+        var result = new List<IRenderable>(pairs.Count);
+        for (int i = 0; i < pairs.Count; i++)
+            result.Add(pairs[i].renderable);
+
+        return result;
     }
 
     public void SetupGlobalUniforms(CameraSnapshot css)

@@ -33,6 +33,12 @@ public class MeshRenderable : IRenderable
     public Material GetMaterial() => _material;
     public int GetLayer() => _layerIndex;
 
+    public Float3 GetPosition()
+    {
+        // Extract position from the transform matrix (4th column)
+        return new Float3(_transform[0, 3], _transform[1, 3], _transform[2, 3]);
+    }
+
     public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Float4x4 model, out InstanceData[]? instanceData)
     {
         mesh = _mesh;
@@ -62,11 +68,14 @@ public class InstancedMeshRenderable : IRenderable
     private readonly PropertyState _sharedProperties;
     private readonly AABB _bounds;
     private readonly InstanceData[] _instanceData;
+    private readonly Float3 _sortPosition;
 
+    /// <param name="sortPosition">World-space origin for depth sorting. Should be a stable position (e.g., particle system transform, terrain chunk center) to avoid flickering.</param>
     public InstancedMeshRenderable(
         Mesh mesh,
         Material material,
         InstanceData[] instanceData,
+        Float3 sortPosition,
         int layerIndex = 0,
         PropertyState? sharedProperties = null,
         AABB? bounds = null)
@@ -76,6 +85,7 @@ public class InstancedMeshRenderable : IRenderable
         _instanceData = instanceData;
         _layerIndex = layerIndex;
         _sharedProperties = sharedProperties ?? new PropertyState();
+        _sortPosition = sortPosition;
 
         // Calculate bounds if not provided
         if (bounds.HasValue)
@@ -114,6 +124,12 @@ public class InstancedMeshRenderable : IRenderable
 
     public Material GetMaterial() => _material;
     public int GetLayer() => _layerIndex;
+
+    public Float3 GetPosition()
+    {
+        // Return the explicit world origin provided by the caller
+        return _sortPosition;
+    }
 
     public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh mesh, out Float4x4 model, out InstanceData[]? instanceData)
     {
@@ -173,11 +189,12 @@ public static class Graphics
     /// <param name="mesh">Mesh to render</param>
     /// <param name="transforms">Array of world transforms (one per instance)</param>
     /// <param name="material">Material to render with</param>
+    /// <param name="worldOrigin">World-space origin for depth sorting (e.g., particle system transform position, terrain chunk center)</param>
     /// <param name="layer">Layer index for culling and sorting (default: 0)</param>
     /// <param name="properties">Optional shared properties for all instances</param>
     /// <param name="bounds">Optional custom bounds for culling. If null, computed from mesh bounds.</param>
     /// <param name="maxBatchSize">Maximum instances per batch (default: 1023)</param>
-    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Float4x4[] transforms, Material material, int layer = 0, PropertyState? properties = null, AABB? bounds = null, int maxBatchSize = 1023)
+    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Float4x4[] transforms, Material material, Float3 worldOrigin, int layer = 0, PropertyState? properties = null, AABB? bounds = null, int maxBatchSize = 1023)
     {
         if (scene == null || mesh == null || material == null || transforms == null || transforms.Length == 0) return;
 
@@ -197,7 +214,7 @@ public static class Graphics
             }
 
             // Push batch to scene
-            var renderable = new InstancedMeshRenderable(mesh, material, instanceData, layer, properties, bounds);
+            var renderable = new InstancedMeshRenderable(mesh, material, instanceData, worldOrigin, layer, properties, bounds);
             scene.PushRenderable(renderable);
 
             remainingInstances -= batchSize;
@@ -209,7 +226,8 @@ public static class Graphics
     /// Queues multiple instances with per-instance colors.
     /// Automatically handles batching for large instance counts (>1023 instances).
     /// </summary>
-    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Float4x4[] transforms, Material material, Float4[] colors, int layer = 0, PropertyState? properties = null, AABB? bounds = null, int maxBatchSize = 1023)
+    /// <param name="worldOrigin">World-space origin for depth sorting (e.g., particle system transform position, terrain chunk center)</param>
+    public static void DrawMeshInstanced(Scene scene, Mesh mesh, Float4x4[] transforms, Material material, Float4[] colors, Float3 worldOrigin, int layer = 0, PropertyState? properties = null, AABB? bounds = null, int maxBatchSize = 1023)
     {
         if (scene == null || mesh == null || material == null || transforms == null || transforms.Length == 0) return;
 
@@ -231,7 +249,7 @@ public static class Graphics
             }
 
             // Push batch to scene
-            var renderable = new InstancedMeshRenderable(mesh, material, instanceData, layer, properties, bounds);
+            var renderable = new InstancedMeshRenderable(mesh, material, instanceData, worldOrigin, layer, properties, bounds);
             scene.PushRenderable(renderable);
 
             remainingInstances -= batchSize;
@@ -248,6 +266,7 @@ public static class Graphics
     /// <param name="mesh">Mesh to render</param>
     /// <param name="transforms">Array of world transforms (one per instance)</param>
     /// <param name="material">Material to render with</param>
+    /// <param name="worldOrigin">World-space origin for depth sorting (e.g., particle system transform position, terrain chunk center)</param>
     /// <param name="colors">Optional per-instance colors (RGBA). If null, defaults to white.</param>
     /// <param name="customData">Optional per-instance custom data (4 floats). Useful for UV offsets, lifetimes, etc.</param>
     /// <param name="layer">Layer index for culling and sorting (default: 0)</param>
@@ -259,6 +278,7 @@ public static class Graphics
         Mesh mesh,
         Float4x4[] transforms,
         Material material,
+        Float3 worldOrigin,
         Float4[]? colors = null,
         Float4[]? customData = null,
         int layer = 0,
@@ -287,7 +307,7 @@ public static class Graphics
             }
 
             // Push batch to scene
-            var renderable = new InstancedMeshRenderable(mesh, material, instanceData, layer, properties, bounds);
+            var renderable = new InstancedMeshRenderable(mesh, material, instanceData, worldOrigin, layer, properties, bounds);
             scene.PushRenderable(renderable);
 
             remainingInstances -= batchSize;

@@ -172,6 +172,7 @@ public class LineRenderer : MonoBehaviour, IRenderable
 
     public Material GetMaterial() => Material;
     public int GetLayer() => GameObject.LayerIndex;
+    Float3 IRenderable.GetPosition() => Transform.Position;
 
     public void GetRenderingData(ViewerData viewer, out PropertyState properties, out Mesh drawData, out Float4x4 model, out InstanceData[]? instanceData)
     {

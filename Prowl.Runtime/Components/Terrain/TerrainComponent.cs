@@ -121,6 +121,7 @@ public class TerrainComponent : MonoBehaviour
                 _baseMesh,
                 _transforms,
                 Material,
+                (bounds.Min + bounds.Max) * 0.5f, // Use center of terrain bounds for depth sorting
                 GameObject.LayerIndex,
                 _properties,
                 bounds

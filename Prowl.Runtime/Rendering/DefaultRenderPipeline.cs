@@ -234,7 +234,8 @@ public class DefaultRenderPipeline : RenderPipeline
         }
 
         // 6.2 Draw opaque geometry to GBuffer
-        DrawRenderables(renderables, "RenderOrder", "Opaque", new ViewerData(css), culledRenderableIndices, false);
+        //List<IRenderable> sortFrontToBack = SortRenderables(renderables, culledRenderableIndices, css.CameraPosition, SortMode.FrontToBack);
+        DrawRenderables(renderables, "RenderOrder", "Opaque", new ViewerData(css), culledRenderableIndices, false); // Its deffered rendering, overdraw is cheap
 
         // =======================================================
         // 7. Deferred Lighting Pass - Render each light's contribution
@@ -352,7 +353,8 @@ public class DefaultRenderPipeline : RenderPipeline
 
         // =======================================================
         // 10. Transparent geometry (Forward rendered on top of composed result)
-        DrawRenderables(renderables, "RenderOrder", "Transparent", new ViewerData(css), culledRenderableIndices, false);
+        List<IRenderable> sortBackToFront = SortRenderables(renderables, culledRenderableIndices, css.CameraPosition, SortMode.BackToFront);
+        DrawRenderables(sortBackToFront, "RenderOrder", "Transparent", new ViewerData(css), null, false);
 
         // =======================================================
         // 11. Apply PostProcess effects (final post-processing)
