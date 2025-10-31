@@ -326,6 +326,8 @@ public abstract class RenderPipeline : EngineObject
         public ulong MaterialHash;     // Hash of material uniforms (for sorting/grouping)
         public int SortKey;            // Sort order based on tag value + offset
         public List<int> RenderableIndices;  // Indices of objects in this batch
+        public bool IsInstanced;       // True if this batch uses GPU instancing
+        public int InstancedRenderableIndex;  // Index of the instanced renderable (if IsInstanced is true)
     }
 
     /// <summary>
@@ -363,10 +365,40 @@ public abstract class RenderPipeline : EngineObject
             renderable.GetRenderingData(viewer, out PropertyState _, out Mesh mesh, out Float4x4 _, out InstanceData[]? instanceData);
             if (mesh == null || mesh.VertexCount <= 0) continue;
 
-            // Handle instanced renderables separately (instanceData != null)
+            // Handle instanced renderables - add to batches with proper sorting (instanceData != null)
             if (instanceData != null && instanceData.Length > 0)
             {
-                DrawInstancedRenderable(renderable, shaderTag, tagValue, viewer, hasRenderOrder);
+                // Get material hash for batching
+                ulong instancedMaterialHash = material.GetStateHash();
+
+                // Find ALL shader passes matching the requested tag and add to batches
+                int instancedPassIndex = -1;
+                foreach (ShaderPass pass in material.Shader.Passes)
+                {
+                    instancedPassIndex++;
+
+                    if (hasRenderOrder && !pass.HasTag(shaderTag, tagValue))
+                        continue;
+
+                    // Compute sort key for this pass (same as non-instanced)
+                    int sortKey = hasRenderOrder ? instancedPassIndex + pass.GetTagSortOffset(shaderTag) : instancedPassIndex;
+                    hasSortOffsets |= sortKey != instancedPassIndex;
+
+                    // Create batch for instanced renderable
+                    // Each instanced renderable gets its own batch since it draws all instances in one call
+                    RenderBatch newBatch = new()
+                    {
+                        Material = material,
+                        Mesh = mesh,
+                        PassIndex = instancedPassIndex,
+                        MaterialHash = instancedMaterialHash,
+                        SortKey = sortKey,
+                        IsInstanced = true,
+                        InstancedRenderableIndex = renderIndex,
+                        RenderableIndices = null  // Not used for instanced batches
+                    };
+                    batches.Add(newBatch);
+                }
                 continue;
             }
 
@@ -427,6 +459,14 @@ public abstract class RenderPipeline : EngineObject
         // For each batch, bind state once then draw all objects in that batch
         foreach (RenderBatch batch in batches)
         {
+            // Handle instanced batches separately
+            if (batch.IsInstanced)
+            {
+                IRenderable instancedRenderable = renderables[batch.InstancedRenderableIndex];
+                DrawInstancedRenderablePass(instancedRenderable, batch.Material, batch.Mesh, batch.PassIndex, viewer);
+                continue;
+            }
+
             Material material = batch.Material;
             Mesh mesh = batch.Mesh;
             int passIndex = batch.PassIndex;
@@ -556,20 +596,16 @@ public abstract class RenderPipeline : EngineObject
     }
 
     /// <summary>
-    /// Draws an instanced renderable with GPU instancing.
+    /// Draws a specific pass of an instanced renderable with GPU instancing.
     /// Uses DrawIndexedInstanced to draw multiple instances in a single draw call.
     /// The mesh's cached VAO system is used for optimal performance.
     /// </summary>
-    private void DrawInstancedRenderable(IRenderable renderable, string shaderTag, string tagValue, ViewerData viewer, bool hasRenderOrder)
+    private void DrawInstancedRenderablePass(IRenderable renderable, Material material, Mesh mesh, int passIndex, ViewerData viewer)
     {
         // Get rendering data (mesh, properties, instance data)
-        renderable.GetRenderingData(viewer, out PropertyState sharedProperties, out Mesh mesh, out Float4x4 _, out InstanceData[]? instanceData);
+        renderable.GetRenderingData(viewer, out PropertyState sharedProperties, out Mesh _, out Float4x4 __, out InstanceData[]? instanceData);
 
-        if (mesh == null || instanceData == null || instanceData.Length == 0)
-            return;
-
-        Material material = renderable.GetMaterial();
-        if (material.Shader.IsNotValid())
+        if (instanceData == null || instanceData.Length == 0)
             return;
 
         // Get instanced VAO from mesh (creates and caches on first use)
@@ -586,55 +622,51 @@ public abstract class RenderPipeline : EngineObject
         // Enable GPU instancing keyword
         material.SetKeyword("GPU_INSTANCING", true);
 
-        // Find matching shader passes
-        int passIndex = -1;
-        foreach (Shaders.ShaderPass pass in material.Shader.Passes)
+        // Get the specific shader pass
+        Shaders.ShaderPass pass = material.Shader.GetPass(passIndex);
+
+        // Get shader variant
+        if (!pass.TryGetVariantProgram(material._localKeywords, out GraphicsProgram? variantNullable) || variantNullable == null)
         {
-            passIndex++;
+            material.SetKeyword("GPU_INSTANCING", false);
+            return;
+        }
 
-            if (hasRenderOrder && !pass.HasTag(shaderTag, tagValue))
-                continue;
+        GraphicsProgram variant = variantNullable;
 
-            // Get shader variant
-            if (!pass.TryGetVariantProgram(material._localKeywords, out GraphicsProgram? variantNullable) || variantNullable == null)
-                continue;
+        // Bind GlobalUniforms buffer
+        GraphicsBuffer? globalBuffer = GlobalUniforms.GetBuffer();
+        if (globalBuffer != null)
+        {
+            Graphics.Device.BindUniformBuffer(variant, "GlobalUniforms", globalBuffer, 0);
+        }
 
-            GraphicsProgram variant = variantNullable;
+        // Apply global properties
+        GraphicsProgram.UniformCache cache = variant.uniformCache;
+        int texSlot = 0;
+        PropertyState.ApplyGlobals(variant, cache, ref texSlot);
 
-            // Bind GlobalUniforms buffer
-            GraphicsBuffer? globalBuffer = GlobalUniforms.GetBuffer();
-            if (globalBuffer != null)
-            {
-                Graphics.Device.BindUniformBuffer(variant, "GlobalUniforms", globalBuffer, 0);
-            }
+        // Apply material uniforms
+        PropertyState.ApplyMaterialUniforms(material._properties, variant, ref texSlot);
 
-            // Apply global properties
-            GraphicsProgram.UniformCache cache = variant.uniformCache;
-            int texSlot = 0;
-            PropertyState.ApplyGlobals(variant, cache, ref texSlot);
+        // Apply shared instance properties
+        int instanceTexSlot = texSlot;
+        PropertyState.ApplyInstanceUniforms(sharedProperties, variant, ref instanceTexSlot);
 
-            // Apply material uniforms
-            PropertyState.ApplyMaterialUniforms(material._properties, variant, ref texSlot);
+        // Set render state
+        Graphics.Device.SetState(pass.State);
 
-            // Apply shared instance properties
-            int instanceTexSlot = texSlot;
-            PropertyState.ApplyInstanceUniforms(sharedProperties, variant, ref instanceTexSlot);
-
-            // Set render state
-            Graphics.Device.SetState(pass.State);
-
-            // Draw with TRUE GPU instancing!
-            unsafe
-            {
-                Graphics.Device.BindVertexArray(vao);
-                Graphics.Device.DrawIndexedInstanced(
-                    Topology.Triangles,
-                    (uint)indexCount,
-                    (uint)instanceCount,
-                    useIndex32
-                );
-                Graphics.Device.BindVertexArray(null);
-            }
+        // Draw with TRUE GPU instancing!
+        unsafe
+        {
+            Graphics.Device.BindVertexArray(vao);
+            Graphics.Device.DrawIndexedInstanced(
+                Topology.Triangles,
+                (uint)indexCount,
+                (uint)instanceCount,
+                useIndex32
+            );
+            Graphics.Device.BindVertexArray(null);
         }
 
         material.SetKeyword("GPU_INSTANCING", false);
