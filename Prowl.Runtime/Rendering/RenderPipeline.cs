@@ -72,8 +72,6 @@ public interface IRenderableLight
 
 public abstract class RenderPipeline : EngineObject
 {
-    public const bool CAMERA_RELATIVE = false;
-
     public struct CameraSnapshot(Camera camera)
     {
         public Scene Scene = camera.Scene;
@@ -89,9 +87,8 @@ public abstract class RenderPipeline : EngineObject
         public uint PixelWidth = camera.PixelWidth;
         public uint PixelHeight = camera.PixelHeight;
         public double Aspect = camera.Aspect;
-        public Double4x4 OriginView = camera.OriginViewMatrix;
-        public Double4x4 View = CAMERA_RELATIVE ? camera.OriginViewMatrix : camera.ViewMatrix;
-        public Double4x4 ViewInverse = (CAMERA_RELATIVE ? camera.OriginViewMatrix : camera.ViewMatrix).Invert();
+        public Double4x4 View = camera.ViewMatrix;
+        public Double4x4 ViewInverse = camera.ViewMatrix;
         public Double4x4 Projection = camera.ProjectionMatrix;
         public Double4x4 PreviousViewProj = camera.PreviousViewProjectionMatrix;
         public Frustum WorldFrustum = Frustum.FromMatrix(camera.ProjectionMatrix * camera.ViewMatrix);
@@ -186,7 +183,7 @@ public abstract class RenderPipeline : EngineObject
 
         // Setup Default Uniforms for this frame
         // Camera
-        GlobalUniforms.SetWorldSpaceCameraPos(CAMERA_RELATIVE ? Double3.Zero : css.CameraPosition);
+        GlobalUniforms.SetWorldSpaceCameraPos(css.CameraPosition);
         GlobalUniforms.SetProjectionParams(new Double4(1.0f, css.NearClipPlane, css.FarClipPlane, 1.0f / css.FarClipPlane));
         GlobalUniforms.SetScreenParams(new Double4(css.PixelWidth, css.PixelHeight, 1.0f + 1.0f / css.PixelWidth, 1.0f + 1.0f / css.PixelHeight));
 
@@ -528,10 +525,6 @@ public abstract class RenderPipeline : EngineObject
                 int instanceId = properties.GetInt("_ObjectID");
                 if (updatePreviousMatrices && instanceId != 0)
                     TrackModelMatrix(instanceId, model);
-
-                // Camera-relative rendering: subtract camera position to improve depth precision
-                if (CAMERA_RELATIVE)
-                    model.Translation -= new Double4(viewer.Position, 0.0);
 
                 // Apply instance-specific uniforms (tint colors, bone matrices, etc.)
                 // Texture slot counter continues from where material textures left off

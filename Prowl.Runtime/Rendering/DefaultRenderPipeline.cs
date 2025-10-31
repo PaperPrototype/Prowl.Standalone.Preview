@@ -16,11 +16,6 @@ using Material = Prowl.Runtime.Resources.Material;
 using Mesh = Prowl.Runtime.Resources.Mesh;
 using Shader = Prowl.Runtime.Resources.Shader;
 
-// TODO:
-// 1. Image Effects need a refactor
-// 2. Optomize GBuffer usage and formats
-// 3. Other effects also need improvements to Formats and memory usage
-
 namespace Prowl.Runtime.Rendering;
 
 public struct ViewerData
@@ -448,15 +443,15 @@ public class DefaultRenderPipeline : RenderPipeline
     private void RenderGizmos(CameraSnapshot css)
     {
         Double4x4 vp = css.Projection * css.View;
-        (Mesh? wire, Mesh? solid) = Debug.GetGizmoDrawData(CAMERA_RELATIVE, css.CameraPosition);
+        (Mesh? wire, Mesh? solid) = Debug.GetGizmoDrawData();
 
         if (wire.IsValid() || solid.IsValid())
         {
-            // The vertices have already been transformed by the gizmo system to be camera relative (if needed) so we just need to draw them
-            s_gizmo.SetMatrix("prowl_MatVP", vp);
             if (wire.IsValid()) DrawMeshNow(wire, s_gizmo);
             if (solid.IsValid()) DrawMeshNow(solid, s_gizmo);
         }
+
+#warning TODO: Implement Gizmo Icons rendering
 
         //List<GizmoBuilder.IconDrawCall> icons = Debug.GetGizmoIcons();
         //if (icons != null)
@@ -466,8 +461,6 @@ public class DefaultRenderPipeline : RenderPipeline
         //    foreach (GizmoBuilder.IconDrawCall icon in icons)
         //    {
         //        Vector3 center = icon.center;
-        //        if (CAMERA_RELATIVE)
-        //            center -= css.cameraPosition;
         //        Matrix4x4 billboard = Matrix4x4.CreateBillboard(center, Vector3.zero, css.cameraUp, css.cameraForward);
         //
         //        buffer.SetMatrix("_Matrix_VP", (billboard * vp).ToFloat());

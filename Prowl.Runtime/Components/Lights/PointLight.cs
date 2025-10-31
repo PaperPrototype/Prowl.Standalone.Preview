@@ -99,7 +99,7 @@ public class PointLight : Light
 
             // Create view matrix for this face
             (Double3 forward, Double3 up) = faceOrientations[faceIndex];
-            Double4x4 view = Double4x4.CreateLookTo(RenderPipeline.CAMERA_RELATIVE ? Double3.Zero : lightPos, forward, up);
+            Double4x4 view = Double4x4.CreateLookTo(lightPos, forward, up);
 
             Frustum frustum = Frustum.FromMatrix(projection * view);
 
@@ -165,10 +165,6 @@ public class PointLight : Light
         Double4x4 model = this.Transform.LocalToWorldMatrix;
         Double4x4 scale = Double4x4.CreateScale(new Double3(Range, Range, Range));
         model = model * scale;
-
-        // Handle camera-relative rendering
-        if (RenderPipeline.CAMERA_RELATIVE)
-            model.Translation -= new Double4(css.CameraPosition, 0.0);
 
         // Set transform matrices
         _lightMaterial.SetMatrix("prowl_ObjectToWorld", model);

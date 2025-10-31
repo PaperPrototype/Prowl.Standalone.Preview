@@ -74,7 +74,7 @@ public class SpotLight : Light
         double fov = SpotAngle * 2.0; // Full cone angle
         projection = Double4x4.CreatePerspectiveFov(fov * Maths.Deg2Rad, 1.0, 0.1, Range);
 
-        view = Double4x4.CreateLookTo(RenderPipeline.CAMERA_RELATIVE ? Double3.Zero : position, forward, Transform.Up);
+        view = Double4x4.CreateLookTo(position, forward, Transform.Up);
     }
 
     public override void RenderShadows(RenderPipeline pipeline, Double3 cameraPosition, System.Collections.Generic.IReadOnlyList<IRenderable> renderables)
@@ -172,10 +172,6 @@ public class SpotLight : Light
         // scale by range
         Double4x4 scale = Double4x4.CreateScale(new Double3(Range, Range, Range));
         model = model * scale;
-
-        // Handle camera-relative rendering
-        if (RenderPipeline.CAMERA_RELATIVE)
-            model.Translation -= new Double4(css.CameraPosition, 0.0);
 
         // Set transform matrices
         _lightMaterial.SetMatrix("prowl_ObjectToWorld", model);

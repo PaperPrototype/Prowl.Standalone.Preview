@@ -141,7 +141,6 @@ public class Camera : MonoBehaviour
     }
 
     public Double4x4 ViewMatrix { get; private set; }
-    public Double4x4 OriginViewMatrix { get; private set; }
 
     public Double4x4 PreviousViewMatrix => _previousViewMatrix;
     public Double4x4 PreviousProjectionMatrix => _previousProjectionMatrix;
@@ -192,7 +191,6 @@ public class Camera : MonoBehaviour
         }
 
         ViewMatrix = Double4x4.CreateLookTo(Transform.Position, Transform.Forward, Transform.Up);
-        OriginViewMatrix = Double4x4.CreateLookTo(Double3.Zero, Transform.Forward, Transform.Up);
 
         return camTarget;
     }

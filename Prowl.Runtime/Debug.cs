@@ -192,9 +192,9 @@ public static class Debug
         s_gizmoBuilder.Clear();
     }
 
-    public static (Mesh? wire, Mesh? solid) GetGizmoDrawData(bool cameraRelative, Double3 cameraPosition)
+    public static (Mesh? wire, Mesh? solid) GetGizmoDrawData()
     {
-        return s_gizmoBuilder.UpdateMesh(cameraRelative, cameraPosition);
+        return s_gizmoBuilder.UpdateMesh();
     }
 
     public static List<GizmoBuilder.IconDrawCall> GetGizmoIcons()
@@ -706,7 +706,7 @@ public class GizmoBuilder
 
     public void DrawIcon(Texture2D icon, Double3 center, double scale, Color color) => _icons.Add(new IconDrawCall { Texture = icon, Center = center, Scale = scale, Color = color });
 
-    public (Mesh? wire, Mesh? solid) UpdateMesh(bool cameraRelative, Double3 cameraPosition)
+    public (Mesh? wire, Mesh? solid) UpdateMesh()
     {
         bool hasWire = _wireData.Vertices.Count > 0;
         if (hasWire)
@@ -721,18 +721,7 @@ public class GizmoBuilder
             _wire.Colors = [.. _wireData.Colors];
             _wire.Indices = [.. _wireData.Indices.Select(i => (uint)i)];
 
-            if (cameraRelative)
-            {
-                // Convert vertices to be relative to the camera
-                Float3[] vertices = new Float3[_wireData.Vertices.Count];
-                for (int i = 0; i < _wireData.Vertices.Count; i++)
-                    vertices[i] = (Float3)(_wireData.Vertices[i] - cameraPosition);
-                _wire.Vertices = vertices;
-            }
-            else
-            {
-                _wire.Vertices = [.. _wireData.Vertices.Select(v => (Float3)v)];
-            }
+            _wire.Vertices = [.. _wireData.Vertices.Select(v => (Float3)v)];
         }
 
         bool hasSolid = _solidData.Vertices.Count > 0;
@@ -744,18 +733,7 @@ public class GizmoBuilder
                 IndexFormat = IndexFormat.UInt32,
             };
 
-            if (cameraRelative)
-            {
-                // Convert vertices to be relative to the camera
-                Float3[] vertices2 = new Float3[_solidData.Vertices.Count];
-                for (int i = 0; i < _solidData.Vertices.Count; i++)
-                    vertices2[i] = (Float3)(_solidData.Vertices[i] - cameraPosition);
-                _solid.Vertices = vertices2;
-            }
-            else
-            {
-                _solid.Vertices = [.. _solidData.Vertices.Select(v => (Float3)v)];
-            }
+            _solid.Vertices = [.. _solidData.Vertices.Select(v => (Float3)v)];
 
             _solid.Colors = [.. _solidData.Colors];
             _solid.UV = [.. _solidData.Uvs.Select(v => (Float2)v)];
