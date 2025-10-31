@@ -103,14 +103,9 @@ Pass "Refraction"
 
 				// Sample the grabbed texture with refracted UVs
 				vec4 refractedColor = texture(_GrabTexture, refractedUV);
-
-				// Debug: If grab texture is black/empty, show a debug color
-				if (length(refractedColor.rgb) < 0.01) {
-					fragColor = vec4(1.0, 0.0, 1.0, 0.5); // Magenta = grab failed
-				} else {
+                
 					// Apply tint and alpha
 					fragColor = vec4(refractedColor.rgb * _Tint.rgb, _Tint.a);
-				}
 			}
 		}
 	ENDGLSL
