@@ -50,11 +50,11 @@ public class CompositeBroadPhaseFilter : IBroadPhaseFilter
     /// </summary>
     public bool Filter(IDynamicTreeProxy proxyA, IDynamicTreeProxy proxyB)
     {
-        //foreach (var filter in _filters)
+        foreach (var filter in _filters)
         // In reverse order
-        for (int i = 0; i < _filters.Count; i++)
+        //for (int i = 0; i < _filters.Count; i++)
         {
-            var filter = _filters[i];
+            //var filter = _filters[i];
             if (!filter.Filter(proxyA, proxyB))
                 return false;
         }
