@@ -25,14 +25,25 @@ public sealed class AnimationClip : EngineObject, ISerializable
 
     public AnimationWrapMode Wrap;
 
+    public Skeleton Skeleton { get; set; }
+
     public List<AnimBone> Bones { get; private set; } = [];
 
     private Dictionary<string, AnimBone> _boneMap = [];
+    private Dictionary<string, int> _boneNameToID = [];
 
     public void AddBone(AnimBone bone)
     {
         Bones.Add(bone);
         _boneMap[bone.BoneName] = bone;
+
+        // Build bone name to ID mapping if skeleton is available
+        if (Skeleton.IsValid())
+        {
+            int boneID = Skeleton.GetBoneIndex(bone.BoneName);
+            if (boneID >= 0)
+                _boneNameToID[bone.BoneName] = boneID;
+        }
     }
 
     public AnimBone? GetBone(string name)
@@ -40,6 +51,51 @@ public sealed class AnimationClip : EngineObject, ISerializable
         if (_boneMap.TryGetValue(name, out AnimBone? bone))
             return bone;
         return null;
+    }
+
+    /// <summary>
+    /// Rebuilds the bone name to ID mapping. Call this after setting the Skeleton.
+    /// </summary>
+    public void RebuildBoneMapping()
+    {
+        _boneNameToID.Clear();
+
+        if (Skeleton.IsValid())
+        {
+            foreach (AnimBone bone in Bones)
+            {
+                int boneID = Skeleton.GetBoneIndex(bone.BoneName);
+                if (boneID >= 0)
+                    _boneNameToID[bone.BoneName] = boneID;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a pose at the specified time by evaluating all animation curves.
+    /// </summary>
+    public Pose GetPose(float time)
+    {
+        if (Skeleton.IsNotValid())
+            throw new InvalidOperationException("AnimationClip must have a valid Skeleton to get a pose");
+
+        // Create a pose with the skeleton's bind pose as the default
+        Pose pose = Pose.CreateBindPose(Skeleton);
+
+        // Apply animation data for each bone that has animation curves
+        foreach (AnimBone bone in Bones)
+        {
+            if (_boneNameToID.TryGetValue(bone.BoneName, out int boneID))
+            {
+                Float3 position = bone.EvaluatePositionAt(time);
+                Quaternion rotation = bone.EvaluateRotationAt(time);
+                Float3 scale = bone.EvaluateScaleAt(time);
+
+                pose.SetBoneTransform(boneID, position, rotation, scale);
+            }
+        }
+
+        return pose;
     }
 
 
@@ -94,6 +150,13 @@ public sealed class AnimationClip : EngineObject, ISerializable
         DurationInTicks = value.Get("DurationInTicks").FloatValue;
         Wrap = (AnimationWrapMode)value.Get("Wrap").IntValue;
 
+        // Deserialize skeleton reference if present
+        EchoObject? skeletonObj = value.Get("Skeleton");
+        if (skeletonObj != null)
+        {
+            Skeleton = Serializer.Deserialize<Skeleton>(skeletonObj, ctx);
+        }
+
         EchoObject? boneList = value.Get("Bones");
         foreach (EchoObject boneProp in boneList.List)
         {
@@ -118,6 +181,9 @@ public sealed class AnimationClip : EngineObject, ISerializable
 
         // Created map
         _boneMap = Bones.ToDictionary(b => b.BoneName);
+
+        // Rebuild bone mapping if skeleton is available
+        RebuildBoneMapping();
     }
 
     public void Serialize(ref EchoObject value, SerializationContext ctx)
@@ -127,6 +193,12 @@ public sealed class AnimationClip : EngineObject, ISerializable
         value.Add("TicksPerSecond", new EchoObject(TicksPerSecond));
         value.Add("DurationInTicks", new EchoObject(DurationInTicks));
         value.Add("Wrap", new EchoObject((int)Wrap));
+
+        // Serialize skeleton reference if present
+        if (Skeleton.IsValid())
+        {
+            value.Add("Skeleton", Serializer.Serialize(Skeleton, ctx));
+        }
 
         var boneList = EchoObject.NewList();
         foreach (AnimBone bone in Bones)

@@ -24,24 +24,17 @@ public class ModelRenderer : MonoBehaviour
 
     private float _animationTime = 0.0f;
     private bool _isPlaying = false;
-    private Dictionary<string, ModelNodeTransform> _nodeTransforms = [];
-    private Dictionary<string, int> _boneNameToIndex = [];
-
-    private class ModelNodeTransform
-    {
-        public Float3 Position;
-        public Quaternion Rotation;
-        public Float3 Scale;
-        public Float4x4 LocalMatrix;
-        public Float4x4 WorldMatrix;
-    }
+    private Pose _currentPose;
 
     public override void OnEnable()
     {
         if (Model.IsValid())
         {
-            // Build node transform cache
-            BuildNodeTransformCache(Model.RootNode, Float4x4.Identity);
+            // Initialize bind pose if skeleton exists
+            if (Model.Skeleton.IsValid())
+            {
+                _currentPose = Pose.CreateBindPose(Model.Skeleton);
+            }
 
             // Auto-play first animation if requested
             if (PlayAutomatically && Model.Animations.Count > 0)
@@ -72,8 +65,8 @@ public class ModelRenderer : MonoBehaviour
                 }
             }
 
-            // Evaluate animation and update node transforms
-            EvaluateAnimation(CurrentAnimation, _animationTime);
+            // Get the current pose from the animation
+            _currentPose = CurrentAnimation.GetPose(_animationTime);
         }
 
         // Render the model
@@ -112,100 +105,20 @@ public class ModelRenderer : MonoBehaviour
             _isPlaying = true;
     }
 
-    private void BuildNodeTransformCache(ModelNode node, Float4x4 parentWorldMatrix)
+    private Float4x4[] CalculateBoneMatrices(Float4x4 meshWorldMatrix)
     {
-        // Calculate this node's matrices
-        var localMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
-        Float4x4 worldMatrix = parentWorldMatrix * localMatrix;
-
-        _nodeTransforms[node.Name] = new ModelNodeTransform
-        {
-            Position = node.LocalPosition,
-            Rotation = node.LocalRotation,
-            Scale = node.LocalScale,
-            LocalMatrix = localMatrix,
-            WorldMatrix = worldMatrix
-        };
-
-        // Recursively process children
-        foreach (ModelNode child in node.Children)
-        {
-            BuildNodeTransformCache(child, worldMatrix);
-        }
-    }
-
-    private void EvaluateAnimation(AnimationClip clip, float time)
-    {
-        // Reset all transforms to bind pose first
-        BuildNodeTransformCache(Model.RootNode, Float4x4.Identity);
-
-        // Apply animation to each bone
-        foreach (AnimationClip.AnimBone bone in clip.Bones)
-        {
-            if (_nodeTransforms.TryGetValue(bone.BoneName, out ModelNodeTransform? nodeTransform))
-            {
-                // Evaluate animation curves at current time
-                Float3 position = bone.EvaluatePositionAt(time);
-                Quaternion rotation = bone.EvaluateRotationAt(time);
-                Float3 scale = bone.EvaluateScaleAt(time);
-
-                // Update the node transform
-                nodeTransform.Position = position;
-                nodeTransform.Rotation = rotation;
-                nodeTransform.Scale = scale;
-                nodeTransform.LocalMatrix = Float4x4.CreateTRS(position, rotation, scale);
-            }
-        }
-
-        // Recalculate world matrices after animation update
-        UpdateWorldMatrices(Model.RootNode, Float4x4.Identity);
-    }
-
-    private void UpdateWorldMatrices(ModelNode node, Float4x4 parentWorldMatrix)
-    {
-        if (_nodeTransforms.TryGetValue(node.Name, out ModelNodeTransform? nodeTransform))
-        {
-            nodeTransform.WorldMatrix = parentWorldMatrix * nodeTransform.LocalMatrix;
-
-            // Recursively update children
-            foreach (ModelNode child in node.Children)
-            {
-                UpdateWorldMatrices(child, nodeTransform.WorldMatrix);
-            }
-        }
-    }
-
-    private Float4x4[] CalculateBoneMatrices(ModelMesh modelMesh, Float4x4 meshWorldMatrix)
-    {
-        if (!modelMesh.HasBones || modelMesh.Mesh.bindPoses == null || modelMesh.Mesh.boneNames == null)
+        if (_currentPose == null || Model.Skeleton.IsNotValid())
             return null;
 
-        int boneCount = modelMesh.Mesh.bindPoses.Length;
-        Float4x4[] boneMatrices = new Float4x4[boneCount];
+        // Get bone matrices from the pose using the skeleton
+        Float4x4[] boneMatrices = _currentPose.GetBoneMatrices(Model.Skeleton);
 
-        // Invert mesh world matrix to get mesh local space
-        var meshLocalMatrix = (Float4x4)meshWorldMatrix.Invert();
+        // Transform bone matrices to mesh local space
+        Float4x4 meshLocalMatrix = meshWorldMatrix.Invert();
 
-        // Calculate bone transformation matrices
-        for (int i = 0; i < boneCount; i++)
+        for (int i = 0; i < boneMatrices.Length; i++)
         {
-            string boneName = modelMesh.Mesh.boneNames[i];
-            Float4x4 bindPose = modelMesh.Mesh.bindPoses[i];
-
-            // Try to find the bone transform from our cache
-            if (_nodeTransforms.TryGetValue(boneName, out ModelNodeTransform? boneTransform))
-            {
-                // The final bone matrix formula for GPU skinning is:
-                // boneMatrix = meshLocalMatrix * boneWorldMatrix * bindPose
-                // This transforms from bind pose -> bone space -> world space -> mesh local space
-                var boneWorldMatrix = (Float4x4)boneTransform.WorldMatrix;
-                boneMatrices[i] = (meshLocalMatrix * boneWorldMatrix) * bindPose;
-            }
-            else
-            {
-                // If bone not found, use bind pose (no animation)
-                boneMatrices[i] = bindPose;
-            }
+            boneMatrices[i] = meshLocalMatrix * boneMatrices[i];
         }
 
         return boneMatrices;
@@ -213,19 +126,9 @@ public class ModelRenderer : MonoBehaviour
 
     private void RenderModelNode(ModelNode node, Float4x4 parentMatrix)
     {
-        // Get the node's world matrix (from animation or bind pose)
-        Float4x4 nodeWorldMatrix;
-        if (_nodeTransforms.TryGetValue(node.Name, out ModelNodeTransform? nodeTransform))
-        {
-            // Use the animated/cached transform
-            nodeWorldMatrix = parentMatrix * nodeTransform.LocalMatrix;
-        }
-        else
-        {
-            // Fallback to node's original transform
-            var nodeLocalMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
-            nodeWorldMatrix = parentMatrix * nodeLocalMatrix;
-        }
+        // Calculate this node's world matrix
+        var nodeLocalMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
+        Float4x4 nodeWorldMatrix = parentMatrix * nodeLocalMatrix;
 
         // Render all meshes on this node
         foreach (int meshIndex in node.MeshIndices)
@@ -241,12 +144,10 @@ public class ModelRenderer : MonoBehaviour
                 // Add bone matrices for skinned meshes
                 if (modelMesh.HasBones)
                 {
-                    Float4x4[] boneMatrices = CalculateBoneMatrices(modelMesh, nodeWorldMatrix);
+                    Float4x4[] boneMatrices = CalculateBoneMatrices(nodeWorldMatrix);
                     if (boneMatrices != null && boneMatrices.Length > 0)
                     {
-                        // Convert to Float4x4 array for PropertyState
-                        Float4x4[] boneMatricesDouble = [.. boneMatrices.Select(m => (Float4x4)m)];
-                        properties.SetMatrices("boneTransforms", boneMatricesDouble);
+                        properties.SetMatrices("boneTransforms", boneMatrices);
                     }
                 }
 
@@ -280,17 +181,9 @@ public class ModelRenderer : MonoBehaviour
     {
         bool hit = false;
 
-        // Get the node's world matrix
-        Float4x4 nodeWorldMatrix;
-        if (_nodeTransforms.TryGetValue(node.Name, out ModelNodeTransform? nodeTransform))
-        {
-            nodeWorldMatrix = parentMatrix * nodeTransform.LocalMatrix;
-        }
-        else
-        {
-            var nodeLocalMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
-            nodeWorldMatrix = parentMatrix * nodeLocalMatrix;
-        }
+        // Calculate this node's world matrix
+        var nodeLocalMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
+        Float4x4 nodeWorldMatrix = parentMatrix * nodeLocalMatrix;
 
         // Test all meshes on this node
         foreach (int meshIndex in node.MeshIndices)

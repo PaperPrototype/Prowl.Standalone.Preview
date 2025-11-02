@@ -181,9 +181,22 @@ public class ModelImporter
         if (scene->MNumMeshes > 0)
             LoadMeshes(assetPath, settings, scene, scale, model.Materials, model.Meshes);
 
+        // Build skeleton from meshes
+        model.Skeleton = BuildSkeleton(scene, model.Meshes, scale);
+
         // Animations
         if (scene->MNumAnimations > 0)
             LoadAnimations(scene, scale, model.Animations);
+
+        // Set skeleton reference in all animations and rebuild bone mapping
+        if (model.Skeleton.IsValid())
+        {
+            foreach (AnimationClip animation in model.Animations)
+            {
+                animation.Skeleton = model.Skeleton;
+                animation.RebuildBoneMapping();
+            }
+        }
 
         return model;
     }
@@ -638,6 +651,87 @@ public class ModelImporter
         }
 
         return null;
+    }
+
+    private static unsafe Skeleton BuildSkeleton(Scene* scene, List<ModelMesh> meshes, float scale)
+    {
+        // Collect all unique bone names and their offset matrices from all meshes
+        Dictionary<string, Float4x4> boneOffsetMatrices = new();
+
+        foreach (ModelMesh modelMesh in meshes)
+        {
+            if (modelMesh.HasBones && modelMesh.Mesh.boneNames != null && modelMesh.Mesh.bindPoses != null)
+            {
+                for (int i = 0; i < modelMesh.Mesh.boneNames.Length; i++)
+                {
+                    string boneName = modelMesh.Mesh.boneNames[i];
+                    if (!boneOffsetMatrices.ContainsKey(boneName))
+                    {
+                        boneOffsetMatrices[boneName] = modelMesh.Mesh.bindPoses[i];
+                    }
+                }
+            }
+        }
+
+        if (boneOffsetMatrices.Count == 0)
+            return null;
+
+        Skeleton skeleton = new();
+        skeleton.Name = "Skeleton";
+
+        // Build a map to track bone IDs
+        Dictionary<string, int> boneNameToID = new();
+        int boneID = 0;
+
+        // Create bones for each unique bone name
+        foreach (var kvp in boneOffsetMatrices)
+        {
+            string boneName = kvp.Key;
+            Float4x4 offsetMatrix = kvp.Value;
+
+            Silk.NET.Assimp.Node* node = FindNode(scene->MRootNode, boneName);
+            if (node == null)
+                continue;
+
+            var bone = new Skeleton.Bone(boneID, boneName);
+            bone.OffsetMatrix = offsetMatrix;
+
+            // Extract bind pose transform from the node
+            System.Numerics.Matrix4x4 nodeTransform = node->MTransformation;
+            System.Numerics.Matrix4x4.Decompose(nodeTransform, out System.Numerics.Vector3 scale_vec, out System.Numerics.Quaternion rotation, out System.Numerics.Vector3 position);
+
+            bone.BindPosition = new Float3(position.X, position.Y, position.Z) * scale;
+            bone.BindRotation = new Quaternion(rotation.X, rotation.Y, rotation.Z, rotation.W);
+            bone.BindScale = new Float3(scale_vec.X, scale_vec.Y, scale_vec.Z);
+
+            boneNameToID[boneName] = boneID;
+            skeleton.AddBone(bone);
+            boneID++;
+        }
+
+        // Now build parent-child relationships
+        // We need to traverse up the hierarchy to find the nearest bone parent
+        foreach (var bone in skeleton.Bones)
+        {
+            Silk.NET.Assimp.Node* node = FindNode(scene->MRootNode, bone.Name);
+            if (node != null)
+            {
+                // Traverse up the hierarchy until we find a parent that's also a bone
+                Silk.NET.Assimp.Node* parentNode = node->MParent;
+                while (parentNode != null)
+                {
+                    string parentName = parentNode->MName.AsString;
+                    if (boneNameToID.TryGetValue(parentName, out int parentID))
+                    {
+                        bone.ParentID = parentID;
+                        break;
+                    }
+                    parentNode = parentNode->MParent;
+                }
+            }
+        }
+
+        return skeleton;
     }
 
     private bool FindTextureFromPath(string filePath, DirectoryInfo parentDir, out FileInfo file)

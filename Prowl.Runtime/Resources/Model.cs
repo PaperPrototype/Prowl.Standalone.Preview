@@ -16,6 +16,7 @@ public class Model : EngineObject
     public List<Material> Materials { get; set; } = [];
     public List<ModelMesh> Meshes { get; set; } = [];
     public List<AnimationClip> Animations { get; set; } = [];
+    public Skeleton Skeleton { get; set; }
     public float UnitScale { get; set; } = 1.0f;
 
     // This transforms from world space back to mesh/model space
