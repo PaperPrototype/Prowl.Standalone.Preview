@@ -112,14 +112,21 @@ public class ModelRenderer : MonoBehaviour
             return null;
 
         // Get bone matrices from the pose using the skeleton
+        // These are in skeleton-local space and already include the bind pose offset
         Float4x4[] boneMatrices = _currentPose.GetBoneMatrices(Model.Skeleton);
 
-        // Transform bone matrices to mesh local space
-        Float4x4 meshLocalMatrix = meshWorldMatrix.Invert();
+        // The bone matrices are in skeleton space, but we need them in mesh-local space
+        // because the shader will apply PROWL_MATRIX_M (mesh world matrix) to transform to world space
+        //
+        // Transform from: skeleton space → world space → mesh-local space
+        // This accounts for the model's transform in the scene
+        Float4x4 modelToWorld = Transform.LocalToWorldMatrix;
+        Float4x4 worldToMesh = meshWorldMatrix.Invert();
 
         for (int i = 0; i < boneMatrices.Length; i++)
         {
-            boneMatrices[i] = meshLocalMatrix * boneMatrices[i];
+            // Transform bone matrix: model space → world space → mesh local space
+            boneMatrices[i] = worldToMesh * modelToWorld * boneMatrices[i];
         }
 
         return boneMatrices;
