@@ -499,7 +499,8 @@ public class ModelImporter
         System.Numerics.Matrix4x4.Decompose(t, out System.Numerics.Vector3 aSca, out System.Numerics.Quaternion aRot, out System.Numerics.Vector3 aPos);
 
         modelNode.LocalPosition = new Vector.Float3(aPos.X, aPos.Y, aPos.Z) * scale;
-        modelNode.LocalRotation = new(aRot.X, aRot.Y, aRot.Z, aRot.W);
+        var euler = Quaternion.ToEuler(new(aRot.X, aRot.Y, aRot.Z, aRot.W));
+        modelNode.LocalRotation = Quaternion.FromEuler(euler.X, -euler.Y, euler.Z);
         modelNode.LocalScale = new Vector.Float3(aSca.X, aSca.Y, aSca.Z);
 
         // Assign mesh indices
