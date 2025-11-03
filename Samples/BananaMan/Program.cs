@@ -119,7 +119,7 @@ public sealed class MyGame : Game
         // Create GameObject for BananaMan
         bananaManGO = new("BananaMan");
         bananaManGO.Transform.Position = new Float3(0, 0, 0);
-        //bananaManGO.Transform.LocalScale = new Float3(0.01f, 0.01f, 0.01f); // Models are often large
+        bananaManGO.Transform.LocalScale = new Float3(0.01f, 0.01f, 0.01f); // Models are often large
 
         // Add AnimatedModelRenderer
         ModelRenderer renderer = bananaManGO.AddComponent<ModelRenderer>();
