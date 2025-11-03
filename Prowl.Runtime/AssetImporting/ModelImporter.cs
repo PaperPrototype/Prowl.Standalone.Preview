@@ -162,18 +162,6 @@ public class ModelImporter
         // Build the model structure
         model.RootNode = BuildModelNode(scene->MRootNode, scale);
 
-        System.Numerics.Matrix4x4 rootTransform = scene->MRootNode->MTransformation;
-        Float4x4 rootMatrix = new(
-            rootTransform.M11, rootTransform.M12, rootTransform.M13, rootTransform.M14,
-            rootTransform.M21, rootTransform.M22, rootTransform.M23, rootTransform.M24,
-            rootTransform.M31, rootTransform.M32, rootTransform.M33, rootTransform.M34,
-            rootTransform.M41, rootTransform.M42, rootTransform.M43, rootTransform.M44
-        );
-
-        rootMatrix.Translation *= scale;
-
-        model.GlobalInverseTransform = rootMatrix.Invert();
-
         // Load materials and meshes into the model
         if (scene->MNumMaterials > 0)
             LoadMaterials(scene, parentDir, model.Materials);
