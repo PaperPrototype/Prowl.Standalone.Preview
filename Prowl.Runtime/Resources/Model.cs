@@ -12,7 +12,6 @@ namespace Prowl.Runtime.Resources;
 public class Model : EngineObject
 {
     public new string Name { get; set; }
-    public ModelNode RootNode { get; set; }
     public List<Material> Materials { get; set; } = [];
     public List<ModelMesh> Meshes { get; set; } = [];
     public List<AnimationClip> Animations { get; set; } = [];
@@ -73,26 +72,6 @@ public class Model : EngineObject
             result.AssetPath = $"$Default:{model}";
             return result;
         }
-    }
-}
-
-public class ModelNode
-{
-    public string Name { get; set; }
-    public Float3 LocalPosition { get; set; }
-    public Quaternion LocalRotation { get; set; }
-    public Float3 LocalScale { get; set; } = Float3.One;
-    public List<ModelNode> Children { get; set; } = [];
-
-    // For single mesh per node
-    public int? MeshIndex { get; set; }
-
-    // For multiple meshes per node
-    public List<int> MeshIndices { get; set; } = [];
-
-    public ModelNode(string name)
-    {
-        Name = name;
     }
 }
 

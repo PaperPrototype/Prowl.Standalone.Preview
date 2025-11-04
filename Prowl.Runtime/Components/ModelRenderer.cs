@@ -70,10 +70,10 @@ public class ModelRenderer : MonoBehaviour
             _currentPose = CurrentAnimation.GetPose(_animationTime);
         }
 
-        // Render the model
-        if (Model.IsValid())
+        // Render the model via skeleton
+        if (Model.IsValid() && Model.Skeleton.IsValid())
         {
-            RenderModelNode(Model.RootNode, Transform.LocalToWorldMatrix);
+            RenderSkeleton(Transform.LocalToWorldMatrix);
         }
     }
 
@@ -106,71 +106,103 @@ public class ModelRenderer : MonoBehaviour
             _isPlaying = true;
     }
 
-    private Float4x4[] CalculateBoneMatrices(ModelMesh modelMesh)
+    private Float4x4[] CalculateBoneMatrices(ModelMesh modelMesh, Float4x4[] boneWorldTransforms)
     {
-        if (_currentPose == null || Model.Skeleton.IsNotValid())
+        if (Model.Skeleton.IsNotValid())
             return null;
 
-        // Get bone matrices from the pose using mesh-specific offset matrices
+        // Calculate skinning matrices using mesh-specific offset matrices
         if (modelMesh.Mesh.boneNames != null && modelMesh.Mesh.bindPoses != null)
         {
-            return _currentPose.GetBoneMatrices(Model.Skeleton, modelMesh.Mesh.boneNames, modelMesh.Mesh.bindPoses);
+            return Model.Skeleton.CalculateSkinningMatrices(boneWorldTransforms, modelMesh.Mesh.boneNames, modelMesh.Mesh.bindPoses);
         }
 
         return null;
     }
 
-    private void RenderModelNode(ModelNode node, Float4x4 parentMatrix)
+    private void RenderSkeleton(Float4x4 worldTransform)
     {
-        // Calculate this node's world matrix
-        var nodeLocalMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
-        Float4x4 nodeWorldMatrix = parentMatrix * nodeLocalMatrix;
+        Skeleton skeleton = Model.Skeleton;
 
-        // Render all meshes on this node
-        foreach (int meshIndex in node.MeshIndices)
+        // Calculate world transforms for all bones from the current pose (or bind pose if no animation)
+        Float4x4[] boneWorldTransforms;
+        if (_currentPose != null)
         {
-            ModelMesh modelMesh = Model.Meshes[meshIndex];
+            skeleton.CalculateWorldTransforms(
+                _currentPose.LocalPositions,
+                _currentPose.LocalRotations,
+                _currentPose.LocalScales,
+                out boneWorldTransforms);
+        }
+        else
+        {
+            // Use bind pose
+            Float3[] bindPositions = new Float3[skeleton.Bones.Count];
+            Quaternion[] bindRotations = new Quaternion[skeleton.Bones.Count];
+            Float3[] bindScales = new Float3[skeleton.Bones.Count];
 
-            if (modelMesh.Material.IsValid())
+            for (int i = 0; i < skeleton.Bones.Count; i++)
             {
-                PropertyState properties = new();
-                properties.SetInt("_ObjectID", InstanceID);
-                properties.SetColor("_MainColor", MainColor);
-
-                // Determine which transform to use
-                Float4x4 meshTransform;
-
-                // Add bone matrices for skinned meshes
-                if (modelMesh.HasBones)
-                {
-                    Float4x4[] boneMatrices = CalculateBoneMatrices(modelMesh);
-                    if (boneMatrices != null && boneMatrices.Length > 0)
-                    {
-                        properties.SetMatrices("boneTransforms", boneMatrices);
-                    }
-
-                    // Skinned meshes use GameObject's transform since bones handle positioning
-                    meshTransform = Transform.LocalToWorldMatrix;
-                }
-                else
-                {
-                    // Non-skinned meshes use the node hierarchy transform
-                    meshTransform = nodeWorldMatrix;
-                }
-
-                GameObject.Scene.PushRenderable(new MeshRenderable(
-                    modelMesh.Mesh,
-                    modelMesh.Material,
-                    meshTransform,
-                    GameObject.LayerIndex,
-                    properties));
+                bindPositions[i] = skeleton.Bones[i].BindPosition;
+                bindRotations[i] = skeleton.Bones[i].BindRotation;
+                bindScales[i] = skeleton.Bones[i].BindScale;
             }
+
+            skeleton.CalculateWorldTransforms(bindPositions, bindRotations, bindScales, out boneWorldTransforms);
         }
 
-        // Render child nodes
-        foreach (ModelNode child in node.Children)
+        // Render each bone's meshes
+        for (int i = 0; i < skeleton.Bones.Count; i++)
         {
-            RenderModelNode(child, nodeWorldMatrix);
+            Skeleton.Bone bone = skeleton.Bones[i];
+
+            // Skip bones with no meshes
+            if (bone.MeshIndices.Count == 0)
+                continue;
+
+            // Calculate bone's world matrix
+            Float4x4 boneWorldMatrix = worldTransform * boneWorldTransforms[i];
+
+            // Render all meshes on this bone
+            foreach (int meshIndex in bone.MeshIndices)
+            {
+                ModelMesh modelMesh = Model.Meshes[meshIndex];
+
+                if (modelMesh.Material.IsValid())
+                {
+                    PropertyState properties = new();
+                    properties.SetInt("_ObjectID", InstanceID);
+                    properties.SetColor("_MainColor", MainColor);
+
+                    // Determine which transform to use
+                    Float4x4 meshTransform;
+
+                    // Add bone matrices for skinned meshes
+                    if (modelMesh.HasBones)
+                    {
+                        Float4x4[] boneMatrices = CalculateBoneMatrices(modelMesh, boneWorldTransforms);
+                        if (boneMatrices != null && boneMatrices.Length > 0)
+                        {
+                            properties.SetMatrices("boneTransforms", boneMatrices);
+                        }
+
+                        // Skinned meshes use GameObject's transform since bones handle positioning
+                        meshTransform = Transform.LocalToWorldMatrix;
+                    }
+                    else
+                    {
+                        // Non-skinned meshes use the bone's world transform
+                        meshTransform = boneWorldMatrix;
+                    }
+
+                    GameObject.Scene.PushRenderable(new MeshRenderable(
+                        modelMesh.Mesh,
+                        modelMesh.Material,
+                        meshTransform,
+                        GameObject.LayerIndex,
+                        properties));
+                }
+            }
         }
     }
 
@@ -178,57 +210,86 @@ public class ModelRenderer : MonoBehaviour
     {
         distance = float.MaxValue;
 
-        if (Model.IsNotValid())
+        if (Model.IsNotValid() || Model.Skeleton.IsNotValid())
             return false;
 
-        return RaycastModelNode(Model.RootNode, Transform.LocalToWorldMatrix, ray, ref distance);
+        // Calculate bone world transforms
+        Float4x4[] boneWorldTransforms;
+        if (_currentPose != null)
+        {
+            Model.Skeleton.CalculateWorldTransforms(
+                _currentPose.LocalPositions,
+                _currentPose.LocalRotations,
+                _currentPose.LocalScales,
+                out boneWorldTransforms);
+        }
+        else
+        {
+            // Use bind pose
+            Float3[] bindPositions = new Float3[Model.Skeleton.Bones.Count];
+            Quaternion[] bindRotations = new Quaternion[Model.Skeleton.Bones.Count];
+            Float3[] bindScales = new Float3[Model.Skeleton.Bones.Count];
+
+            for (int i = 0; i < Model.Skeleton.Bones.Count; i++)
+            {
+                bindPositions[i] = Model.Skeleton.Bones[i].BindPosition;
+                bindRotations[i] = Model.Skeleton.Bones[i].BindRotation;
+                bindScales[i] = Model.Skeleton.Bones[i].BindScale;
+            }
+
+            Model.Skeleton.CalculateWorldTransforms(bindPositions, bindRotations, bindScales, out boneWorldTransforms);
+        }
+
+        return RaycastSkeleton(Transform.LocalToWorldMatrix, boneWorldTransforms, ray, ref distance);
     }
 
-    private bool RaycastModelNode(ModelNode node, Float4x4 parentMatrix, Ray ray, ref float closestDistance)
+    private bool RaycastSkeleton(Float4x4 worldTransform, Float4x4[] boneWorldTransforms, Ray ray, ref float closestDistance)
     {
         bool hit = false;
 
-        // Calculate this node's world matrix
-        var nodeLocalMatrix = Float4x4.CreateTRS(node.LocalPosition, node.LocalRotation, node.LocalScale);
-        Float4x4 nodeWorldMatrix = parentMatrix * nodeLocalMatrix;
-
-        // Test all meshes on this node
-        foreach (int meshIndex in node.MeshIndices)
+        // Test all bones
+        for (int i = 0; i < Model.Skeleton.Bones.Count; i++)
         {
-            ModelMesh modelMesh = Model.Meshes[meshIndex];
+            Skeleton.Bone bone = Model.Skeleton.Bones[i];
 
-            if (modelMesh.Mesh.IsNotValid())
+            // Skip bones with no meshes
+            if (bone.MeshIndices.Count == 0)
                 continue;
 
-            Mesh mesh = modelMesh.Mesh;
+            // Calculate bone's world matrix
+            Float4x4 boneWorldMatrix = worldTransform * boneWorldTransforms[i];
 
-            // Transform ray to this mesh's local space
-            Float4x4 worldToLocalMatrix = nodeWorldMatrix.Invert();
-
-            Float3 localOrigin = Float4x4.TransformPoint(ray.Origin, worldToLocalMatrix);
-            Float3 localDirection = Float4x4.TransformNormal(ray.Direction, worldToLocalMatrix);
-            Ray localRay = new(localOrigin, localDirection);
-
-            if (mesh.Raycast(localRay, out float localDistance))
+            // Test all meshes on this bone
+            foreach (int meshIndex in bone.MeshIndices)
             {
-                // Calculate world space distance
-                Float3 localHitPoint = localOrigin + localDirection * localDistance;
-                Float3 worldHitPoint = Float4x4.TransformPoint(localHitPoint, nodeWorldMatrix);
-                float worldDistance = Float3.Distance(ray.Origin, worldHitPoint);
+                ModelMesh modelMesh = Model.Meshes[meshIndex];
 
-                if (worldDistance < closestDistance)
+                if (modelMesh.Mesh.IsNotValid())
+                    continue;
+
+                Mesh mesh = modelMesh.Mesh;
+
+                // Transform ray to this mesh's local space
+                Float4x4 worldToLocalMatrix = boneWorldMatrix.Invert();
+
+                Float3 localOrigin = Float4x4.TransformPoint(ray.Origin, worldToLocalMatrix);
+                Float3 localDirection = Float4x4.TransformNormal(ray.Direction, worldToLocalMatrix);
+                Ray localRay = new(localOrigin, localDirection);
+
+                if (mesh.Raycast(localRay, out float localDistance))
                 {
-                    closestDistance = worldDistance;
-                    hit = true;
+                    // Calculate world space distance
+                    Float3 localHitPoint = localOrigin + localDirection * localDistance;
+                    Float3 worldHitPoint = Float4x4.TransformPoint(localHitPoint, boneWorldMatrix);
+                    float worldDistance = Float3.Distance(ray.Origin, worldHitPoint);
+
+                    if (worldDistance < closestDistance)
+                    {
+                        closestDistance = worldDistance;
+                        hit = true;
+                    }
                 }
             }
-        }
-
-        // Test child nodes
-        foreach (ModelNode child in node.Children)
-        {
-            if (RaycastModelNode(child, nodeWorldMatrix, ray, ref closestDistance))
-                hit = true;
         }
 
         return hit;

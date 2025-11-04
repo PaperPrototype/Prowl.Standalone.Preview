@@ -14,6 +14,7 @@ using Prowl.Vector;
 using Material = Prowl.Runtime.Resources.Material;
 using Mesh = Prowl.Runtime.Resources.Mesh;
 using Scene = Silk.NET.Assimp.Scene;
+using ImageMagick;
 
 namespace Prowl.Runtime.AssetImporting;
 
@@ -160,9 +161,6 @@ public class ModelImporter
         var model = new Model(Path.GetFileNameWithoutExtension(assetPath));
         model.UnitScale = settings.UnitScale;
 
-        // Build the model structure
-        model.RootNode = BuildModelNode(scene->MRootNode, scale);
-
         // Load materials and meshes into the model
         if (scene->MNumMaterials > 0)
             LoadMaterials(scene, parentDir, model.Materials);
@@ -170,7 +168,7 @@ public class ModelImporter
         if (scene->MNumMeshes > 0)
             LoadMeshes(assetPath, settings, scene, scale, model.Materials, model.Meshes);
 
-        // Build skeleton from meshes
+        // Build skeleton with hierarchy and mesh attachments
         model.Skeleton = BuildSkeleton(scene, model.Meshes, scale);
 
         // Animations
@@ -491,42 +489,6 @@ public class ModelImporter
         }
     }
 
-    private unsafe ModelNode BuildModelNode(Silk.NET.Assimp.Node* assimpNode, float scale)
-    {
-        var modelNode = new ModelNode(assimpNode->MName.AsString);
-
-        // Transform
-        System.Numerics.Matrix4x4 t = assimpNode->MTransformation;
-        System.Numerics.Matrix4x4.Decompose(t, out System.Numerics.Vector3 aSca, out System.Numerics.Quaternion aRot, out System.Numerics.Vector3 aPos);
-
-        modelNode.LocalPosition = new Vector.Float3(aPos.X, aPos.Y, aPos.Z) * scale;
-        var euler = Quaternion.ToEuler(new(aRot.X, aRot.Y, aRot.Z, aRot.W));
-        modelNode.LocalRotation = Quaternion.FromEuler(euler.X, -euler.Y, euler.Z);
-        modelNode.LocalScale = new Vector.Float3(aSca.X, aSca.Y, aSca.Z);
-
-        // Assign mesh indices
-        if (assimpNode->MNumMeshes > 0)
-        {
-            for (uint i = 0; i < assimpNode->MNumMeshes; i++)
-            {
-                modelNode.MeshIndices.Add((int)assimpNode->MMeshes[i]);
-            }
-            if (assimpNode->MNumMeshes == 1)
-                modelNode.MeshIndex = (int)assimpNode->MMeshes[0];
-        }
-
-        // Build children
-        if (assimpNode->MNumChildren > 0)
-        {
-            for (uint i = 0; i < assimpNode->MNumChildren; i++)
-            {
-                modelNode.Children.Add(BuildModelNode(assimpNode->MChildren[i], scale));
-            }
-        }
-
-        return modelNode;
-    }
-
     private static unsafe void LoadAnimations(Scene* scene, float scale, List<AnimationClip> animations)
     {
         for (uint animIndex = 0; animIndex < scene->MNumAnimations; animIndex++)
@@ -645,7 +607,7 @@ public class ModelImporter
 
     private static unsafe Skeleton BuildSkeleton(Scene* scene, List<ModelMesh> meshes, float scale)
     {
-        // Collect all unique bone names and their offset matrices from all meshes
+        // Collect offset matrices from meshes (for bones with weights)
         Dictionary<string, Float4x4> boneOffsetMatrices = new();
 
         foreach (ModelMesh modelMesh in meshes)
@@ -663,30 +625,28 @@ public class ModelImporter
             }
         }
 
-        if (boneOffsetMatrices.Count == 0)
-            return null;
-
+        // Always create a skeleton (even for non-animated models)
         Skeleton skeleton = new();
         skeleton.Name = "Skeleton";
 
-        // Build a map to track bone IDs and nodes
         Dictionary<string, int> boneNameToID = new();
-        HashSet<string> processedNodes = new();
         int boneID = 0;
 
-        // Helper function to add a bone from a node
-        void AddBoneFromNode(Silk.NET.Assimp.Node* node, Float4x4? offsetMatrix)
+        // Recursively add all nodes in the hierarchy as bones
+        void ProcessNode(Silk.NET.Assimp.Node* node)
         {
-            string nodeName = node->MName.AsString;
-
-            // Skip if already processed
-            if (processedNodes.Contains(nodeName))
+            if (node == null)
                 return;
 
+            string nodeName = node->MName.AsString;
+
+            // Create bone for this node
             var bone = new Skeleton.Bone(boneID, nodeName);
 
-            // Use offset matrix if provided (for bones with weights), otherwise use identity
-            bone.OffsetMatrix = offsetMatrix ?? Float4x4.Identity;
+            // Use offset matrix if this node has weights, otherwise use identity
+            bone.OffsetMatrix = boneOffsetMatrices.TryGetValue(nodeName, out Float4x4 offsetMatrix)
+                ? offsetMatrix
+                : Float4x4.Identity;
 
             // Extract bind pose transform from the node
             System.Numerics.Matrix4x4 nodeTransform = node->MTransformation;
@@ -694,57 +654,11 @@ public class ModelImporter
 
             bone.BindPosition = new Float3(position.X, position.Y, position.Z) * scale;
             var euler = Quaternion.ToEuler(new(rotation.X, rotation.Y, rotation.Z, rotation.W));
-            bone.BindRotation = new(rotation.X, rotation.Y, rotation.Z, rotation.W);
+            bone.BindRotation = Quaternion.FromEuler(euler.X, -euler.Y, euler.Z);
             bone.BindScale = new Float3(scale_vec.X, scale_vec.Y, scale_vec.Z);
 
-            boneNameToID[nodeName] = boneID;
-            processedNodes.Add(nodeName);
-            skeleton.AddBone(bone);
-            boneID++;
-        }
-
-        // First pass: Add all intermediate nodes in the hierarchy for bones with weights
-        // This ensures we capture the full transform chain
-        foreach (var kvp in boneOffsetMatrices)
-        {
-            string boneName = kvp.Key;
-            Silk.NET.Assimp.Node* node = FindNode(scene->MRootNode, boneName);
-            if (node == null)
-                continue;
-
-            // Collect the path from this bone up to the root
-            List<string> pathToRoot = new();
-            Silk.NET.Assimp.Node* current = node;
-            while (current != null && current != scene->MRootNode)
-            {
-                pathToRoot.Add(current->MName.AsString);
-                current = current->MParent;
-            }
-
-            // Add nodes from root down to this bone (reverse order)
-            // This ensures parents are added before children
-            for (int i = pathToRoot.Count - 1; i >= 0; i--)
-            {
-                string pathNodeName = pathToRoot[i];
-                Silk.NET.Assimp.Node* pathNode = FindNode(scene->MRootNode, pathNodeName);
-                if (pathNode == null)
-                    continue;
-
-                // Use offset matrix if this node has weights, otherwise null (will use identity)
-                Float4x4? offsetMatrix = boneOffsetMatrices.ContainsKey(pathNodeName)
-                    ? boneOffsetMatrices[pathNodeName]
-                    : null;
-
-                AddBoneFromNode(pathNode, offsetMatrix);
-            }
-        }
-
-        // Now build parent-child relationships
-        // All nodes should now be in the skeleton, so this should work correctly
-        foreach (var bone in skeleton.Bones)
-        {
-            Silk.NET.Assimp.Node* node = FindNode(scene->MRootNode, bone.Name);
-            if (node != null && node->MParent != null && node->MParent != scene->MRootNode)
+            // Set parent relationship (if not root)
+            if (node->MParent != null && node->MParent != scene->MRootNode)
             {
                 string parentName = node->MParent->MName.AsString;
                 if (boneNameToID.TryGetValue(parentName, out int parentID))
@@ -752,6 +666,33 @@ public class ModelImporter
                     bone.ParentID = parentID;
                 }
             }
+
+            // Attach meshes to this bone
+            if (node->MNumMeshes > 0)
+            {
+                for (uint i = 0; i < node->MNumMeshes; i++)
+                {
+                    bone.MeshIndices.Add((int)node->MMeshes[i]);
+                }
+                if (node->MNumMeshes == 1)
+                    bone.MeshIndex = (int)node->MMeshes[0];
+            }
+
+            boneNameToID[nodeName] = boneID;
+            skeleton.AddBone(bone);
+            boneID++;
+
+            // Process all children
+            for (uint i = 0; i < node->MNumChildren; i++)
+            {
+                ProcessNode(node->MChildren[i]);
+            }
+        }
+
+        // Start from root node's children (skip the root itself)
+        for (uint i = 0; i < scene->MRootNode->MNumChildren; i++)
+        {
+            ProcessNode(scene->MRootNode->MChildren[i]);
         }
 
         return skeleton;

@@ -38,6 +38,10 @@ public sealed class Skeleton : EngineObject, ISerializable
         // This is used for skinning to transform from bind pose to bone space
         public Float4x4 OffsetMatrix { get; set; }
 
+        // Mesh references - bones can have attached meshes
+        public int? MeshIndex { get; set; }
+        public List<int> MeshIndices { get; set; } = [];
+
         public Bone(int id, string name)
         {
             ID = id;
@@ -181,6 +185,17 @@ public sealed class Skeleton : EngineObject, ISerializable
             boneProp.Add("BindScale", Serializer.Serialize(bone.BindScale, ctx));
             boneProp.Add("OffsetMatrix", Serializer.Serialize(bone.OffsetMatrix, ctx));
 
+            if (bone.MeshIndex.HasValue)
+                boneProp.Add("MeshIndex", new EchoObject(bone.MeshIndex.Value));
+
+            if (bone.MeshIndices.Count > 0)
+            {
+                var meshList = EchoObject.NewList();
+                foreach (int meshIdx in bone.MeshIndices)
+                    meshList.ListAdd(new EchoObject(meshIdx));
+                boneProp.Add("MeshIndices", meshList);
+            }
+
             boneList.ListAdd(boneProp);
         }
         value.Add("Bones", boneList);
@@ -203,6 +218,18 @@ public sealed class Skeleton : EngineObject, ISerializable
             bone.BindRotation = Serializer.Deserialize<Quaternion>(boneProp.Get("BindRotation"), ctx);
             bone.BindScale = Serializer.Deserialize<Float3>(boneProp.Get("BindScale"), ctx);
             bone.OffsetMatrix = Serializer.Deserialize<Float4x4>(boneProp.Get("OffsetMatrix"), ctx);
+
+            // Load mesh references if present
+            EchoObject? meshIndexObj = boneProp.Get("MeshIndex");
+            if (meshIndexObj != null)
+                bone.MeshIndex = meshIndexObj.IntValue;
+
+            EchoObject? meshIndicesObj = boneProp.Get("MeshIndices");
+            if (meshIndicesObj != null)
+            {
+                foreach (EchoObject meshIdxObj in meshIndicesObj.List)
+                    bone.MeshIndices.Add(meshIdxObj.IntValue);
+            }
 
             AddBone(bone);
         }
