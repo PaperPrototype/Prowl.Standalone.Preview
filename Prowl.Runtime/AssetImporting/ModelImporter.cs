@@ -669,22 +669,24 @@ public class ModelImporter
         Skeleton skeleton = new();
         skeleton.Name = "Skeleton";
 
-        // Build a map to track bone IDs
+        // Build a map to track bone IDs and nodes
         Dictionary<string, int> boneNameToID = new();
+        HashSet<string> processedNodes = new();
         int boneID = 0;
 
-        // Create bones for each unique bone name
-        foreach (var kvp in boneOffsetMatrices)
+        // Helper function to add a bone from a node
+        void AddBoneFromNode(Silk.NET.Assimp.Node* node, Float4x4? offsetMatrix)
         {
-            string boneName = kvp.Key;
-            Float4x4 offsetMatrix = kvp.Value;
+            string nodeName = node->MName.AsString;
 
-            Silk.NET.Assimp.Node* node = FindNode(scene->MRootNode, boneName);
-            if (node == null)
-                continue;
+            // Skip if already processed
+            if (processedNodes.Contains(nodeName))
+                return;
 
-            var bone = new Skeleton.Bone(boneID, boneName);
-            bone.OffsetMatrix = offsetMatrix;
+            var bone = new Skeleton.Bone(boneID, nodeName);
+
+            // Use offset matrix if provided (for bones with weights), otherwise use identity
+            bone.OffsetMatrix = offsetMatrix ?? Float4x4.Identity;
 
             // Extract bind pose transform from the node
             System.Numerics.Matrix4x4 nodeTransform = node->MTransformation;
@@ -692,33 +694,62 @@ public class ModelImporter
 
             bone.BindPosition = new Float3(position.X, position.Y, position.Z) * scale;
             var euler = Quaternion.ToEuler(new(rotation.X, rotation.Y, rotation.Z, rotation.W));
-            bone.BindRotation = Quaternion.FromEuler(euler.X, -euler.Y, euler.Z);
-            //bone.BindRotation = new Quaternion(rotation.X, rotation.Y, rotation.Z, rotation.W);
+            bone.BindRotation = new(rotation.X, rotation.Y, rotation.Z, rotation.W);
             bone.BindScale = new Float3(scale_vec.X, scale_vec.Y, scale_vec.Z);
 
-            boneNameToID[boneName] = boneID;
+            boneNameToID[nodeName] = boneID;
+            processedNodes.Add(nodeName);
             skeleton.AddBone(bone);
             boneID++;
         }
 
+        // First pass: Add all intermediate nodes in the hierarchy for bones with weights
+        // This ensures we capture the full transform chain
+        foreach (var kvp in boneOffsetMatrices)
+        {
+            string boneName = kvp.Key;
+            Silk.NET.Assimp.Node* node = FindNode(scene->MRootNode, boneName);
+            if (node == null)
+                continue;
+
+            // Collect the path from this bone up to the root
+            List<string> pathToRoot = new();
+            Silk.NET.Assimp.Node* current = node;
+            while (current != null && current != scene->MRootNode)
+            {
+                pathToRoot.Add(current->MName.AsString);
+                current = current->MParent;
+            }
+
+            // Add nodes from root down to this bone (reverse order)
+            // This ensures parents are added before children
+            for (int i = pathToRoot.Count - 1; i >= 0; i--)
+            {
+                string pathNodeName = pathToRoot[i];
+                Silk.NET.Assimp.Node* pathNode = FindNode(scene->MRootNode, pathNodeName);
+                if (pathNode == null)
+                    continue;
+
+                // Use offset matrix if this node has weights, otherwise null (will use identity)
+                Float4x4? offsetMatrix = boneOffsetMatrices.ContainsKey(pathNodeName)
+                    ? boneOffsetMatrices[pathNodeName]
+                    : null;
+
+                AddBoneFromNode(pathNode, offsetMatrix);
+            }
+        }
+
         // Now build parent-child relationships
-        // We need to traverse up the hierarchy to find the nearest bone parent
+        // All nodes should now be in the skeleton, so this should work correctly
         foreach (var bone in skeleton.Bones)
         {
             Silk.NET.Assimp.Node* node = FindNode(scene->MRootNode, bone.Name);
-            if (node != null)
+            if (node != null && node->MParent != null && node->MParent != scene->MRootNode)
             {
-                // Traverse up the hierarchy until we find a parent that's also a bone
-                Silk.NET.Assimp.Node* parentNode = node->MParent;
-                while (parentNode != null)
+                string parentName = node->MParent->MName.AsString;
+                if (boneNameToID.TryGetValue(parentName, out int parentID))
                 {
-                    string parentName = parentNode->MName.AsString;
-                    if (boneNameToID.TryGetValue(parentName, out int parentID))
-                    {
-                        bone.ParentID = parentID;
-                        break;
-                    }
-                    parentNode = parentNode->MParent;
+                    bone.ParentID = parentID;
                 }
             }
         }
