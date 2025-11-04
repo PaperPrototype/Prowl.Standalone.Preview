@@ -61,9 +61,12 @@ public class Pose
     }
 
     /// <summary>
-    /// Calculates the final bone matrices for GPU skinning using the given skeleton
+    /// Calculates the final bone matrices for GPU skinning using mesh-specific offset matrices
     /// </summary>
-    public Float4x4[] GetBoneMatrices(Skeleton skeleton)
+    /// <param name="skeleton">The skeleton to use</param>
+    /// <param name="boneNames">Bone names from the mesh</param>
+    /// <param name="meshOffsetMatrices">Offset matrices specific to this mesh</param>
+    public Float4x4[] GetBoneMatrices(Skeleton skeleton, string[] boneNames, Float4x4[] meshOffsetMatrices)
     {
         if (skeleton.Bones.Count != BoneCount)
             throw new ArgumentException("Pose bone count does not match skeleton bone count");
@@ -71,8 +74,8 @@ public class Pose
         // Calculate world transforms from local transforms
         skeleton.CalculateWorldTransforms(LocalPositions, LocalRotations, LocalScales, out Float4x4[] worldTransforms);
 
-        // Calculate final skinning matrices
-        return skeleton.CalculateSkinningMatrices(worldTransforms);
+        // Calculate final skinning matrices using mesh-specific offsets
+        return skeleton.CalculateSkinningMatrices(worldTransforms, boneNames, meshOffsetMatrices);
     }
 
     /// <summary>

@@ -134,20 +134,31 @@ public sealed class Skeleton : EngineObject, ISerializable
     }
 
     /// <summary>
-    /// Calculates final bone matrices for GPU skinning
+    /// Calculates final bone matrices for GPU skinning using mesh-specific offset matrices
     /// </summary>
-    public Float4x4[] CalculateSkinningMatrices(Float4x4[] worldTransforms)
+    /// <param name="worldTransforms">World transforms for each bone</param>
+    /// <param name="boneNames">Bone names from the mesh</param>
+    /// <param name="meshOffsetMatrices">Offset matrices specific to this mesh</param>
+    public Float4x4[] CalculateSkinningMatrices(Float4x4[] worldTransforms, string[] boneNames, Float4x4[] meshOffsetMatrices)
     {
-        if (worldTransforms.Length != Bones.Count)
-            throw new ArgumentException("World transforms must match bone count");
+        if (boneNames.Length != meshOffsetMatrices.Length)
+            throw new ArgumentException("Bone names and offset matrices must have the same length");
 
-        Float4x4[] skinningMatrices = new Float4x4[Bones.Count];
+        Float4x4[] skinningMatrices = new Float4x4[boneNames.Length];
 
-        for (int i = 0; i < Bones.Count; i++)
+        for (int i = 0; i < boneNames.Length; i++)
         {
-            // Final matrix = world transform * offset matrix
-            // This transforms from bind pose to current pose in world space
-            skinningMatrices[i] = worldTransforms[i] * Bones[i].OffsetMatrix;
+            // Find the bone index in the skeleton
+            int boneIndex = GetBoneIndex(boneNames[i]);
+            if (boneIndex < 0 || boneIndex >= worldTransforms.Length)
+            {
+                // Bone not found, use identity matrix
+                skinningMatrices[i] = Float4x4.Identity;
+                continue;
+            }
+
+            // Final matrix = world transform * mesh-specific offset matrix
+            skinningMatrices[i] = worldTransforms[boneIndex] * meshOffsetMatrices[i];
         }
 
         return skinningMatrices;

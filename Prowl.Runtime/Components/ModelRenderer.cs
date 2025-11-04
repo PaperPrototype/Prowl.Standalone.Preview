@@ -106,16 +106,17 @@ public class ModelRenderer : MonoBehaviour
             _isPlaying = true;
     }
 
-    private Float4x4[] CalculateBoneMatrices(Float4x4 meshWorldMatrix)
+    private Float4x4[] CalculateBoneMatrices(ModelMesh modelMesh)
     {
         if (_currentPose == null || Model.Skeleton.IsNotValid())
             return null;
 
-        // Get bone matrices from the pose using the skeleton
-        // These are in skeleton-local space and already include the bind pose offset
-        Float4x4[] boneMatrices = _currentPose.GetBoneMatrices(Model.Skeleton);
-
-        return boneMatrices;
+        // Get bone matrices from the pose using mesh-specific offset matrices
+        if (modelMesh.Mesh.boneNames != null && modelMesh.Mesh.bindPoses != null)
+        {
+            // Use mesh-specific offset matrices
+            return _currentPose.GetBoneMatrices(Model.Skeleton, modelMesh.Mesh.boneNames, modelMesh.Mesh.bindPoses);
+        }
     }
 
     private void RenderModelNode(ModelNode node, Float4x4 parentMatrix)
@@ -138,7 +139,7 @@ public class ModelRenderer : MonoBehaviour
                 // Add bone matrices for skinned meshes
                 if (modelMesh.HasBones)
                 {
-                    Float4x4[] boneMatrices = CalculateBoneMatrices(nodeWorldMatrix);
+                    Float4x4[] boneMatrices = CalculateBoneMatrices(modelMesh);
                     if (boneMatrices != null && boneMatrices.Length > 0)
                     {
                         properties.SetMatrices("boneTransforms", boneMatrices);
