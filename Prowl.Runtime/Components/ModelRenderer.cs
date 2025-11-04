@@ -114,9 +114,10 @@ public class ModelRenderer : MonoBehaviour
         // Get bone matrices from the pose using mesh-specific offset matrices
         if (modelMesh.Mesh.boneNames != null && modelMesh.Mesh.bindPoses != null)
         {
-            // Use mesh-specific offset matrices
             return _currentPose.GetBoneMatrices(Model.Skeleton, modelMesh.Mesh.boneNames, modelMesh.Mesh.bindPoses);
         }
+
+        return null;
     }
 
     private void RenderModelNode(ModelNode node, Float4x4 parentMatrix)
@@ -136,6 +137,9 @@ public class ModelRenderer : MonoBehaviour
                 properties.SetInt("_ObjectID", InstanceID);
                 properties.SetColor("_MainColor", MainColor);
 
+                // Determine which transform to use
+                Float4x4 meshTransform;
+
                 // Add bone matrices for skinned meshes
                 if (modelMesh.HasBones)
                 {
@@ -144,12 +148,20 @@ public class ModelRenderer : MonoBehaviour
                     {
                         properties.SetMatrices("boneTransforms", boneMatrices);
                     }
+
+                    // Skinned meshes use GameObject's transform since bones handle positioning
+                    meshTransform = Transform.LocalToWorldMatrix;
+                }
+                else
+                {
+                    // Non-skinned meshes use the node hierarchy transform
+                    meshTransform = nodeWorldMatrix;
                 }
 
                 GameObject.Scene.PushRenderable(new MeshRenderable(
                     modelMesh.Mesh,
                     modelMesh.Material,
-                    nodeWorldMatrix,
+                    meshTransform,
                     GameObject.LayerIndex,
                     properties));
             }

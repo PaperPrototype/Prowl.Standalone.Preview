@@ -93,8 +93,8 @@ public sealed class MyGame : Game
     {
         // Try to load BananaMan.fbx
         // Note: User needs to place BananaMan.fbx in the project directory
-        string fbxPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Banana Man", "scene.gltf");
-        //string fbxPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Banana Man", "Dancing Twerk.fbx");
+        //string fbxPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Banana Man", "scene.gltf");
+        string fbxPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Banana Man", "Dancing Twerk.fbx");
 
         if (!System.IO.File.Exists(fbxPath))
         {
@@ -118,7 +118,7 @@ public sealed class MyGame : Game
         // Create GameObject for BananaMan
         bananaManGO = new("BananaMan");
         bananaManGO.Transform.Position = new Float3(0, 0, 0);
-        //bananaManGO.Transform.LocalScale = new Float3(0.01f, 0.01f, 0.01f); // Models are often large
+        //ananaManGO.Transform.LocalScale = new Float3(0.01f, 0.01f, 0.01f); // Models are often large
 
         // Add AnimatedModelRenderer
         ModelRenderer renderer = bananaManGO.AddComponent<ModelRenderer>();
