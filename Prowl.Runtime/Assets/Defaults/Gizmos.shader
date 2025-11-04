@@ -10,6 +10,8 @@ Pass "Gizmos"
 
     Cull None
     Blend Alpha
+    ZWrite Off
+    ZTest Always
 
 	GLSLPROGRAM
 	Vertex
@@ -18,7 +20,7 @@ Pass "Gizmos"
         #include "VertexAttributes"
 		out vec4 vColor;
 		out vec4 screenPos;
-		
+
 		uniform mat4 mvp;
 		void main()
 		{
@@ -29,23 +31,37 @@ Pass "Gizmos"
 	}
 	Fragment
 	{
+        #include "Fragment"
 		in vec4 vColor;
 		in vec4 screenPos;
 		layout (location = 0) out vec4 finalColor;
-        //uniform sampler2D _CameraDepthTexture;
-		
+        uniform sampler2D _CameraDepthTexture;
+
 		void main()
 		{
-			// Convert screen position to normalized device coordinates
-			//vec2 screenUV = (screenPos.xy / screenPos.w) * 0.5 + 0.5;
-			
-			// Sample the depth texture
-			//float sceneDepth = texture(_CameraDepthTexture, screenUV).r;
-			
-			// Check if this fragment is behind existing geometry
-			//float depthFactor = (gl_FragCoord.z > sceneDepth + 0.0001) ? 0.25 : 1.0;
-			
-			finalColor = vColor;// * depthFactor;
+		    // Get screen UV from gl_FragCoord (already in pixel coordinates)
+		    vec2 screenUV = gl_FragCoord.xy / _ScreenParams.xy;
+
+		    // Sample the depth buffer at this fragment's screen position
+		    float sceneDepth = texture(_CameraDepthTexture, screenUV).r;
+
+		    // Use gl_FragCoord.z which is in the same depth space as the depth buffer
+		    float fragmentDepth = gl_FragCoord.z;
+
+		    // Check if this fragment is behind scene geometry
+		    // If fragmentDepth > sceneDepth, it's occluded
+		    float occluded = step(sceneDepth, fragmentDepth - 0.00001); // Small epsilon to avoid z-fighting
+
+		    // When occluded: darken significantly and make transparent
+		    // When visible: use original color
+		    vec4 color = vColor;
+		    if (occluded > 0.5)
+		    {
+		        color.rgb *= 0.5; // Darken to 50% of original brightness
+		        color.a *= 0.3;   // Make 70% transparent
+		    }
+
+			finalColor = color;
 		}
 	}
 	ENDGLSL
