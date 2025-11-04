@@ -147,6 +147,7 @@ public class ModelImporter
 
     private float GetScale(ModelImporterSettings settings, string extension)
     {
+        return 1f;
         float scale = settings.UnitScale;
         // FBX's are usually in cm, so scale them to meters
         if (extension.Equals(".fbx", StringComparison.OrdinalIgnoreCase))
@@ -690,7 +691,9 @@ public class ModelImporter
             System.Numerics.Matrix4x4.Decompose(nodeTransform, out System.Numerics.Vector3 scale_vec, out System.Numerics.Quaternion rotation, out System.Numerics.Vector3 position);
 
             bone.BindPosition = new Float3(position.X, position.Y, position.Z) * scale;
-            bone.BindRotation = new Quaternion(rotation.X, rotation.Y, rotation.Z, rotation.W);
+            var euler = Quaternion.ToEuler(new(rotation.X, rotation.Y, rotation.Z, rotation.W));
+            bone.BindRotation = Quaternion.FromEuler(euler.X, -euler.Y, euler.Z);
+            //bone.BindRotation = new Quaternion(rotation.X, rotation.Y, rotation.Z, rotation.W);
             bone.BindScale = new Float3(scale_vec.X, scale_vec.Y, scale_vec.Z);
 
             boneNameToID[boneName] = boneID;

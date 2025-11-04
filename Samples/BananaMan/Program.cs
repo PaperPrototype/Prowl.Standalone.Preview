@@ -54,7 +54,6 @@ public sealed class MyGame : Game
         GameObject lightGO = new("Directional Light");
         DirectionalLight light = lightGO.AddComponent<DirectionalLight>();
         light.Color = Color.White;
-        light.Intensity = 1.0f;
         lightGO.Transform.LocalEulerAngles = new Float3(-45, 45, 0);
         scene.Add(lightGO);
 
@@ -94,8 +93,8 @@ public sealed class MyGame : Game
     {
         // Try to load BananaMan.fbx
         // Note: User needs to place BananaMan.fbx in the project directory
-        string fbxPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Banana Man", "scene.gltf");
-        //string fbxPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Banana Man", "Dancing Twerk.fbx");
+        //string fbxPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Banana Man", "scene.gltf");
+        string fbxPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Banana Man", "Dancing Twerk.fbx");
 
         if (!System.IO.File.Exists(fbxPath))
         {
