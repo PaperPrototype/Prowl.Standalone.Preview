@@ -22,7 +22,6 @@ public sealed class ShapeCastDemoGame : Game
     private Scene? scene;
     private Material? standardMaterial;
     private GameObject? playerGO;
-    private PlayerController? playerController;
 
     public override void Initialize()
     {
@@ -185,7 +184,7 @@ public sealed class ShapeCastDemoGame : Game
         //playerRenderer.Material = standardMaterial;
 
         playerGO.AddComponent<CharacterController>();
-        playerController = playerGO.AddComponent<PlayerController>();
+        playerGO.AddComponent<PlayerController>();
 
         scene.Add(playerGO);
     }

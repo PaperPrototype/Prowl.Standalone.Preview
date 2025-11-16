@@ -28,11 +28,17 @@ public sealed class PhysicsDemo : Game
     private Material? standardMaterial;
     private GameObject? particleSystemGO;
     private GameObject? refractiveCube;
+    private GameObject? playerGO;
 
     public override void Initialize()
     {
         //DrawGizmos = true;
         scene = new Scene();
+        scene.Ambient = new Scene.AmbientLightParams
+        {
+            Color = new Color(0.5f, 0.5f, 0.5f, 1.0f),
+            Strength = 1.0f
+        };
 
         // Create directional light
         GameObject lightGO = new("Directional Light");
@@ -108,9 +114,13 @@ public sealed class PhysicsDemo : Game
         CreateTerrainDemo(scene, new Float3(-50, -15, -50));
 
         // Demo 8: GrabPass Refraction Demo!
-        CreateRefractionDemo(scene, new Float3(0, 5, 0));
+        CreateRefractionDemo(scene, new Float3(0, -10, 0));
+
+        // CreatePlayer();
 
         scene.Activate();
+
+        DrawGizmos = true;
 
         // Print controls
         Debug.Log("=== Physics Demo Controls ===");
@@ -432,7 +442,7 @@ public sealed class PhysicsDemo : Game
         // Create a large transparent cube with refraction effect
         refractiveCube = new GameObject("Refractive Cube");
         refractiveCube.Transform.Position = position;
-        refractiveCube.Transform.LocalScale = new Float3(2, 5, 5);
+        refractiveCube.Transform.LocalScale = new Double3(100, 5, 100);
 
         MeshRenderer cubeRenderer = refractiveCube.AddComponent<MeshRenderer>();
         cubeRenderer.Mesh = Mesh.CreateCube(new Float3(1, 1, 1));
@@ -473,11 +483,13 @@ public sealed class PhysicsDemo : Game
         terrain.Heightmap = heightmap;
         terrain.Splatmap = splatmap;
 
+        // var AppDir = System.AppContext.BaseDirectory;
+
         // Use default textures for layers
-        terrain.Layer0Albedo = Texture2D.White;   // Base layer - white
-        terrain.Layer1Albedo = Texture2D.Gray;    // Mid layer - gray
-        terrain.Layer2Albedo = Texture2D.Grid;    // High layer - grid pattern
-        terrain.Layer3Albedo = Texture2D.Noise;   // Peak layer - noise
+        terrain.Layer0Albedo = Texture2D.LoadFromFile("dirt.png");   // Base layer - white
+        terrain.Layer1Albedo = Texture2D.LoadFromFile("grass.jpg");    // Mid layer - gray
+        terrain.Layer2Albedo = Texture2D.LoadFromFile("dirt.png");    // High layer - grid pattern
+        terrain.Layer3Albedo =  Texture2D.LoadFromFile("grass.jpg");   // Peak layer - noise
 
         // Configure terrain settings
         terrain.TerrainSize = 100.0f;              // 100x100 world units
@@ -588,6 +600,21 @@ public sealed class PhysicsDemo : Game
         return splatmap;
     }
 
+    private void CreatePlayer()
+    {
+        playerGO = new GameObject("Player");
+        playerGO.Transform.Position = new Double3(0, 2, 0);
+
+        //var playerRenderer = playerGO.AddComponent<MeshRenderer>();
+        //playerRenderer.Mesh = Mesh.CreateCapsule(0.5f, 1.8f, 16, 8);
+        //playerRenderer.Material = standardMaterial;
+
+        playerGO.AddComponent<CharacterController>();
+        playerGO.AddComponent<PlayerController>();
+
+        scene.Add(playerGO);
+    }
+
     // Simple Perlin-like noise function
     private float PerlinNoise(float x, float y)
     {
@@ -669,8 +696,29 @@ public sealed class PhysicsDemo : Game
         //scene.DrawGizmos();
 
         if (particleSystemGO != null)
-            particleSystemGO.Transform.Rotate(Float3.UnitY, 20f * Time.DeltaTime);
+            particleSystemGO.Transform.Rotate(Double3.UnitY, 20f * Time.DeltaTime);
 
+        
+        // // Camera follows player from behind
+        // if (playerGO.IsValid())
+        // {
+        //     Double3 targetPos = playerGO.Transform.Position + new Double3(0, 3, -8);
+        //     cameraGO.Transform.Position = Maths.Lerp(cameraGO.Transform.Position, targetPos, 1.0 * Time.DeltaTime);
+
+        //     // Look at player
+        //     Double3 lookDir = playerGO.Transform.Position - cameraGO.Transform.Position;
+        //     if (Double3.Length(lookDir) > 0.01)
+        //     {
+        //         double pitch = System.Math.Atan2(lookDir.Y, System.Math.Sqrt(lookDir.X * lookDir.X + lookDir.Z * lookDir.Z));
+        //         double yaw = System.Math.Atan2(lookDir.X, lookDir.Z);
+        //         cameraGO.Transform.LocalEulerAngles = new Double3(
+        //             -pitch * 180.0 / System.Math.PI,
+        //             yaw * 180.0 / System.Math.PI,
+        //             0
+        //         );
+        //     }
+        // }
+        
         // Camera movement
         Float2 movement = Float2.Zero;
         if (Input.GetKey(KeyCode.W)) movement += Float2.UnitY;
@@ -778,6 +826,115 @@ public sealed class PhysicsDemo : Game
             {
                 particleSystemGO.Transform.Position += particleMovement * 5f * Time.DeltaTime;
             }
+        }
+    }
+}
+
+
+/// <summary>
+/// Handles player movement, gravity, jumping, crouching, and input.
+/// Uses the CharacterController for collision detection and movement.
+/// </summary>
+public class PlayerController : MonoBehaviour
+{
+    public double MoveSpeed = 5.0;
+    public double CrouchMoveSpeed = 2.5;
+    public double JumpForce = 8.0;
+    public double Gravity = 20.0;
+    public double StandingHeight = 1.8;
+    public double CrouchHeight = 0.9;
+
+    private CharacterController? characterController;
+    private Double3 velocity = Double3.Zero;
+    private Double3 moveInput = Double3.Zero;
+    private bool jumpInput = false;
+    private bool crouchInput = false;
+    private bool isCrouching = false;
+
+    public override void OnEnable()
+    {
+        characterController = GameObject.GetComponent<CharacterController>();
+    }
+
+    public override void Update()
+    {
+        if (characterController.IsNotValid()) return;
+
+        moveInput = Double3.Zero;
+        if (Input.GetKey(KeyCode.W)) moveInput += new Double3(0, 0, 1);
+        if (Input.GetKey(KeyCode.S)) moveInput -= new Double3(0, 0, 1);
+        if (Input.GetKey(KeyCode.A)) moveInput -= new Double3(1, 0, 0);
+        if (Input.GetKey(KeyCode.D)) moveInput += new Double3(1, 0, 0);
+        moveInput = Double3.Normalize(moveInput);
+
+        jumpInput = Input.GetKeyDown(KeyCode.Space);
+        crouchInput = Input.GetKey(KeyCode.ControlLeft);
+
+        // Handle crouching
+        HandleCrouch();
+
+        // Update horizontal velocity based on input
+        double currentSpeed = isCrouching ? CrouchMoveSpeed : MoveSpeed;
+        Double3 horizontalVelocity = moveInput * currentSpeed;
+        velocity.X = horizontalVelocity.X;
+        velocity.Z = horizontalVelocity.Z;
+
+        HandleGravityAndJump();
+
+        // Calculate total movement for this frame
+        Double3 movement = velocity * Time.DeltaTime;
+
+        // Move the character using the CharacterController (this also updates IsGrounded)
+        characterController.Move(movement);
+    }
+
+    private void HandleCrouch()
+    {
+        if (crouchInput && !isCrouching)
+        {
+            // Try to crouch
+            if (characterController.TrySetHeight(CrouchHeight))
+            {
+                isCrouching = true;
+            }
+        }
+        else if (!crouchInput && isCrouching)
+        {
+            // Try to stand up (only if there's clearance above)
+            if (characterController.TrySetHeight(StandingHeight))
+            {
+                isCrouching = false;
+            }
+            // If TrySetHeight fails, player remains crouched (not enough clearance)
+        }
+    }
+
+    private void HandleGravityAndJump()
+    {
+        if (!characterController.IsGrounded)
+        {
+            velocity.Y -= Gravity * Time.DeltaTime;
+        }
+        else
+        {
+            if (velocity.Y < 0)
+                velocity.Y = 0;
+
+            // Handle jump when grounded (can't jump while crouching)
+            if (jumpInput && !isCrouching)
+            {
+                velocity.Y = JumpForce;
+            }
+        }
+    }
+
+    public override void DrawGizmos()
+    {
+        // Draw velocity
+        if (Double3.Length(velocity) > 0.1)
+        {
+            Double3 position = GameObject.Transform.Position;
+            Debug.DrawArrow(position, velocity * 0.5, new Color(255, 255, 0, 255));
         }
     }
 }

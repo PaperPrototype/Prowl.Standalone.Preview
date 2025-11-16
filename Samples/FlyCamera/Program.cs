@@ -151,6 +151,7 @@ public sealed class MyGame : Game
 
         Input.RegisterActionMap(cameraMap);
         cameraMap.Enable();
+        Input.SetCursorVisible(false, 0);
     }
 
     public override void BeginUpdate()

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Prowl.Runtime\Prowl.Runtime.csproj" />
+    <ProjectReference Include="../../Prowl.Runtime/Prowl.Runtime.csproj" />
   </ItemGroup>
-    
+
   <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
     <Copy SourceFiles="dirt.png" DestinationFolder="$(OutDir)" />
     <Copy SourceFiles="grass.jpg" DestinationFolder="$(OutDir)" />
